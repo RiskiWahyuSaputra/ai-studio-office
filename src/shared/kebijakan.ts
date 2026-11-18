@@ -12,6 +12,14 @@ const POLA: { re: RegExp; alasan: string }[] = [
     alasan: "menyebut tokoh nyata (Flow menolak membuat sosok/suara tokoh berpengaruh)",
   },
   {
+    re: /\b(young|youth|pemuda|muda belia)\b/i,
+    alasan: "kata 'young/pemuda' bisa dibaca sebagai remaja; tulis usia jelas, mis. 'a 30-year-old man with a mustache'",
+  },
+  {
+    re: /\b(weapons?|spears?|rifles?|guns?|pistols?|swords?|keris|bambu runcing|bamboo spear|sharpened bamboo|senjata|bayonets?|grenades?)\b/i,
+    alasan: "senjata (dalam konteks perang sering ditolak; ganti dengan benda simbolik seperti bendera)",
+  },
+  {
     re: /\b(blood(y)?|gore|corpses?|dead bod(y|ies)|kill(s|ing|ed)?|stab(s|bing|bed)?|shoot(s|ing)? (at|him|her|them)|behead\w*|torture\w*|mayat|tewas|dibunuh|membunuh|menusuk)\b/i,
     alasan: "kekerasan grafis (gambarkan suasana/akibatnya saja)",
   },
@@ -28,7 +36,7 @@ export function cekKebijakan(teks: string): string[] {
 
 /** Aturan yang ditempel ke prompt Gemini untuk penulis naskah & sutradara. */
 export const ATURAN_AMAN = `ATURAN WAJIB agar tidak ditolak Google Flow/Veo:
-- Semua tokoh manusia ADALAH ORANG DEWASA (sebut usianya, mis. "in his late twenties"). Jangan pernah menulis anak, remaja, teenager, boy, girl, "belasan tahun", pelajar, dsb. — termasuk di narasi.
+- Semua tokoh manusia ADALAH ORANG DEWASA dengan ciri dewasa yang jelas, mis. "a 30-year-old man with a thin mustache". Jangan pakai kata young, youth, teen, boy, girl, pemuda, "belasan tahun", pelajar, anak — termasuk di narasi.
 - Jangan menyebut nama tokoh nyata (mis. Soekarno, Hatta, Bung Tomo, Diponegoro, Kartini, Gajah Mada, presiden, artis) di prompt maupun di kalimat yang diucapkan. Pakai sebutan umum: "sang orator", "pemimpin di radio", "sang raja", "seorang jenderal".
-- Tidak ada kekerasan grafis: tanpa darah, luka, mayat, atau senjata yang diarahkan/mengenai orang. Untuk perang, tunjukkan suasana: asap, reruntuhan, siluet dari jauh, ekspresi tokoh, benda simbolik.
-- Senjata boleh tampak sebagai benda yang dipegang/diam, bukan sedang dipakai menyerang.`;
+- Tidak ada kekerasan grafis: tanpa darah, luka, mayat, ledakan yang mengenai bangunan/orang, atau adegan bertempur.
+- Jangan tampilkan atau sebut senjata apa pun (termasuk bambu runcing, keris, senapan, tank yang menembak). Untuk tema perang, tunjukkan suasana dari jauh (asap di cakrawala, pesawat kecil jauh di langit), ekspresi tokoh, dan benda simbolik (bendera merah putih, radio tua, surat).`;
