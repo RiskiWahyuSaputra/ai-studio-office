@@ -125,6 +125,8 @@ export interface Project {
   gaya?: Gaya;
   /** nama suara Gemini TTS untuk narasi; sama di semua adegan */
   suara?: string;
+  /** model TTS yang dipakai render terakhir, supaya render ulang memakai warna suara yang sama */
+  modelSuara?: string;
   ide: string;
   dibuat: string;
   diubah: string;

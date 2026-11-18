@@ -67,16 +67,20 @@ registerStage("edit", {
   async run(p) {
     const s = getSettings();
     let narasi: string[] | undefined;
+    let modelSuara: string | undefined;
     if (s.narasiTts) {
       const dir = editor.projectDir(p.id);
       const suara = p.suara ?? tts.suaraBawaan(p.format);
-      narasi = [];
-      // berurutan supaya tidak membanjiri kuota TTS
-      for (const a of p.adegan ?? []) narasi.push(await tts.narasi(dir, a.narasi, suara, p.format));
+      const hasil = await tts.narasiSemua(dir, (p.adegan ?? []).map((a) => a.narasi), suara, p.format, p.modelSuara);
+      narasi = hasil.files;
+      modelSuara = hasil.model;
     }
     const v = await editor.render(p, { subtitle: s.subtitle, narasi, volumeKlip: s.volumeKlip });
     return {
-      apply: (x) => void (x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString() }),
+      apply: (x) => {
+        x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString() };
+        if (modelSuara) x.modelSuara = modelSuara;
+      },
       pesan: `Video final ${Math.round(v.durasi)} detik siap`,
     };
   },

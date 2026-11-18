@@ -374,7 +374,8 @@ function sectionSuara(p: Project, s: UiState) {
   if (!s.settings.narasiTts || !p.adegan?.length) return "";
   const now = SUARA_BAWAAN(p);
   return `<section class="card"><h3>Suara narasi · Nanda</h3>
-    <p class="hint">Satu suara dipakai untuk semua adegan. Nanda membacakan narasi dengan Gemini TTS saat mengedit, lalu menempelkannya di atas klip.</p>
+    <p class="hint">Satu suara dipakai untuk semua adegan. Nanda membacakan seluruh narasi sekaligus dengan Gemini TTS saat mengedit, lalu memotongnya per adegan.</p>
+    <p class="hint">Kuota gratis Gemini TTS sekitar 10 permintaan/hari per model. Satu video memakai 1 permintaan, "Dengar contoh" juga 1.</p>
     <div class="row">
       <label class="gaya-ganti">Suara
         <select data-action-change="ganti-suara" aria-label="Pilih suara narasi">

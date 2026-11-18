@@ -65,7 +65,7 @@ projects.post("/projects/:id/suara/contoh", async (req, res) => {
   const teks = p.adegan?.[0]?.narasi || p.naskah?.hook;
   if (!teks) return void res.status(400).json({ error: "Belum ada naskah untuk dibacakan" });
   try {
-    const file = await buatNarasi(projectDir(p.id), teks, suara, p.format);
+    const file = await buatNarasi(projectDir(p.id), teks, suara, p.format, p.modelSuara);
     res.json({ url: `/media/${p.id}/${file}` });
   } catch (e) {
     res.status(503).json({ error: (e as Error).message });
