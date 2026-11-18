@@ -8,7 +8,11 @@ import {
   listProjects,
   updateSettings,
 } from "../store.ts";
-import { subscribe } from "../events.ts";
+import { activity, subscribe } from "../events.ts";
+import { kick, lanjut, ulang } from "../pipeline.ts";
+import { STAGES } from "../../src/shared/types.ts";
+import type { StageId } from "../../src/shared/team.ts";
+import { addLog, updateProject } from "../store.ts";
 
 export const projects = Router();
 
@@ -22,7 +26,55 @@ projects.post("/projects", async (req, res) => {
   const format = req.body?.format as Format;
   if (!(format in FORMATS)) return void res.status(400).json({ error: "Format tidak dikenal" });
   const ide = String(req.body?.ide ?? "").slice(0, 500);
-  res.status(201).json(await createProject(format, ide));
+  const p = await createProject(format, ide);
+  activity({ type: "bicara", memberId: "produser", teks: "Proyek baru masuk!" });
+  activity({ type: "serah", dari: "produser", ke: "peneliti", label: ide ? ide.slice(0, 26) : "Cari topik ya" });
+  setTimeout(kick, 2500);
+  res.status(201).json(p);
+});
+
+projects.post("/projects/:id/lanjut", async (req, res) => {
+  try {
+    res.json(await lanjut(req.params.id));
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
+});
+
+projects.post("/projects/:id/ulang", async (req, res) => {
+  const tahap = req.body?.tahap as StageId;
+  if (!STAGES.some((s) => s.id === tahap)) return void res.status(400).json({ error: "Tahap tidak dikenal" });
+  try {
+    res.json(await ulang(req.params.id, tahap));
+  } catch (e) {
+    res.status(400).json({ error: (e as Error).message });
+  }
+});
+
+/** Simpan suntinganmu pada hasil kerja karyawan. */
+projects.patch("/projects/:id", async (req, res) => {
+  const b = req.body ?? {};
+  const p = getProject(req.params.id);
+  if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
+  const hasil = await updateProject(p.id, (x) => {
+    if (b.naskah && x.naskah) x.naskah = { ...x.naskah, ...pickStr(b.naskah, ["judulKerja", "hook", "narasi", "cta"]) };
+    if (Array.isArray(b.adegan) && x.adegan) {
+      for (const a of b.adegan) {
+        const t = x.adegan.find((y) => y.no === a.no);
+        if (t) Object.assign(t, pickStr(a, ["visual", "narasi", "prompt"]));
+      }
+    }
+    if (b.paket && x.paket) {
+      if (b.paket.youtube) {
+        Object.assign(x.paket.youtube, pickStr(b.paket.youtube, ["judul", "deskripsi"]));
+        if (Array.isArray(b.paket.youtube.tags)) x.paket.youtube.tags = b.paket.youtube.tags.map(String).slice(0, 30);
+      }
+      if (b.paket.tiktok) Object.assign(x.paket.tiktok, pickStr(b.paket.tiktok, ["caption"]));
+      if (b.paket.instagram) Object.assign(x.paket.instagram, pickStr(b.paket.instagram, ["caption"]));
+    }
+    addLog(x, "Kamu", "Menyunting hasil kerja");
+  });
+  res.json(hasil);
 });
 
 projects.get("/projects/:id", (req, res) => {
@@ -50,3 +102,9 @@ projects.patch("/settings", async (req, res) => {
   if (typeof b.otomatis === "boolean") patch.otomatis = b.otomatis;
   res.json(await updateSettings(patch));
 });
+
+function pickStr(o: Record<string, unknown>, keys: string[]) {
+  const out: Record<string, string> = {};
+  for (const k of keys) if (typeof o?.[k] === "string") out[k] = (o[k] as string).slice(0, 5000);
+  return out;
+}

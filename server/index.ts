@@ -3,6 +3,9 @@ import path from "node:path";
 import { ROOT } from "./paths.ts";
 import { loadDb } from "./store.ts";
 import { projects } from "./routes/projects.ts";
+import { kick } from "./pipeline.ts";
+import { namaModel } from "./ai.ts";
+import "./stages.ts";
 
 const PORT = Number(process.env.PORT ?? 8787);
 const PROD = process.env.NODE_ENV === "production";
@@ -32,5 +35,6 @@ if (PROD) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Kantor Piksel buka di http://localhost:${PORT}`);
+  console.log(`Kantor Piksel buka di http://localhost:${PORT} (otak karyawan: ${namaModel()})`);
+  kick();
 });
