@@ -114,3 +114,11 @@ body {
 .bubble.is-visible { display: block; }
 .bubble.is-working { background: #e6f7e9; }
 .bubble.is-working::after { background: #e6f7e9; }
+
+@media (max-width: 600px) {
+  .topbar { flex-wrap: wrap; gap: 6px 16px; padding: 8px 16px; }
+  .brand { white-space: nowrap; font-size: 18px; }
+  .topbar-info { font-size: 12px; gap: 10px; }
+  .meter-label { display: none; }
+  .meter-bar { width: 60px; }
+}
