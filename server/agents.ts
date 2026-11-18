@@ -60,11 +60,11 @@ Peranmu: Sutradara & Prompt Engineer untuk Google Veo.
 Naskah: ${JSON.stringify(n)}
 Riset: ${JSON.stringify(p.riset)}
 
-Pecah naskah menjadi 5–7 adegan (hook = adegan 1, cta = adegan terakhir). Untuk tiap adegan tulis:
+Pecah naskah menjadi ${s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan (hook = adegan 1, cta = adegan terakhir). Untuk tiap adegan tulis:
 - visual: deskripsi singkat bahasa Indonesia.
 - narasi: kalimat yang diucapkan di adegan itu (ambil dari naskah).
 - prompt: prompt Veo dalam BAHASA INDONESIA (jangan pakai bahasa Inggris), satu paragraf, diawali "${GAYA[p.gaya ?? "sinematik"].kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis.
-- narasi tiap adegan maksimal 18 kata supaya muat dibacakan dalam satu klip 8 detik.
+- narasi tiap adegan maksimal ${Math.max(6, Math.floor(s.durasiKlip * 2.2))} kata supaya muat dibacakan dalam satu klip ${s.durasiKlip} detik. Kalau naskah lebih panjang, pecah jadi lebih banyak adegan (maksimal 10) atau ringkas kalimatnya.
 ${aturanSuara}
 ${p.format === "pov-sejarah" ? "Pakai sudut pandang orang pertama (first-person POV) dan detail periode yang akurat." : "Hewan berbicara langsung ke kamera seperti vlogger; ekspresif dan kocak."}
 
@@ -75,7 +75,7 @@ ${p.gaya === "pixel" ? "Jangan pakai kata fotorealistis, realistis, atau film si
 Kalau naskah melanggar aturan di atas, ubah kalimat narasinya agar aman (dan tulis versi aman itu di field "narasi").
 
 Balas JSON: {"adegan": [{"visual": string, "narasi": string, "prompt": string}]}`);
-  return hasil.adegan.slice(0, 8).map((a, i) => ({ ...a, no: i + 1, durasi: s.durasiKlip }));
+  return hasil.adegan.slice(0, 10).map((a, i) => ({ ...a, no: i + 1, durasi: s.durasiKlip }));
 }
 
 export async function paket(p: Project): Promise<PaketUnggah> {

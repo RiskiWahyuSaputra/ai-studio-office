@@ -182,7 +182,7 @@ panel.addEventListener("click", async (ev) => {
       // Asisten Flow butuh perintah eksplisit, kalau tidak semua prompt dianggap satu video
       const kepala =
         `Buat ${n} video TERPISAH: tepat satu video untuk setiap ${n} adegan di bawah (total ${n} video). ` +
-        `JANGAN gabungkan adegan menjadi satu video. Pakai prompt tiap adegan persis seperti tertulis, vertikal 9:16, sekitar 8 detik per video.`;
+        `JANGAN gabungkan adegan menjadi satu video. Pakai prompt tiap adegan persis seperti tertulis, vertikal 9:16, sekitar ${state.settings.durasiKlip} detik per video.`;
       const isi = scenes
         .map((sc) => `=== ADEGAN ${sc.dataset.no} dari ${n} (video ke-${sc.dataset.no}) ===\n${sc.querySelector("textarea")?.value.trim() ?? ""}`)
         .join("\n\n");

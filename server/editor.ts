@@ -89,7 +89,9 @@ export interface OpsiRender {
 
 const JEDA_AWAL = 0.25;
 const JEDA_AKHIR = 0.35;
-const TEMPO_MAKS = 1.2;
+const TEMPO_MAKS = 1.12;
+/** klip boleh diperlambat sampai 2x (slow-motion) sebelum frame terakhir ditahan */
+const LAMBAT_MAKS = 2;
 
 export async function render(p: Project, o: OpsiRender): Promise<{ file: string; durasi: number }> {
   const dir = projectDir(p.id);
@@ -102,12 +104,16 @@ export async function render(p: Project, o: OpsiRender): Promise<{ file: string;
   // hitung panjang tiap adegan: narasi dipercepat sedikit bila perlu, sisanya klip ditahan di frame terakhir
   const rencana = info.map((x, i) => {
     const nar = infoNarasi[i]?.durasi ?? 0;
-    if (!nar) return { durasi: x.durasi, mulaiNarasi: 0, panjangNarasi: 0, tempo: 1, tahan: 0 };
+    if (!nar) return { durasi: x.durasi, mulaiNarasi: 0, panjangNarasi: 0, tempo: 1, lambat: 1, tahan: 0 };
+    // 1) percepat narasi sedikit, 2) perlambat klip (slow-motion), 3) baru tahan frame terakhir
     const muat = Math.max(0.5, x.durasi - JEDA_AWAL - JEDA_AKHIR);
     const tempo = Math.min(TEMPO_MAKS, Math.max(1, nar / muat));
     const panjang = nar / tempo;
-    const durasi = Math.max(x.durasi, JEDA_AWAL + panjang + JEDA_AKHIR);
-    return { durasi, mulaiNarasi: JEDA_AWAL, panjangNarasi: panjang, tempo, tahan: durasi - x.durasi };
+    const butuh = JEDA_AWAL + panjang + JEDA_AKHIR;
+    const lambat = Math.min(LAMBAT_MAKS, Math.max(1, butuh / x.durasi));
+    const durVideo = x.durasi * lambat;
+    const durasi = Math.max(durVideo, butuh);
+    return { durasi, mulaiNarasi: JEDA_AWAL, panjangNarasi: panjang, tempo, lambat, tahan: durasi - durVideo };
   });
   await fs.writeFile(path.join(dir, "subtitle.srt"), buatSrt(adegan, rencana));
 
@@ -120,7 +126,7 @@ export async function render(p: Project, o: OpsiRender): Promise<{ file: string;
     const r = rencana[i];
     const D = r.durasi.toFixed(3);
     filters.push(
-      `[${i}:v]scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30,format=yuv420p` +
+      `[${i}:v]${r.lambat > 1.001 ? `setpts=${r.lambat.toFixed(4)}*PTS,` : ""}scale=1080:1920:force_original_aspect_ratio=decrease,pad=1080:1920:(ow-iw)/2:(oh-ih)/2:color=black,setsar=1,fps=30,format=yuv420p` +
         `${r.tahan > 0.01 ? `,tpad=stop_mode=clone:stop_duration=${r.tahan.toFixed(3)}` : ""},trim=0:${D},setpts=PTS-STARTPTS[v${i}]`,
     );
     // suara asli klip (atau hening), dikecilkan bila ada narasi
