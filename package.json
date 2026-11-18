@@ -1,0 +1,27 @@
+{
+  "name": "kantor-piksel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Kantor pixel berisi karyawan AI yang memproduksi konten video AI (Google Flow / Veo) untuk YouTube, TikTok, dan Instagram.",
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env server/index.ts",
+    "build": "vite build",
+    "start": "NODE_ENV=production node --env-file-if-exists=.env server/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=23.6"
+  },
+  "dependencies": {
+    "express": "^5.3.0",
+    "multer": "^2.5.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  }
+}
