@@ -71,3 +71,19 @@ registerStage("edit", {
   },
   siap: (p) => (p.video ? null : "Video final belum ada"),
 });
+
+registerStage("paket", {
+  status: "Nulis caption...",
+  async run(p) {
+    const k = await agen.paket(p);
+    return { apply: (x) => void (x.paket = k), pesan: "Judul, caption & hashtag siap. Cek dulu ya!", tunggu: true };
+  },
+});
+
+registerStage("unggah", {
+  status: "Siap upload",
+  async run() {
+    return { apply: () => {}, pesan: "Tinggal pilih platform untuk diunggah", tunggu: true };
+  },
+  siap: (p) => (p.unggahan.some((u) => u.status === "berhasil") ? null : "Belum ada unggahan yang berhasil"),
+});

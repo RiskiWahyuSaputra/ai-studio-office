@@ -53,7 +53,21 @@ function render(force = false) {
   const ds = panel.querySelectorAll("details");
   if (!force && ds.length === open.length) ds.forEach((d, i) => (d.open = open[i]));
   panel.scrollTop = scroll;
+  panel.querySelectorAll<HTMLElement>(".counter").forEach(updateCounter);
 }
+
+function updateCounter(c: HTMLElement) {
+  const f = c.closest("label")?.querySelector<HTMLInputElement | HTMLTextAreaElement>("input, textarea");
+  if (!f) return;
+  const max = Number(c.dataset.max);
+  c.textContent = `${f.value.length}/${max}`;
+  c.classList.toggle("over", f.value.length > max);
+}
+
+panel.addEventListener("input", (ev) => {
+  const c = (ev.target as HTMLElement).closest("label")?.querySelector<HTMLElement>(".counter");
+  if (c) updateCounter(c);
+});
 
 panel.addEventListener("focusout", () => {
   setTimeout(() => pending && !sedangMengetik() && render(), 150);
@@ -174,6 +188,38 @@ panel.addEventListener("click", async (ev) => {
       if (p) await run(() => api.patch(p.id, { naskah: collect(box) }), "Naskah disimpan");
       return;
     }
+    case "simpan-paket": {
+      const box = el.closest("[data-edit]")!;
+      const f = collect(box);
+      const paket = {
+        youtube: { judul: f["youtube.judul"], deskripsi: f["youtube.deskripsi"], tags: f["youtube.tags"].split(",").map((t) => t.trim()).filter(Boolean) },
+        tiktok: { caption: f["tiktok.caption"] },
+        instagram: { caption: f["instagram.caption"] },
+      };
+      if (p) await run(() => api.patch(p.id, { paket }), "Caption disimpan");
+      return;
+    }
+    case "salin-caption": {
+      const ta = panel.querySelector<HTMLTextAreaElement>(`[data-f="${el.dataset.p}.caption"]`);
+      if (ta) await run(() => navigator.clipboard.writeText(ta.value), "Caption disalin");
+      return;
+    }
+    case "unggah": {
+      if (!p) return;
+      const box = el.closest<HTMLElement>("[data-platform]")!;
+      const opsi = Object.fromEntries([...box.querySelectorAll<HTMLSelectElement>("[data-opsi]")].map((x) => [x.dataset.opsi!, x.value]));
+      el.setAttribute("disabled", "");
+      await run(() => api.post(`/api/projects/${p.id}/unggah/${el.dataset.p}`, opsi), "Unggahan dimulai");
+      return;
+    }
+    case "putus": {
+      const st = await run(() => api.post<UiState["platform"]>(`/api/oauth/${el.dataset.p}/putus`));
+      if (st) {
+        state.platform = st;
+        render(true);
+      }
+      return;
+    }
     case "simpan-adegan": {
       const adegan = [...panel.querySelectorAll<HTMLElement>(".scene")].map((sc) => ({ no: Number(sc.dataset.no), ...collect(sc) }));
       if (p) await run(() => api.patch(p.id, { adegan }), "Prompt disimpan");
@@ -236,6 +282,10 @@ async function boot() {
   for (const p of s.projects) {
     if (p.status === "jalan") office.setWorking(memberForStage(p.tahap).id, true, "Lanjut kerja...");
   }
+  const q = new URLSearchParams(location.search);
+  if (q.get("terhubung")) toast(`${q.get("terhubung")} terhubung`);
+  if (q.get("gagal")) toast(`Gagal menghubungkan: ${q.get("gagal")}`, true);
+  if (q.size) history.replaceState(null, "", "/");
   render(true);
   listen(onEvent, async (on) => {
     const wasOffline = !online;

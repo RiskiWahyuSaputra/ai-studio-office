@@ -12,6 +12,7 @@ import {
 } from "../store.ts";
 import { activity, subscribe } from "../events.ts";
 import { namaModel } from "../ai.ts";
+import { platformStatus } from "./social.ts";
 import { kick, lanjut, ulang } from "../pipeline.ts";
 import { STAGES } from "../../src/shared/types.ts";
 import type { StageId } from "../../src/shared/team.ts";
@@ -21,8 +22,8 @@ export const projects = Router();
 
 projects.get("/events", (_req, res) => subscribe(res));
 
-projects.get("/state", (_req, res) => {
-  res.json({ projects: listProjects(), settings: getSettings(), ai: namaModel(), platform: {} });
+projects.get("/state", async (_req, res) => {
+  res.json({ projects: listProjects(), settings: getSettings(), ai: namaModel(), platform: await platformStatus() });
 });
 
 projects.post("/projects", async (req, res) => {

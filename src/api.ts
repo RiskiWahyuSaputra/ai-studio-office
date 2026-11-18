@@ -4,7 +4,7 @@ export interface InitState {
   projects: Project[];
   settings: Settings;
   ai: string;
-  platform: Record<string, { siap: boolean; akun?: string; catatan?: string }>;
+  platform: Record<string, { siap: boolean; akun?: string; catatan?: string; perluLogin: boolean }>;
 }
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {

@@ -1,5 +1,5 @@
 import { TEAM, memberById, memberForStage } from "../shared/team.ts";
-import { FORMATS, STAGES, type Project, type Settings } from "../shared/types.ts";
+import { FORMATS, STAGES, type Platform, type Project, type Settings } from "../shared/types.ts";
 
 export type View = { kind: "list" } | { kind: "project"; id: string } | { kind: "member"; id: string };
 
@@ -7,7 +7,7 @@ export interface UiState {
   projects: Map<string, Project>;
   settings: Settings;
   ai: string;
-  platform: Record<string, { siap: boolean; akun?: string; catatan?: string }>;
+  platform: Record<string, { siap: boolean; akun?: string; catatan?: string; perluLogin: boolean }>;
   view: View;
 }
 
@@ -194,6 +194,8 @@ function aksi(p: Project, s: UiState): string {
 }
 
 export const PETUNJUK: Partial<Record<Project["tahap"], (p: Project, s: UiState) => string>> = {
+  paket: () => "Cek judul, caption, dan hashtag dari Putri di bawah. Sunting bila perlu, simpan, lalu setujui.",
+  unggah: () => "Hubungkan akun lalu unggah ke platform pilihanmu di bagian Unggah. Setelah minimal satu tayang, lanjutkan ke Analisis.",
   render: (p, s) => {
     const sisa = s.settings.kreditBulanan - s.settings.kreditTerpakai;
     return `Buka <a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener">Google Flow</a>, salin prompt tiap adegan, render (mode ${p.kredit?.mode === "quality" ? "Quality" : "Fast"}), lalu unggah klipnya di bawah. Estimasi <strong>${p.kredit?.total ?? 0}</strong> kredit, sisa ${sisa}.
@@ -241,6 +243,74 @@ function sectionVideo(p: Project) {
       ${v.subtitle ? `<a class="btn btn-sm" href="/media/${p.id}/${v.subtitle}" download>Unduh subtitle (.srt)</a>` : ""}
       ${p.adegan?.every((a) => a.klip) ? ulangBtn("edit").replace("Ulangi", "Render ulang") : ""}
     </div>
+  </section>`;
+}
+
+const NAMA_PLATFORM: Record<Platform, string> = { youtube: "YouTube", tiktok: "TikTok", instagram: "Instagram" };
+
+function sectionPaket(p: Project) {
+  const k = p.paket;
+  if (!k) return "";
+  return `<details class="card" open><summary><h3>Judul & caption · Putri</h3>${ulangBtn("paket")}</summary>
+    <div class="stack" data-edit="paket">
+      <p class="eyebrow">YouTube Shorts</p>
+      <label class="field"><span>Judul <em class="counter" data-max="100"></em></span><input data-f="youtube.judul" maxlength="100" value="${esc(k.youtube.judul)}" /></label>
+      <label class="field"><span>Deskripsi</span><textarea data-f="youtube.deskripsi" rows="6">${esc(k.youtube.deskripsi)}</textarea></label>
+      <label class="field"><span>Tag (pisah koma)</span><input data-f="youtube.tags" value="${esc(k.youtube.tags.join(", "))}" /></label>
+      <p class="eyebrow">TikTok</p>
+      <label class="field"><span>Caption <em class="counter" data-max="2200"></em></span><textarea data-f="tiktok.caption" rows="3">${esc(k.tiktok.caption)}</textarea></label>
+      <p class="eyebrow">Instagram Reels</p>
+      <label class="field"><span>Caption <em class="counter" data-max="2200"></em></span><textarea data-f="instagram.caption" rows="5">${esc(k.instagram.caption)}</textarea></label>
+      <div class="row">
+        <button class="btn btn-sm" data-action="simpan-paket">Simpan caption</button>
+        <button class="btn btn-sm btn-ghost" data-action="salin-caption" data-p="tiktok">Salin caption TikTok</button>
+        <button class="btn btn-sm btn-ghost" data-action="salin-caption" data-p="instagram">Salin caption IG</button>
+      </div>
+    </div>
+  </details>`;
+}
+
+function sectionUnggah(p: Project, s: UiState) {
+  if (!p.paket || !p.video || urutan(p.tahap) < urutan("unggah")) return "";
+  const kartu = (Object.keys(NAMA_PLATFORM) as Platform[])
+    .filter((k) => s.platform[k])
+    .map((k) => {
+      const st = s.platform[k];
+      const riwayat = p.unggahan.filter((u) => u.platform === k);
+      const proses = riwayat.some((u) => u.status === "proses");
+      const status = st.siap
+        ? `<span class="ok">Terhubung${st.akun ? `: ${esc(st.akun)}` : ""}</span>`
+        : st.catatan
+          ? `<span class="muted">${esc(st.catatan)}</span>`
+          : `<span class="muted">Belum terhubung</span>`;
+      const tombolAkun = st.perluLogin && !st.catatan
+        ? st.siap
+          ? `<button class="btn btn-sm btn-ghost" data-action="putus" data-p="${k}">Putuskan</button>`
+          : `<a class="btn btn-sm" href="/api/oauth/${k}">Hubungkan ${NAMA_PLATFORM[k]}</a>`
+        : "";
+      const opsi = k === "youtube"
+        ? `<select data-opsi="privasi" aria-label="Privasi YouTube">
+             <option value="private">Privat</option><option value="unlisted">Tidak publik</option><option value="public">Publik</option>
+           </select>`
+        : k === "tiktok"
+          ? `<select data-opsi="privasi" aria-label="Privasi TikTok">
+               <option value="SELF_ONLY">Hanya saya</option><option value="PUBLIC_TO_EVERYONE">Publik</option><option value="MUTUAL_FOLLOW_FRIENDS">Teman</option>
+             </select>`
+          : "";
+      return `<div class="platform" data-platform="${k}">
+        <div class="platform-head"><strong>${NAMA_PLATFORM[k]}</strong>${status}</div>
+        <div class="row">${tombolAkun}
+          ${st.siap ? `${opsi}<button class="btn btn-sm btn-primary" data-action="unggah" data-p="${k}" ${proses ? "disabled" : ""}>${proses ? "Mengunggah..." : `Unggah ke ${NAMA_PLATFORM[k]}`}</button>` : ""}
+        </div>
+        ${riwayat.length ? `<ul class="log">${riwayat
+          .map((u) => `<li><time>${waktu(u.waktu)}</time> <span class="st-${u.status}">${u.status}</span> ${u.url ? `<a href="${esc(u.url)}" target="_blank" rel="noopener">${esc(u.url)}</a>` : ""} ${u.pesan ? esc(u.pesan) : ""}</li>`)
+          .join("")}</ul>` : ""}
+      </div>`;
+    })
+    .join("");
+  return `<section class="card"><h3>Unggah · Putri</h3>
+    <p class="hint">Video ditandai sebagai konten AI. Mulai dari privat dulu, cek di aplikasinya, baru publikasikan.</p>
+    <div class="stack">${kartu}</div>
   </section>`;
 }
 
@@ -306,6 +376,8 @@ function renderProject(p: Project, s: UiState): string {
     ${stepper(p)}
     ${aksi(p, s)}
   </section>
+  ${sectionUnggah(p, s)}
+  ${sectionPaket(p)}
   ${sectionVideo(p)}
   ${sectionKredit(p, s)}
   ${sectionAdegan(p)}

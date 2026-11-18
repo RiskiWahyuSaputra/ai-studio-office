@@ -2,6 +2,7 @@ import express from "express";
 import path from "node:path";
 import { ROOT, UPLOADS } from "./paths.ts";
 import { media } from "./routes/media.ts";
+import { social } from "./routes/social.ts";
 import { loadDb } from "./store.ts";
 import { projects } from "./routes/projects.ts";
 import { kick } from "./pipeline.ts";
@@ -21,6 +22,7 @@ app.get("/api/health", (_req, res) => {
 });
 app.use("/api", projects);
 app.use("/api", media);
+app.use("/api", social);
 app.use("/media", express.static(UPLOADS, { fallthrough: false }));
 
 app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -161,3 +161,14 @@ details.card[open] > summary { margin-bottom: 10px; }
 .callout .sub { display: block; margin-top: 8px; color: var(--ink-2); }
 .preview { width: 100%; max-height: 420px; background: #000; border: 2px solid var(--line); display: block; margin-bottom: 8px; }
 a.btn { text-decoration: none; display: inline-block; }
+
+.platform { border: 2px solid var(--line); padding: 10px; }
+.platform-head { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 13px; }
+.platform select { font: 12px var(--font-body); background: #110f19; color: var(--ink); border: 2px solid var(--line); padding: 5px; }
+.ok { color: var(--ok); }
+.st-berhasil { color: var(--ok); font-weight: 600; }
+.st-gagal { color: var(--bad); font-weight: 600; }
+.st-proses { color: var(--info); font-weight: 600; }
+.log a { color: var(--accent); word-break: break-all; }
+.counter { font-style: normal; float: right; }
+.counter.over { color: var(--bad); }
