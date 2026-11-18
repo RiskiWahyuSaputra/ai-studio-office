@@ -23,6 +23,7 @@ const defaultSettings = (): Settings => ({
   modeRender: "fast",
   durasiKlip: 8,
   otomatis: true,
+  subtitle: true,
 });
 
 let db: Db;

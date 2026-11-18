@@ -2,6 +2,7 @@
  * Pendaftaran tugas tiap tahap ke alur produksi.
  */
 import * as agen from "./agents.ts";
+import * as editor from "./editor.ts";
 import { registerStage } from "./pipeline.ts";
 import { getSettings, updateSettings } from "./store.ts";
 
@@ -57,4 +58,16 @@ registerStage("render", {
     await updateSettings({ kreditTerpakai: s.kreditTerpakai + p.kredit.total });
     p.kredit.dicatat = true;
   },
+});
+
+registerStage("edit", {
+  status: "Ngedit video...",
+  async run(p) {
+    const v = await editor.render(p, getSettings().subtitle);
+    return {
+      apply: (x) => void (x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString() }),
+      pesan: `Video final ${Math.round(v.durasi)} detik siap`,
+    };
+  },
+  siap: (p) => (p.video ? null : "Video final belum ada"),
 });

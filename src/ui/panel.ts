@@ -113,6 +113,7 @@ function renderSettings(s: UiState): string {
         <label class="field"><span>Durasi per klip (detik)</span><input type="number" min="1" name="durasiKlip" value="${st.durasiKlip}" /></label>
       </div>
       <label class="check"><input type="checkbox" name="otomatis" ${st.otomatis ? "checked" : ""} /> Lanjut otomatis antar tahap AI</label>
+      <label class="check"><input type="checkbox" name="subtitle" ${st.subtitle ? "checked" : ""} /> Tempel subtitle ke video</label>
       <p class="hint">Cek angka biaya di Google Flow karena bisa berubah. Kalau "lanjut otomatis" mati, tiap tahap menunggu persetujuanmu.</p>
       <button class="btn" type="submit">Simpan pengaturan</button>
     </form>
@@ -195,7 +196,8 @@ function aksi(p: Project, s: UiState): string {
 export const PETUNJUK: Partial<Record<Project["tahap"], (p: Project, s: UiState) => string>> = {
   render: (p, s) => {
     const sisa = s.settings.kreditBulanan - s.settings.kreditTerpakai;
-    return `Buka <a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener">Google Flow</a>, salin prompt tiap adegan, render (mode ${p.kredit?.mode === "quality" ? "Quality" : "Fast"}), lalu unggah klipnya di bawah. Estimasi <strong>${p.kredit?.total ?? 0}</strong> kredit, sisa ${sisa}.`;
+    return `Buka <a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener">Google Flow</a>, salin prompt tiap adegan, render (mode ${p.kredit?.mode === "quality" ? "Quality" : "Fast"}), lalu unggah klipnya di bawah. Estimasi <strong>${p.kredit?.total ?? 0}</strong> kredit, sisa ${sisa}.
+      <span class="sub">Sudah edit sendiri? <label class="link file-link">Unggah video final<input type="file" accept="video/*" data-upload="video" /></label> dan lewati Nanda.</span>`;
   },
 };
 
@@ -224,6 +226,24 @@ function sectionNaskah(p: Project) {
   </details>`;
 }
 
+const urutan = (t: Project["tahap"]) => STAGES.findIndex((x) => x.id === t);
+const bolehUnggahKlip = (p: Project) => urutan(p.tahap) >= urutan("render") && urutan(p.tahap) <= urutan("edit") && p.status !== "jalan";
+
+function sectionVideo(p: Project) {
+  const v = p.video;
+  if (!v) return "";
+  const src = `/media/${p.id}/${encodeURIComponent(v.file)}?v=${encodeURIComponent(v.dibuat)}`;
+  return `<section class="card"><h3>Video final · Nanda</h3>
+    <video class="preview" controls preload="metadata" src="${src}"></video>
+    <p class="muted">${Math.round(v.durasi)} detik · 1080×1920</p>
+    <div class="row">
+      <a class="btn btn-sm" href="${src}" download>Unduh video</a>
+      ${v.subtitle ? `<a class="btn btn-sm" href="/media/${p.id}/${v.subtitle}" download>Unduh subtitle (.srt)</a>` : ""}
+      ${p.adegan?.every((a) => a.klip) ? ulangBtn("edit").replace("Ulangi", "Render ulang") : ""}
+    </div>
+  </section>`;
+}
+
 function sectionAdegan(p: Project) {
   if (!p.adegan?.length) return "";
   return `<details class="card" open><summary><h3>Adegan & prompt Veo · Bayu</h3>${ulangBtn("storyboard")}</summary>
@@ -237,6 +257,12 @@ function sectionAdegan(p: Project) {
         <label class="field"><span>Prompt</span><textarea data-f="prompt" rows="4">${esc(a.prompt)}</textarea></label>
         <div class="row">
           <button class="btn btn-sm" data-action="salin" data-no="${a.no}">Salin prompt</button>
+          ${
+            bolehUnggahKlip(p)
+              ? `<label class="btn btn-sm file-btn">${a.klip ? "Ganti klip" : "Unggah klip"}<input type="file" accept="video/*" data-upload="klip" data-no="${a.no}" /></label>`
+              : ""
+          }
+          ${a.klip ? `<a class="link" href="/media/${p.id}/${encodeURIComponent(a.klip)}" target="_blank" rel="noopener">Lihat</a>` : ""}
         </div>
       </li>`,
       )
@@ -280,6 +306,7 @@ function renderProject(p: Project, s: UiState): string {
     ${stepper(p)}
     ${aksi(p, s)}
   </section>
+  ${sectionVideo(p)}
   ${sectionKredit(p, s)}
   ${sectionAdegan(p)}
   ${sectionNaskah(p)}

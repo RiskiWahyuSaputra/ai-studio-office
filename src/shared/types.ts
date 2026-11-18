@@ -130,6 +130,7 @@ export interface Settings {
   modeRender: "fast" | "quality";
   durasiKlip: number;
   otomatis: boolean;
+  subtitle: boolean;
 }
 
 export type Activity =

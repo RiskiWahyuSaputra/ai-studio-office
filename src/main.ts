@@ -204,10 +204,26 @@ panel.addEventListener("submit", async (ev) => {
           durasiKlip: num("durasiKlip"),
           modeRender: fd.get("modeRender") as "fast" | "quality",
           otomatis: fd.get("otomatis") === "on",
+          subtitle: fd.get("subtitle") === "on",
         }),
       "Pengaturan disimpan",
     );
   }
+});
+
+panel.addEventListener("change", async (ev) => {
+  const input = ev.target as HTMLInputElement;
+  const p = current();
+  if (!p || input.type !== "file" || !input.files?.[0]) return;
+  const fd = new FormData();
+  fd.append("file", input.files[0]);
+  const url = input.dataset.upload === "klip" ? `/api/projects/${p.id}/klip/${input.dataset.no}` : `/api/projects/${p.id}/video`;
+  const label = input.closest("label");
+  label?.classList.add("is-busy");
+  toast(`Mengunggah ${input.files[0].name}...`);
+  await run(() => api.upload(url, fd), "Unggahan selesai");
+  label?.classList.remove("is-busy");
+  input.value = "";
 });
 
 office.onSelect((id) => {

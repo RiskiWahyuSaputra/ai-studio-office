@@ -1,4 +1,6 @@
 import { Router } from "express";
+import fs from "node:fs/promises";
+import { projectDir } from "../editor.ts";
 import { FORMATS, type Format } from "../../src/shared/types.ts";
 import {
   createProject,
@@ -86,6 +88,7 @@ projects.get("/projects/:id", (req, res) => {
 
 projects.delete("/projects/:id", async (req, res) => {
   await deleteProject(req.params.id);
+  await fs.rm(projectDir(req.params.id), { recursive: true, force: true });
   res.status(204).end();
 });
 
@@ -101,6 +104,7 @@ projects.patch("/settings", async (req, res) => {
   }
   if (b.modeRender === "fast" || b.modeRender === "quality") patch.modeRender = b.modeRender;
   if (typeof b.otomatis === "boolean") patch.otomatis = b.otomatis;
+  if (typeof b.subtitle === "boolean") patch.subtitle = b.subtitle;
   res.json(await updateSettings(patch));
 });
 
