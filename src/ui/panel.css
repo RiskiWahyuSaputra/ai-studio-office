@@ -182,3 +182,6 @@ a.btn { text-decoration: none; display: inline-block; }
 .manual summary { cursor: pointer; color: var(--ink-2); }
 .manual-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
 .manual-form input, .manual-form select { font: 12px var(--font-body); background: #110f19; color: var(--ink); border: 2px solid var(--line); padding: 6px; min-width: 0; }
+
+.warn { border: 2px solid var(--bad); background: #2e1717; padding: 8px 10px; font-size: 12px; margin: 6px 0; }
+.warn ul { margin: 4px 0; padding-left: 16px; }

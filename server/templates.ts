@@ -23,7 +23,7 @@ const SEJARAH: Bank[] = [
     ],
     kataKunci: ["sunda kelapa", "sejarah jakarta", "pov sejarah"],
     latar: "a bustling 16th-century wooden harbor in Java, tall Portuguese carracks, pinisi boats, spice sacks, tropical morning light",
-    tokoh: "a young Sundanese porter in a simple batik sarong and headcloth",
+    tokoh: "a Sundanese porter in his late twenties wearing a simple batik sarong and headcloth",
   },
   {
     topik: "Kehidupan di Majapahit",
@@ -35,7 +35,7 @@ const SEJARAH: Bank[] = [
     ],
     kataKunci: ["majapahit", "trowulan", "pov sejarah"],
     latar: "a 14th-century Javanese market with red brick gates, terracotta pottery, Chinese copper coins, lush banyan trees",
-    tokoh: "a Javanese spice merchant wearing a dark kain and a simple head wrap",
+    tokoh: "a Javanese spice merchant in his thirties wearing a dark kain and a simple head wrap",
   },
   {
     topik: "Batavia tahun 1920-an",
@@ -47,7 +47,7 @@ const SEJARAH: Bank[] = [
     ],
     kataKunci: ["batavia", "trem jakarta", "sejarah jakarta"],
     latar: "1920s colonial Batavia street, white colonial buildings, an old electric tram, bicycles and horse carriages, sepia warm tones",
-    tokoh: "a Betawi tram driver in a khaki uniform and black peci",
+    tokoh: "a Betawi tram driver in his thirties wearing a khaki uniform and black peci",
   },
 ];
 
@@ -103,7 +103,7 @@ function pilih(format: Format, ide: string): Bank {
         format === "pov-sejarah"
           ? `a historically accurate Indonesian setting of "${ide.trim()}", period-correct clothing and architecture`
           : `an Indonesian everyday setting related to "${ide.trim()}"`,
-      tokoh: format === "pov-sejarah" ? "an ordinary local person of that era" : "the animal character, expressive and funny",
+      tokoh: format === "pov-sejarah" ? "an ordinary adult local person of that era, in their thirties" : "the animal character, expressive and funny",
     };
   }
   return bank[Math.floor(Math.random() * bank.length)];

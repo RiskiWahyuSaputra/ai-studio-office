@@ -1,4 +1,5 @@
 import { TEAM, memberById, memberForStage } from "../shared/team.ts";
+import { cekKebijakan } from "../shared/kebijakan.ts";
 import { FORMATS, STAGES, type Platform, type Project, type Settings } from "../shared/types.ts";
 
 export type View = { kind: "list" } | { kind: "project"; id: string } | { kind: "member"; id: string };
@@ -348,6 +349,13 @@ function sectionAnalisis(p: Project) {
   </section>`;
 }
 
+function peringatan(prompt: string) {
+  const w = cekKebijakan(prompt);
+  return w.length
+    ? `<div class="warn" role="note"><strong>Berisiko ditolak Flow:</strong><ul>${w.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>Sunting prompt ini dulu sebelum render.</div>`
+    : "";
+}
+
 function sectionAdegan(p: Project) {
   if (!p.adegan?.length) return "";
   return `<details class="card" open><summary><h3>Adegan & prompt Veo · Bayu</h3>${ulangBtn("storyboard")}</summary>
@@ -358,6 +366,7 @@ function sectionAdegan(p: Project) {
         <div class="scene-head"><strong>Adegan ${a.no}</strong><span class="muted">${a.durasi} dtk</span>${a.klip ? `<span class="badge badge-selesai">Klip ada</span>` : ""}</div>
         <p class="muted">${esc(a.visual)}</p>
         <p class="narasi">“${esc(a.narasi)}”</p>
+        ${peringatan(a.prompt)}
         <label class="field"><span>Prompt</span><textarea data-f="prompt" rows="4">${esc(a.prompt)}</textarea></label>
         <div class="row">
           <button class="btn btn-sm" data-action="salin" data-no="${a.no}">Salin prompt</button>

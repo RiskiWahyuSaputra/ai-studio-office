@@ -3,6 +3,7 @@
  */
 import { aiAktif, generateJson } from "./ai.ts";
 import { adeganTemplat, naskahTemplat, paketTemplat, risetTemplat } from "./templates.ts";
+import { ATURAN_AMAN } from "../src/shared/kebijakan.ts";
 import { FORMATS, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
 
 const KONTEKS = (p: Project) =>
@@ -17,6 +18,7 @@ export async function riset(p: Project): Promise<Riset> {
 Peranmu: Peneliti Tren.
 ${p.ide ? `Ide dari pemilik kanal: "${p.ide}".` : "Pemilik kanal belum memberi ide; pilih sendiri topik yang berpotensi viral bulan ini."}
 Pilih satu topik dan satu sudut cerita yang kuat untuk video pendek. Untuk format sejarah, fakta harus akurat dan bisa dicek; jangan mengarang tanggal atau nama.
+Sudut cerita harus dari sudut pandang orang DEWASA biasa (bukan anak/remaja, bukan tokoh terkenal), karena videonya dibuat dengan Google Veo yang menolak keduanya.
 
 Balas JSON:
 {"topik": string, "sudut": string (kalimat pembuka konsep, mis. "POV: kamu ..."), "alasan": string (kenapa berpotensi ditonton), "fakta": string[] (3-5 fakta pendek), "kataKunci": string[] (3-6 kata kunci pencarian)}`);
@@ -36,6 +38,9 @@ Tulis naskah video 40–60 detik dalam bahasa Indonesia yang santai dan mudah di
 - cta: 1 kalimat ajakan komentar/follow.
 ${p.format === "vlog-hewan" ? "Narasi diucapkan oleh hewan itu sendiri (orang pertama), lucu, boleh pakai bahasa gaul ringan." : "Narasi orang kedua (\"kamu\"), membuat penonton merasa ada di sana."}
 
+${ATURAN_AMAN}
+Nama tokoh nyata boleh muncul di judulKerja, tapi TIDAK di hook, narasi, atau cta (karena kalimat itu diucapkan di video).
+
 Balas JSON: {"judulKerja": string, "hook": string, "narasi": string, "cta": string}`);
 }
 
@@ -53,6 +58,9 @@ Pecah naskah menjadi 5–7 adegan (hook = adegan 1, cta = adegan terakhir). Untu
 - narasi: kalimat yang diucapkan di adegan itu (ambil dari naskah).
 - prompt: prompt Veo dalam BAHASA INGGRIS, satu paragraf, berisi: "Vertical 9:16 video", subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip (Veo bisa membuat suara). Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis. Akhiri dengan "No text, no subtitles, no watermark."
 ${p.format === "pov-sejarah" ? "Pakai sudut pandang orang pertama (first-person POV) dan detail periode yang akurat." : "Hewan berbicara langsung ke kamera seperti vlogger; ekspresif dan kocak."}
+
+${ATURAN_AMAN}
+Kalau naskah melanggar aturan di atas, ubah kalimat narasinya agar aman (dan tulis versi aman itu di field "narasi").
 
 Balas JSON: {"adegan": [{"visual": string, "narasi": string, "prompt": string}]}`);
   return hasil.adegan.slice(0, 8).map((a, i) => ({ ...a, no: i + 1, durasi: s.durasiKlip }));
