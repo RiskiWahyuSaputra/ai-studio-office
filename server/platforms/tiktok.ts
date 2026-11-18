@@ -1,7 +1,7 @@
 /**
  * Unggah ke TikTok lewat Content Posting API (Direct Post).
  * Daftar app di https://developers.tiktok.com, aktifkan Login Kit + Content Posting API,
- * scope: user.info.basic, video.publish, video.list. Redirect URI: <PUBLIC_BASE_URL>/api/oauth/tiktok/callback
+ * scope: user.info.basic, video.publish (+ video.list untuk statistik, atur lewat TIKTOK_SCOPES). Redirect URI: <PUBLIC_BASE_URL>/api/oauth/tiktok/callback
  * Catatan: sebelum app lolos audit TikTok, video hanya bisa diposting sebagai privat (SELF_ONLY).
  */
 import fs from "node:fs/promises";
@@ -19,7 +19,8 @@ export function ttAuthUrl() {
   pendingStates.add(state);
   const q = new URLSearchParams({
     client_key: process.env.TIKTOK_CLIENT_KEY!,
-    scope: "user.info.basic,video.publish,video.list",
+    // video.list hanya bisa dipakai kalau scope itu tersedia di app-mu (dipakai untuk statistik)
+    scope: process.env.TIKTOK_SCOPES || "user.info.basic,video.publish",
     response_type: "code",
     redirect_uri: redirect(),
     state,

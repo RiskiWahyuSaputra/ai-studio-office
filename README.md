@@ -64,7 +64,7 @@ Selama project API belum lolos audit Google, video yang diunggah otomatis bersta
 ### TikTok
 
 1. Daftar app di [TikTok for Developers](https://developers.tiktok.com/), aktifkan Login Kit dan Content Posting API (Direct Post).
-2. Scope: `user.info.basic`, `video.publish`, `video.list`. Redirect URI: `<PUBLIC_BASE_URL>/api/oauth/tiktok/callback`. TikTok mewajibkan HTTPS, jadi pakai tunnel, misalnya `cloudflared tunnel --url http://localhost:8787`, lalu isi `PUBLIC_BASE_URL` dengan alamat tunnel itu.
+2. Scope: `user.info.basic`, `video.publish` (tambahkan `video.list` lewat `TIKTOK_SCOPES` kalau tersedia, untuk statistik otomatis). Redirect URI: `<PUBLIC_BASE_URL>/api/oauth/tiktok/callback`. TikTok mewajibkan HTTPS, jadi pakai tunnel, misalnya `cloudflared tunnel --url http://localhost:8787`, lalu isi `PUBLIC_BASE_URL` dengan alamat tunnel itu.
 3. Isi `TIKTOK_CLIENT_KEY` dan `TIKTOK_CLIENT_SECRET`.
 
 Sebelum app lolos audit TikTok, postingan hanya bisa berstatus privat (`SELF_ONLY`).
