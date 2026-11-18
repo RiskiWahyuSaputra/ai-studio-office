@@ -185,3 +185,11 @@ a.btn { text-decoration: none; display: inline-block; }
 
 .warn { border: 2px solid var(--bad); background: #2e1717; padding: 8px 10px; font-size: 12px; margin: 6px 0; }
 .warn ul { margin: 4px 0; padding-left: 16px; }
+
+.gaya-pilih { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.gaya-pilih legend { font-size: 12px; color: var(--ink-2); margin-bottom: 4px; padding: 0; }
+.gaya-opt { display: flex; gap: 6px; align-items: center; padding: 6px 10px; border: 2px solid var(--line); cursor: pointer; font-size: 13px; }
+.gaya-opt:has(input:checked) { border-color: var(--accent); background: #2a2213; }
+.gaya-opt input { accent-color: var(--accent); margin: 0; }
+.gaya-ganti { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-2); margin-bottom: 10px; }
+.gaya-ganti select { font: 12px var(--font-body); background: #110f19; color: var(--ink); border: 2px solid var(--line); padding: 5px; }

@@ -1,6 +1,24 @@
 import type { StageId } from "./team.ts";
 
 export type Format = "pov-sejarah" | "vlog-hewan";
+export type Gaya = "pixel" | "sinematik";
+
+export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string }> = {
+  pixel: {
+    nama: "Pixel Art",
+    ringkas: "Animasi pixel 16-bit ala game retro. Unik, gampang dikenali, dan lebih jarang ditolak Flow.",
+    kepala: "Vertical 9:16 pixel art animation",
+    prompt:
+      "16-bit pixel art animation in the style of a classic 1990s console RPG, crisp visible square pixels, limited vibrant color palette, dithered shading, sprite-like character animation, layered parallax background, retro chiptune-flavored ambient sound",
+  },
+  sinematik: {
+    nama: "Sinematik",
+    ringkas: "Realistis seperti film. Lebih dramatis, tapi lebih sering ditolak untuk tema sensitif.",
+    kepala: "Vertical 9:16 video",
+    prompt: "cinematic, photorealistic, natural lighting, realistic ambient sound",
+  },
+};
+
 export type Platform = "youtube" | "tiktok" | "instagram";
 export type StageStatus = "antre" | "jalan" | "menunggu-kamu" | "selesai" | "gagal";
 
@@ -103,6 +121,8 @@ export interface Analisis {
 export interface Project {
   id: string;
   format: Format;
+  /** gaya visual klip Veo; proyek lama tanpa field ini dianggap sinematik */
+  gaya?: Gaya;
   ide: string;
   dibuat: string;
   diubah: string;

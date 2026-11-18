@@ -4,7 +4,7 @@
 import { aiAktif, generateJson } from "./ai.ts";
 import { adeganTemplat, naskahTemplat, paketTemplat, risetTemplat } from "./templates.ts";
 import { ATURAN_AMAN } from "../src/shared/kebijakan.ts";
-import { FORMATS, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
+import { GAYA, FORMATS, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
 
 const KONTEKS = (p: Project) =>
   `Kamu bagian dari tim kreator konten video AI berbahasa Indonesia untuk YouTube Shorts, TikTok, dan Instagram Reels.
@@ -46,7 +46,7 @@ Balas JSON: {"judulKerja": string, "hook": string, "narasi": string, "cta": stri
 
 export async function storyboard(p: Project, s: Settings): Promise<Adegan[]> {
   const n = p.naskah!;
-  if (!aiAktif()) return adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip);
+  if (!aiAktif()) return adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip, p.gaya);
   const hasil = await generateJson<{ adegan: Omit<Adegan, "no" | "durasi">[] }>(`${KONTEKS(p)}
 
 Peranmu: Sutradara & Prompt Engineer untuk Google Veo.
@@ -56,10 +56,13 @@ Riset: ${JSON.stringify(p.riset)}
 Pecah naskah menjadi 5–7 adegan (hook = adegan 1, cta = adegan terakhir). Untuk tiap adegan tulis:
 - visual: deskripsi singkat bahasa Indonesia.
 - narasi: kalimat yang diucapkan di adegan itu (ambil dari naskah).
-- prompt: prompt Veo dalam BAHASA INGGRIS, satu paragraf, berisi: "Vertical 9:16 video", subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip (Veo bisa membuat suara). Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis. Akhiri dengan "No text, no subtitles, no watermark."
+- prompt: prompt Veo dalam BAHASA INGGRIS, satu paragraf, diawali "${GAYA[p.gaya ?? "sinematik"].kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip (Veo bisa membuat suara). Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis. Akhiri dengan "No text, no subtitles, no watermark."
 ${p.format === "pov-sejarah" ? "Pakai sudut pandang orang pertama (first-person POV) dan detail periode yang akurat." : "Hewan berbicara langsung ke kamera seperti vlogger; ekspresif dan kocak."}
 
 ${ATURAN_AMAN}
+GAYA VISUAL: ${GAYA[p.gaya ?? "sinematik"].nama}. Masukkan frasa gaya ini di setiap prompt: "${GAYA[p.gaya ?? "sinematik"].prompt}".
+${p.gaya === "pixel" ? "Jangan pakai kata photorealistic, realistic, atau cinematic film. Deskripsikan tokoh sebagai karakter pixel art (pixel art character) dengan ciri warna yang sama persis di tiap adegan supaya konsisten." : ""}
+
 Kalau naskah melanggar aturan di atas, ubah kalimat narasinya agar aman (dan tulis versi aman itu di field "narasi").
 
 Balas JSON: {"adegan": [{"visual": string, "narasi": string, "prompt": string}]}`);

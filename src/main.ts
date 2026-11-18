@@ -233,7 +233,7 @@ panel.addEventListener("submit", async (ev) => {
   const form = ev.target as HTMLFormElement;
   const fd = new FormData(form);
   if (form.id === "form-baru") {
-    const p = await run(() => api.create(String(fd.get("format")), String(fd.get("ide") ?? "")), "Proyek diserahkan ke tim");
+    const p = await run(() => api.create(String(fd.get("format")), String(fd.get("ide") ?? ""), String(fd.get("gaya") ?? "pixel")), "Proyek diserahkan ke tim");
     if (p) {
       state.projects.set(p.id, p);
       setView({ kind: "project", id: p.id });
@@ -268,6 +268,19 @@ panel.addEventListener("submit", async (ev) => {
 panel.addEventListener("change", async (ev) => {
   const input = ev.target as HTMLInputElement;
   const p = current();
+  if (p && input.dataset.actionChange === "ganti-gaya") {
+    const adaKlip = p.adegan?.some((a) => a.klip);
+    const pesan = `Ganti gaya ke ${(input as unknown as HTMLSelectElement).selectedOptions[0].text}? Bayu akan menulis ulang semua prompt${adaKlip ? " dan klip yang sudah diunggah akan dilepas" : ""}.`;
+    if (!confirm(pesan)) {
+      input.value = p.gaya ?? "sinematik";
+      return;
+    }
+    await run(async () => {
+      await api.patch(p.id, { gaya: input.value });
+      await api.ulang(p.id, "storyboard");
+    }, "Bayu menulis ulang prompt dengan gaya baru");
+    return;
+  }
   if (!p || input.type !== "file" || !input.files?.[0]) return;
   const fd = new FormData();
   fd.append("file", input.files[0]);

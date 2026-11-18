@@ -1,7 +1,7 @@
 /**
  * Isi cadangan saat GEMINI_API_KEY belum diisi, supaya alur kantor tetap bisa dicoba.
  */
-import type { Adegan, Format, Naskah, PaketUnggah, Riset } from "../src/shared/types.ts";
+import { GAYA, type Adegan, type Format, type Gaya, type Naskah, type PaketUnggah, type Riset } from "../src/shared/types.ts";
 
 interface Bank {
   topik: string;
@@ -157,20 +157,21 @@ export function naskahTemplat(format: Format, r: Riset): Naskah {
   };
 }
 
-export function adeganTemplat(format: Format, ide: string, n: Naskah, durasiKlip: number): Adegan[] {
+export function adeganTemplat(format: Format, ide: string, n: Naskah, durasiKlip: number, gayaVisual: Gaya = "sinematik"): Adegan[] {
+  const g = GAYA[gayaVisual];
   const b = pilih(format, ide);
   const baris = [n.hook, ...n.narasi.split("\n"), n.cta].filter((s) => s.trim());
   const gaya =
     format === "pov-sejarah"
-      ? "first-person POV, handheld, cinematic, photorealistic, natural ambient sound"
-      : "vertical vlog style, the animal holds the camera, comedic timing, photorealistic, lively ambient sound";
+      ? `first-person POV, ${g.prompt}`
+      : `vlog style, the animal talks to the camera, comedic timing, ${g.prompt}`;
   return baris.slice(0, 7).map((teks, i) => ({
     no: i + 1,
     durasi: durasiKlip,
     visual: i === 0 ? `Pembuka: ${b.sudut}` : `Adegan ${i + 1} di latar ${b.topik}`,
     narasi: teks,
     prompt:
-      `Vertical 9:16 video. ${b.latar}. ${i === 0 ? "Opening shot" : "Shot " + (i + 1)}: ${b.tokoh}` +
+      `${g.kepala}. ${b.latar}. ${i === 0 ? "Opening shot" : "Shot " + (i + 1)}: ${b.tokoh}` +
       `${format === "vlog-hewan" ? ` says in Indonesian: "${teks}"` : `, while a calm Indonesian narrator says: "${teks}"`}. ` +
       `${gaya}. No text, no subtitles, no watermark.`,
   }));

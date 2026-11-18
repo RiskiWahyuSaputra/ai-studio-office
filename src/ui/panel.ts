@@ -1,6 +1,6 @@
 import { TEAM, memberById, memberForStage } from "../shared/team.ts";
 import { cekKebijakan } from "../shared/kebijakan.ts";
-import { FORMATS, STAGES, type Platform, type Project, type Settings } from "../shared/types.ts";
+import { FORMATS, GAYA, STAGES, type Platform, type Project, type Settings } from "../shared/types.ts";
 
 export type View = { kind: "list" } | { kind: "project"; id: string } | { kind: "member"; id: string };
 
@@ -61,6 +61,15 @@ function renderList(s: UiState): string {
     <h2>Proyek baru</h2>
     <form id="form-baru" class="stack">
       <div class="format-list">${formats}</div>
+      <fieldset class="gaya-pilih">
+        <legend>Gaya visual</legend>
+        ${Object.entries(GAYA)
+          .map(
+            ([id, g], i) => `<label class="gaya-opt" title="${esc(g.ringkas)}">
+              <input type="radio" name="gaya" value="${id}" ${i === 0 ? "checked" : ""} /><span>${esc(g.nama)}</span></label>`,
+          )
+          .join("")}
+      </fieldset>
       <label class="field">
         <span>Ide (opsional)</span>
         <input name="ide" maxlength="200" placeholder="mis. Batavia 1740, kucing oren di pasar" />
@@ -358,7 +367,15 @@ function peringatan(prompt: string) {
 
 function sectionAdegan(p: Project) {
   if (!p.adegan?.length) return "";
+  const gayaNow = p.gaya ?? "sinematik";
+  const gantiGaya = p.status === "jalan"
+    ? ""
+    : `<label class="gaya-ganti">Gaya visual
+        <select data-action-change="ganti-gaya" aria-label="Ganti gaya visual">
+          ${Object.entries(GAYA).map(([id, g]) => `<option value="${id}" ${id === gayaNow ? "selected" : ""}>${esc(g.nama)}</option>`).join("")}
+        </select></label>`;
   return `<details class="card" open><summary><h3>Adegan & prompt Veo · Bayu</h3>${ulangBtn("storyboard")}</summary>
+    ${gantiGaya}
     <ol class="scenes">${p.adegan
       .map(
         (a) => `
@@ -413,7 +430,7 @@ function renderProject(p: Project, s: UiState): string {
   <div class="crumbs"><button class="link" data-action="kembali">← Semua proyek</button>
     <button class="link link-bad" data-action="hapus">Hapus</button></div>
   <section class="card">
-    <p class="eyebrow">${esc(FORMATS[p.format].nama)}</p>
+    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}</p>
     <h2>${esc(judulProyek(p))}</h2>
     <p class="muted">Dibuat ${waktu(p.dibuat)} ${badge(p)}</p>
     ${stepper(p)}

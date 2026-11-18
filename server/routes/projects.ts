@@ -1,7 +1,7 @@
 import { Router } from "express";
 import fs from "node:fs/promises";
 import { projectDir } from "../editor.ts";
-import { FORMATS, type Format } from "../../src/shared/types.ts";
+import { FORMATS, GAYA, type Format, type Gaya } from "../../src/shared/types.ts";
 import {
   createProject,
   deleteProject,
@@ -30,7 +30,8 @@ projects.post("/projects", async (req, res) => {
   const format = req.body?.format as Format;
   if (!(format in FORMATS)) return void res.status(400).json({ error: "Format tidak dikenal" });
   const ide = String(req.body?.ide ?? "").slice(0, 500);
-  const p = await createProject(format, ide);
+  const gaya: Gaya = req.body?.gaya in GAYA ? req.body.gaya : "pixel";
+  const p = await createProject(format, ide, gaya);
   activity({ type: "bicara", memberId: "produser", teks: "Proyek baru masuk!" });
   activity({ type: "serah", dari: "produser", ke: "peneliti", label: ide ? ide.slice(0, 26) : "Cari topik ya" });
   setTimeout(kick, 2500);
@@ -76,6 +77,7 @@ projects.patch("/projects/:id", async (req, res) => {
   const p = getProject(req.params.id);
   if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
   const hasil = await updateProject(p.id, (x) => {
+    if (b.gaya in GAYA) x.gaya = b.gaya;
     if (b.naskah && x.naskah) x.naskah = { ...x.naskah, ...pickStr(b.naskah, ["judulKerja", "hook", "narasi", "cta"]) };
     if (Array.isArray(b.adegan) && x.adegan) {
       for (const a of b.adegan) {

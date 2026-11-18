@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { ROOT } from "./paths.ts";
 import { broadcast } from "./events.ts";
-import type { Format, Project, Settings } from "../src/shared/types.ts";
+import type { Format, Gaya, Project, Settings } from "../src/shared/types.ts";
 
 interface Db {
   projects: Project[];
@@ -61,11 +61,12 @@ export const listProjects = () => [...db.projects].sort((a, b) => b.dibuat.local
 export const getProject = (id: string) => db.projects.find((p) => p.id === id);
 export const getSettings = () => db.settings;
 
-export async function createProject(format: Format, ide: string): Promise<Project> {
+export async function createProject(format: Format, ide: string, gaya: Gaya): Promise<Project> {
   const now = new Date().toISOString();
   const p: Project = {
     id: randomUUID().slice(0, 8),
     format,
+    gaya,
     ide: ide.trim(),
     dibuat: now,
     diubah: now,
