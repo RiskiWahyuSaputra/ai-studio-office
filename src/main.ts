@@ -177,10 +177,16 @@ panel.addEventListener("click", async (ev) => {
       return;
     }
     case "salin-semua": {
-      const teks = [...panel.querySelectorAll<HTMLElement>(".scene")]
-        .map((sc) => `Adegan ${sc.dataset.no}\n${sc.querySelector("textarea")?.value ?? ""}`)
+      const scenes = [...panel.querySelectorAll<HTMLElement>(".scene")];
+      const n = scenes.length;
+      // Asisten Flow butuh perintah eksplisit, kalau tidak semua prompt dianggap satu video
+      const kepala =
+        `Generate ${n} SEPARATE videos — exactly one video for each of the ${n} scenes below (${n} videos in total). ` +
+        `Do NOT merge scenes into one video. Use each scene's prompt exactly as written, vertical 9:16, about 8 seconds each.`;
+      const isi = scenes
+        .map((sc) => `=== SCENE ${sc.dataset.no} of ${n} (video #${sc.dataset.no}) ===\n${sc.querySelector("textarea")?.value.trim() ?? ""}`)
         .join("\n\n");
-      await run(() => navigator.clipboard.writeText(teks), "Semua prompt disalin");
+      await run(() => navigator.clipboard.writeText(`${kepala}\n\n${isi}\n\n=== END: ${n} videos total ===`), `${n} prompt disalin. Flow akan membuat ${n} video terpisah.`);
       return;
     }
     case "simpan-naskah": {
