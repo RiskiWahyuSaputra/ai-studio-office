@@ -55,6 +55,21 @@ projects.post("/projects/:id/ulang", async (req, res) => {
   }
 });
 
+/** Isi statistik manual (mis. TikTok yang belum lolos audit API). */
+projects.post("/projects/:id/statistik", async (req, res) => {
+  const b = req.body ?? {};
+  const p = getProject(req.params.id);
+  if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
+  if (!["youtube", "tiktok", "instagram"].includes(b.platform)) return void res.status(400).json({ error: "Platform tidak dikenal" });
+  const n = (v: unknown) => Math.max(0, Math.floor(Number(v) || 0));
+  const hasil = await updateProject(p.id, (x) => {
+    x.statistik = x.statistik.filter((s) => s.platform !== b.platform);
+    x.statistik.push({ platform: b.platform, views: n(b.views), likes: n(b.likes), komentar: n(b.komentar), diambil: new Date().toISOString() });
+    addLog(x, "Kamu", `Mengisi statistik ${b.platform} manual`);
+  });
+  res.json(hasil);
+});
+
 /** Simpan suntinganmu pada hasil kerja karyawan. */
 projects.patch("/projects/:id", async (req, res) => {
   const b = req.body ?? {};

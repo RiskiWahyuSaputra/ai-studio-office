@@ -238,6 +238,14 @@ panel.addEventListener("submit", async (ev) => {
       state.projects.set(p.id, p);
       setView({ kind: "project", id: p.id });
     }
+  } else if (form.id === "form-statistik") {
+    const p = current();
+    if (p) {
+      await run(
+        () => api.post(`/api/projects/${p.id}/statistik`, Object.fromEntries(fd.entries())),
+        "Statistik disimpan. Klik \"Tarik ulang & analisis\" untuk analisis baru.",
+      );
+    }
   } else if (form.id === "form-settings") {
     const num = (k: string) => Number(fd.get(k));
     await run(

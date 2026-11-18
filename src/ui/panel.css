@@ -172,3 +172,13 @@ a.btn { text-decoration: none; display: inline-block; }
 .log a { color: var(--accent); word-break: break-all; }
 .counter { font-style: normal; float: right; }
 .counter.over { color: var(--bad); }
+
+.stats { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 6px; }
+.stats th, .stats td { text-align: right; padding: 5px 6px; border-bottom: 1px solid var(--line); }
+.stats th:first-child, .stats td:first-child { text-align: left; }
+.stats th { color: var(--ink-2); font-weight: 500; }
+.stats .total td { font-weight: 600; border-bottom: 0; }
+.manual { margin-top: 10px; font-size: 13px; }
+.manual summary { cursor: pointer; color: var(--ink-2); }
+.manual-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+.manual-form input, .manual-form select { font: 12px var(--font-body); background: #110f19; color: var(--ink); border: 2px solid var(--line); padding: 6px; min-width: 0; }

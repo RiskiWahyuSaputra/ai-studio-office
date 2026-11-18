@@ -62,3 +62,15 @@ export async function igUpload(file: string, publicPath: string, caption: string
 }
 
 export const igPublicPath = (projectId: string, file: string) => `/media/${projectId}/${encodeURIComponent(path.basename(file))}`;
+
+export async function igStats(id: string) {
+  const m = await graph<{ like_count?: number; comments_count?: number }>("GET", id, { fields: "like_count,comments_count" });
+  let views = 0;
+  try {
+    const ins = await graph<{ data: { name: string; values: { value: number }[] }[] }>("GET", `${id}/insights`, { metric: "views" });
+    views = ins.data.find((x) => x.name === "views")?.values[0]?.value ?? 0;
+  } catch {
+    // insight belum tersedia untuk media yang baru tayang
+  }
+  return { id, views, likes: m.like_count ?? 0, komentar: m.comments_count ?? 0 };
+}

@@ -185,7 +185,8 @@ function aksi(p: Project, s: UiState): string {
   if (p.status === "gagal")
     return `<div class="callout callout-bad"><strong>${esc(tahapNama)} gagal:</strong> ${esc(p.galat)}
       <div class="row"><button class="btn" data-action="ulang" data-tahap="${p.tahap}">Coba lagi</button></div></div>`;
-  if (p.status === "selesai") return `<div class="callout callout-ok">Proyek selesai. Mantap!</div>`;
+  if (p.status === "selesai")
+    return `<div class="callout callout-ok">Proyek selesai. Lihat saran Yoga di bawah untuk video berikutnya.</div>`;
   const petunjuk = PETUNJUK[p.tahap]?.(p, s) ?? `Cek hasil ${esc(tahapNama)}, sunting bila perlu, lalu lanjutkan.`;
   return `<div class="callout callout-you">
     <strong>Giliranmu:</strong> ${petunjuk}
@@ -314,6 +315,39 @@ function sectionUnggah(p: Project, s: UiState) {
   </section>`;
 }
 
+const angka = (n: number) => n.toLocaleString("id-ID");
+
+function sectionAnalisis(p: Project) {
+  if (urutan(p.tahap) < urutan("analisis")) return "";
+  const a = p.analisis;
+  const st = p.statistik;
+  const tot = st.reduce((acc, x) => ({ v: acc.v + x.views, l: acc.l + x.likes, k: acc.k + x.komentar }), { v: 0, l: 0, k: 0 });
+  return `<section class="card"><h3>Analisis · Yoga</h3>
+    ${
+      st.length
+        ? `<table class="stats"><thead><tr><th>Platform</th><th>Views</th><th>Like</th><th>Komentar</th></tr></thead><tbody>
+          ${st.map((x) => `<tr><td>${NAMA_PLATFORM[x.platform]}</td><td>${angka(x.views)}</td><td>${angka(x.likes)}</td><td>${angka(x.komentar)}</td></tr>`).join("")}
+          <tr class="total"><td>Total</td><td>${angka(tot.v)}</td><td>${angka(tot.l)}</td><td>${angka(tot.k)}</td></tr>
+        </tbody></table>
+        <p class="hint">Diambil ${waktu(st[0].diambil)}</p>`
+        : `<p class="empty">Belum ada statistik.</p>`
+    }
+    ${a ? `<p>${esc(a.ringkasan)}</p><p class="eyebrow">Saran</p><ul class="bullets">${a.saran.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+    <div class="row">${p.status !== "jalan" ? ulangBtn("analisis").replace("Ulangi", "Tarik ulang & analisis") : ""}</div>
+    <details class="manual"><summary>Isi angka manual</summary>
+      <form id="form-statistik" class="manual-form">
+        <select name="platform" aria-label="Platform">
+          <option value="youtube">YouTube</option><option value="tiktok">TikTok</option><option value="instagram">Instagram</option>
+        </select>
+        <input name="views" type="number" min="0" placeholder="Views" aria-label="Views" />
+        <input name="likes" type="number" min="0" placeholder="Like" aria-label="Like" />
+        <input name="komentar" type="number" min="0" placeholder="Komentar" aria-label="Komentar" />
+        <button class="btn btn-sm" type="submit">Simpan</button>
+      </form>
+    </details>
+  </section>`;
+}
+
 function sectionAdegan(p: Project) {
   if (!p.adegan?.length) return "";
   return `<details class="card" open><summary><h3>Adegan & prompt Veo · Bayu</h3>${ulangBtn("storyboard")}</summary>
@@ -376,6 +410,7 @@ function renderProject(p: Project, s: UiState): string {
     ${stepper(p)}
     ${aksi(p, s)}
   </section>
+  ${sectionAnalisis(p)}
   ${sectionUnggah(p, s)}
   ${sectionPaket(p)}
   ${sectionVideo(p)}

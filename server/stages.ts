@@ -3,6 +3,7 @@
  */
 import * as agen from "./agents.ts";
 import * as editor from "./editor.ts";
+import * as analis from "./analyst.ts";
 import { registerStage } from "./pipeline.ts";
 import { getSettings, updateSettings } from "./store.ts";
 
@@ -86,4 +87,20 @@ registerStage("unggah", {
     return { apply: () => {}, pesan: "Tinggal pilih platform untuk diunggah", tunggu: true };
   },
   siap: (p) => (p.unggahan.some((u) => u.status === "berhasil") ? null : "Belum ada unggahan yang berhasil"),
+});
+
+registerStage("analisis", {
+  status: "Baca statistik...",
+  async run(p) {
+    const { stats, catatan } = await analis.tarikStatistik(p);
+    const a = await analis.analisis(p, stats);
+    const views = stats.reduce((n, s) => n + s.views, 0);
+    return {
+      apply: (x) => {
+        x.statistik = stats;
+        x.analisis = a;
+      },
+      pesan: `${views.toLocaleString("id-ID")} views terkumpul${catatan.length ? ` (${catatan.join("; ")})` : ""}`,
+    };
+  },
 });

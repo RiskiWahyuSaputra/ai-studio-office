@@ -1,7 +1,7 @@
 /**
  * Unggah ke TikTok lewat Content Posting API (Direct Post).
  * Daftar app di https://developers.tiktok.com, aktifkan Login Kit + Content Posting API,
- * scope: user.info.basic, video.publish. Redirect URI: <PUBLIC_BASE_URL>/api/oauth/tiktok/callback
+ * scope: user.info.basic, video.publish, video.list. Redirect URI: <PUBLIC_BASE_URL>/api/oauth/tiktok/callback
  * Catatan: sebelum app lolos audit TikTok, video hanya bisa diposting sebagai privat (SELF_ONLY).
  */
 import fs from "node:fs/promises";
@@ -19,7 +19,7 @@ export function ttAuthUrl() {
   pendingStates.add(state);
   const q = new URLSearchParams({
     client_key: process.env.TIKTOK_CLIENT_KEY!,
-    scope: "user.info.basic,video.publish",
+    scope: "user.info.basic,video.publish,video.list",
     response_type: "code",
     redirect_uri: redirect(),
     state,
@@ -148,4 +148,15 @@ export async function ttUpload(file: string, caption: string, privasi: string): 
     }
   }
   return { id: init.publish_id };
+}
+
+export async function ttStats(ids: string[]) {
+  if (!ids.length) return [];
+  const { token } = await access();
+  const d = await api<{ videos: { id: string; view_count?: number; like_count?: number; comment_count?: number }[] }>(
+    token,
+    "/video/query/?fields=id,view_count,like_count,comment_count",
+    { filters: { video_ids: ids.slice(0, 20) } },
+  );
+  return d.videos.map((v) => ({ id: String(v.id), views: v.view_count ?? 0, likes: v.like_count ?? 0, komentar: v.comment_count ?? 0 }));
 }
