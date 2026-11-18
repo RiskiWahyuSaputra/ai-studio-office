@@ -15,15 +15,15 @@ export const FORMATS: Record<Format, { nama: string; ringkas: string }> = {
   },
 };
 
-export const STAGES: { id: StageId; nama: string }[] = [
-  { id: "riset", nama: "Riset" },
-  { id: "naskah", nama: "Naskah" },
-  { id: "storyboard", nama: "Storyboard & Prompt" },
-  { id: "render", nama: "Render di Flow" },
-  { id: "edit", nama: "Edit Video" },
-  { id: "paket", nama: "Judul & Caption" },
-  { id: "unggah", nama: "Unggah" },
-  { id: "analisis", nama: "Analisis" },
+export const STAGES: { id: StageId; nama: string; pendek: string }[] = [
+  { id: "riset", nama: "Riset", pendek: "Riset" },
+  { id: "naskah", nama: "Naskah", pendek: "Naskah" },
+  { id: "storyboard", nama: "Storyboard & Prompt", pendek: "Prompt" },
+  { id: "render", nama: "Render di Flow", pendek: "Render" },
+  { id: "edit", nama: "Edit Video", pendek: "Edit" },
+  { id: "paket", nama: "Judul & Caption", pendek: "Caption" },
+  { id: "unggah", nama: "Unggah", pendek: "Unggah" },
+  { id: "analisis", nama: "Analisis", pendek: "Analisis" },
 ];
 
 export interface LogEntry {
