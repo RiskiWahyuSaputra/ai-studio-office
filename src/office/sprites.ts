@@ -1,0 +1,208 @@
+import type { Look } from "../shared/team.ts";
+
+type Ctx = CanvasRenderingContext2D;
+
+const px = (ctx: Ctx, x: number, y: number, w: number, h: number, c: string) => {
+  ctx.fillStyle = c;
+  ctx.fillRect(Math.round(x), Math.round(y), w, h);
+};
+
+export function shade(hex: string, amt: number): string {
+  const n = parseInt(hex.slice(1), 16);
+  const ch = (s: number) => Math.max(0, Math.min(255, ((n >> s) & 255) + amt));
+  return `rgb(${ch(16)},${ch(8)},${ch(0)})`;
+}
+
+export interface PoseOpts {
+  facing: 1 | -1; // 1 = menghadap kanan
+  walkFrame: number; // 0..3
+  sitting: boolean;
+  typing: boolean;
+  t: number;
+  carrying: boolean;
+}
+
+/**
+ * Karakter 10x16 px. (x, y) adalah titik kaki tengah.
+ */
+export function drawPerson(ctx: Ctx, x: number, y: number, look: Look, o: PoseOpts) {
+  const left = Math.round(x) - 5;
+  const top = Math.round(y) - 16;
+  const bob = !o.sitting && (o.walkFrame === 1 || o.walkFrame === 3) ? -1 : 0;
+  const T = top + bob;
+
+  // bayangan
+  ctx.fillStyle = "rgba(0,0,0,0.28)";
+  ctx.fillRect(left + 1, Math.round(y) - 1, 8, 2);
+
+  // kaki
+  const pants = look.pants;
+  const shoe = "#1a1520";
+  if (o.sitting) {
+    px(ctx, left + 2, T + 12, 6, 2, pants);
+  } else {
+    const step = o.walkFrame === 1 ? 1 : o.walkFrame === 3 ? -1 : 0;
+    px(ctx, left + 2, T + 12, 2, 3 + Math.max(0, -step), pants);
+    px(ctx, left + 6, T + 12, 2, 3 + Math.max(0, step), pants);
+    px(ctx, left + 2, T + 15 + Math.max(0, -step), 2, 1, shoe);
+    px(ctx, left + 6, T + 15 + Math.max(0, step), 2, 1, shoe);
+  }
+
+  // badan
+  px(ctx, left + 1, T + 7, 8, 6, look.shirt);
+  px(ctx, left + 1, T + 12, 8, 1, shade(look.shirt, -40));
+  px(ctx, left + 4, T + 7, 2, 1, shade(look.shirt, 30));
+
+  // tangan
+  const armY = o.typing ? T + 8 + (Math.floor(o.t * 8) % 2) : T + 8;
+  if (o.carrying) {
+    px(ctx, left + (o.facing === 1 ? 8 : -2), T + 8, 4, 3, "#f4f0e2");
+    px(ctx, left + (o.facing === 1 ? 9 : -1), T + 9, 2, 1, "#9a93ab");
+  }
+  px(ctx, left, armY, 1, 4, look.shirt);
+  px(ctx, left + 9, armY, 1, 4, look.shirt);
+  px(ctx, left, armY + 4, 1, 1, look.skin);
+  px(ctx, left + 9, armY + 4, 1, 1, look.skin);
+
+  // kepala
+  px(ctx, left + 2, T + 1, 6, 6, look.skin);
+  px(ctx, left + 4, T + 6, 2, 1, shade(look.skin, -30));
+
+  // rambut
+  const h = look.hair;
+  switch (look.hairStyle) {
+    case "pendek":
+      px(ctx, left + 2, T, 6, 2, h);
+      px(ctx, left + 2, T + 2, 1, 2, h);
+      px(ctx, left + 7, T + 2, 1, 1, h);
+      break;
+    case "panjang":
+      px(ctx, left + 2, T, 6, 2, h);
+      px(ctx, left + 1, T + 1, 1, 7, h);
+      px(ctx, left + 8, T + 1, 1, 7, h);
+      px(ctx, left + 2, T + 2, 1, 1, h);
+      break;
+    case "keriting":
+      px(ctx, left + 1, T - 1, 8, 3, h);
+      px(ctx, left + 1, T + 2, 1, 2, h);
+      px(ctx, left + 8, T + 2, 1, 2, h);
+      px(ctx, left + 3, T - 2, 1, 1, h);
+      px(ctx, left + 6, T - 2, 1, 1, h);
+      break;
+    case "jilbab":
+      px(ctx, left + 1, T, 8, 2, h);
+      px(ctx, left + 1, T + 2, 1, 6, h);
+      px(ctx, left + 8, T + 2, 1, 6, h);
+      px(ctx, left + 2, T + 6, 6, 2, h);
+      px(ctx, left + 4, T + 6, 2, 1, look.skin);
+      break;
+    case "botak":
+      px(ctx, left + 2, T + 2, 1, 2, h);
+      px(ctx, left + 7, T + 2, 1, 2, h);
+      px(ctx, left + 3, T + 1, 2, 1, shade(look.skin, 25));
+      break;
+  }
+
+  // mata (tidak terlihat saat membelakangi; di sini selalu depan)
+  const eyeShift = o.facing === 1 ? 1 : 0;
+  px(ctx, left + 3 + eyeShift, T + 3, 1, 1, "#1a1520");
+  px(ctx, left + 5 + eyeShift, T + 3, 1, 1, "#1a1520");
+
+  switch (look.accessory) {
+    case "kacamata":
+      px(ctx, left + 2 + eyeShift, T + 3, 5, 1, "rgba(30,30,40,0.55)");
+      px(ctx, left + 3 + eyeShift, T + 3, 1, 1, "#d9f0ff");
+      px(ctx, left + 5 + eyeShift, T + 3, 1, 1, "#d9f0ff");
+      break;
+    case "headset":
+      px(ctx, left + 2, T - 1, 6, 1, "#2b2b33");
+      px(ctx, left + 1, T + 2, 1, 3, "#2b2b33");
+      px(ctx, left + 8, T + 2, 1, 3, "#2b2b33");
+      px(ctx, left + 8, T + 5, 2, 1, "#ef6b6b");
+      break;
+    case "topi":
+      px(ctx, left + 1, T - 1, 8, 2, "#c94b4b");
+      px(ctx, left + (o.facing === 1 ? 7 : -1), T + 1, 4, 1, "#a33a3a");
+      break;
+  }
+}
+
+export function drawDesk(ctx: Ctx, x: number, y: number, screenOn: boolean, t: number, accent: string) {
+  // x,y = sudut kiri atas meja (36x14)
+  px(ctx, x, y, 36, 10, "#8a5a3b");
+  px(ctx, x, y, 36, 2, "#a8714c");
+  px(ctx, x, y + 10, 36, 3, "#6b432b");
+  px(ctx, x + 2, y + 13, 2, 6, "#4f3020");
+  px(ctx, x + 32, y + 13, 2, 6, "#4f3020");
+
+  // laptop dari belakang (layar menghadap karyawan)
+  px(ctx, x + 12, y - 6, 12, 7, "#3c3f4f");
+  px(ctx, x + 13, y - 5, 10, 5, "#4c5064");
+  px(ctx, x + 17, y - 3, 2, 2, screenOn ? accent : "#5c6078");
+  px(ctx, x + 11, y + 1, 14, 2, "#2c2f3b");
+  if (screenOn) {
+    const glow = 0.1 + 0.06 * Math.sin(t * 3);
+    ctx.fillStyle = `rgba(160, 220, 255, ${glow})`;
+    ctx.fillRect(x + 12, y - 9, 12, 3);
+  }
+
+  // cangkir & kertas
+  px(ctx, x + 29, y + 2, 3, 4, "#f1ecdf");
+  px(ctx, x + 32, y + 3, 1, 2, "#f1ecdf");
+  px(ctx, x + 3, y + 3, 6, 4, "#f4f0e2");
+  px(ctx, x + 4, y + 4, 4, 1, "#b9b2c6");
+}
+
+export function drawChair(ctx: Ctx, x: number, y: number) {
+  px(ctx, x - 6, y - 13, 12, 10, "#2c2540");
+  px(ctx, x - 5, y - 12, 10, 8, "#3b3256");
+  px(ctx, x - 1, y - 3, 2, 3, "#2a2438");
+  px(ctx, x - 5, y, 10, 1, "#2a2438");
+}
+
+export function drawPlant(ctx: Ctx, x: number, y: number, t: number) {
+  const sway = Math.round(Math.sin(t * 1.3 + x) * 0.6);
+  px(ctx, x - 5, y - 8, 10, 8, "#b5643c");
+  px(ctx, x - 5, y - 8, 10, 2, "#cf7a4d");
+  px(ctx, x - 1 + sway, y - 22, 2, 14, "#3f7d46");
+  px(ctx, x - 7 + sway, y - 20, 6, 3, "#5aa35e");
+  px(ctx, x + 1 + sway, y - 24, 7, 3, "#5aa35e");
+  px(ctx, x - 6 + sway, y - 14, 5, 3, "#4c9152");
+  px(ctx, x + 1 + sway, y - 16, 6, 3, "#4c9152");
+}
+
+export function drawCoffeeMachine(ctx: Ctx, x: number, y: number, t: number, brewing: boolean) {
+  px(ctx, x, y - 26, 26, 6, "#7a5a40");
+  px(ctx, x, y - 20, 26, 20, "#6b4b33");
+  px(ctx, x + 4, y - 40, 14, 14, "#c9c4d6");
+  px(ctx, x + 5, y - 39, 12, 3, "#8b8599");
+  px(ctx, x + 7, y - 34, 4, 3, "#2a2438");
+  px(ctx, x + 13, y - 34, 2, 2, brewing ? "#6fcf7f" : "#ef6b6b");
+  px(ctx, x + 8, y - 30, 4, 4, "#f1ecdf");
+  if (brewing) {
+    for (let i = 0; i < 3; i++) {
+      const sy = ((t * 10 + i * 4) % 10) | 0;
+      ctx.fillStyle = `rgba(255,255,255,${0.5 - sy / 22})`;
+      ctx.fillRect(x + 9 + (i % 2), y - 32 - sy, 1, 1);
+    }
+  }
+}
+
+export function drawSofa(ctx: Ctx, x: number, y: number) {
+  px(ctx, x, y - 16, 44, 8, "#4b6fa8");
+  px(ctx, x, y - 8, 44, 8, "#5b80bb");
+  px(ctx, x - 3, y - 12, 4, 12, "#3e5d8f");
+  px(ctx, x + 43, y - 12, 4, 12, "#3e5d8f");
+  px(ctx, x + 2, y, 2, 2, "#2a2438");
+  px(ctx, x + 40, y, 2, 2, "#2a2438");
+}
+
+export function drawServerRack(ctx: Ctx, x: number, y: number, t: number) {
+  px(ctx, x, y - 44, 18, 44, "#262330");
+  for (let i = 0; i < 5; i++) {
+    px(ctx, x + 2, y - 41 + i * 8, 14, 6, "#34303f");
+    const on = Math.sin(t * 5 + i * 1.7) > -0.2;
+    px(ctx, x + 12, y - 39 + i * 8, 2, 2, on ? "#6fcf7f" : "#2f5e37");
+    px(ctx, x + 4, y - 39 + i * 8, 5, 1, "#4a4558");
+  }
+}
