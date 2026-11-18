@@ -9,6 +9,7 @@ export interface UiState {
   settings: Settings;
   ai: string;
   platform: Record<string, { siap: boolean; akun?: string; catatan?: string; perluLogin: boolean }>;
+  suara: { id: string; ket: string }[];
   view: View;
 }
 
@@ -124,6 +125,8 @@ function renderSettings(s: UiState): string {
       </div>
       <label class="check"><input type="checkbox" name="otomatis" ${st.otomatis ? "checked" : ""} /> Lanjut otomatis antar tahap AI</label>
       <label class="check"><input type="checkbox" name="subtitle" ${st.subtitle ? "checked" : ""} /> Tempel subtitle ke video</label>
+      <label class="check"><input type="checkbox" name="narasiTts" ${st.narasiTts ? "checked" : ""} /> Narasi suara dari Gemini TTS (suara konsisten, prompt Veo tanpa dialog)</label>
+      <label class="field"><span>Volume suara asli klip saat ada narasi (%)</span><input type="number" min="0" max="100" name="volumeKlip" value="${Math.round(st.volumeKlip * 100)}" /></label>
       <p class="hint">Cek angka biaya di Google Flow karena bisa berubah. Kalau "lanjut otomatis" mati, tiap tahap menunggu persetujuanmu.</p>
       <button class="btn" type="submit">Simpan pengaturan</button>
     </form>
@@ -365,6 +368,26 @@ function peringatan(prompt: string) {
     : "";
 }
 
+const SUARA_BAWAAN = (p: Project) => p.suara ?? (p.format === "vlog-hewan" ? "Puck" : "Charon");
+
+function sectionSuara(p: Project, s: UiState) {
+  if (!s.settings.narasiTts || !p.adegan?.length) return "";
+  const now = SUARA_BAWAAN(p);
+  return `<section class="card"><h3>Suara narasi · Nanda</h3>
+    <p class="hint">Satu suara dipakai untuk semua adegan. Nanda membacakan narasi dengan Gemini TTS saat mengedit, lalu menempelkannya di atas klip.</p>
+    <div class="row">
+      <label class="gaya-ganti">Suara
+        <select data-action-change="ganti-suara" aria-label="Pilih suara narasi">
+          ${s.suara.map((v) => `<option value="${v.id}" ${v.id === now ? "selected" : ""}>${esc(v.id)} · ${esc(v.ket)}</option>`).join("")}
+        </select>
+      </label>
+      <button class="btn btn-sm" data-action="contoh-suara">Dengar contoh</button>
+    </div>
+    <audio class="contoh-suara" controls hidden></audio>
+    ${p.video ? `<p class="hint">Sudah ganti suara? Klik "Render ulang" di bagian Video final.</p>` : ""}
+  </section>`;
+}
+
 function sectionAdegan(p: Project) {
   if (!p.adegan?.length) return "";
   const gayaNow = p.gaya ?? "sinematik";
@@ -440,6 +463,7 @@ function renderProject(p: Project, s: UiState): string {
   ${sectionUnggah(p, s)}
   ${sectionPaket(p)}
   ${sectionVideo(p)}
+  ${sectionSuara(p, s)}
   ${sectionKredit(p, s)}
   ${sectionAdegan(p)}
   ${sectionNaskah(p)}

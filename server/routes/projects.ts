@@ -1,6 +1,7 @@
 import { Router } from "express";
 import fs from "node:fs/promises";
 import { projectDir } from "../editor.ts";
+import { SUARA, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
 import { FORMATS, GAYA, type Format, type Gaya } from "../../src/shared/types.ts";
 import {
   createProject,
@@ -23,7 +24,7 @@ export const projects = Router();
 projects.get("/events", (_req, res) => subscribe(res));
 
 projects.get("/state", async (_req, res) => {
-  res.json({ projects: listProjects(), settings: getSettings(), ai: namaModel(), platform: await platformStatus() });
+  res.json({ projects: listProjects(), settings: getSettings(), ai: namaModel(), platform: await platformStatus(), suara: SUARA });
 });
 
 projects.post("/projects", async (req, res) => {
@@ -56,6 +57,21 @@ projects.post("/projects/:id/ulang", async (req, res) => {
   }
 });
 
+/** Contoh suara narasi: bacakan adegan pertama dengan suara pilihan. */
+projects.post("/projects/:id/suara/contoh", async (req, res) => {
+  const p = getProject(req.params.id);
+  if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
+  const suara = SUARA.some((v) => v.id === req.body?.suara) ? String(req.body.suara) : (p.suara ?? suaraBawaan(p.format));
+  const teks = p.adegan?.[0]?.narasi || p.naskah?.hook;
+  if (!teks) return void res.status(400).json({ error: "Belum ada naskah untuk dibacakan" });
+  try {
+    const file = await buatNarasi(projectDir(p.id), teks, suara, p.format);
+    res.json({ url: `/media/${p.id}/${file}` });
+  } catch (e) {
+    res.status(503).json({ error: (e as Error).message });
+  }
+});
+
 /** Isi statistik manual (mis. TikTok yang belum lolos audit API). */
 projects.post("/projects/:id/statistik", async (req, res) => {
   const b = req.body ?? {};
@@ -78,6 +94,7 @@ projects.patch("/projects/:id", async (req, res) => {
   if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
   const hasil = await updateProject(p.id, (x) => {
     if (b.gaya in GAYA) x.gaya = b.gaya;
+    if (typeof b.suara === "string" && SUARA.some((v) => v.id === b.suara)) x.suara = b.suara;
     if (b.naskah && x.naskah) x.naskah = { ...x.naskah, ...pickStr(b.naskah, ["judulKerja", "hook", "narasi", "cta"]) };
     if (Array.isArray(b.adegan) && x.adegan) {
       for (const a of b.adegan) {
@@ -123,6 +140,12 @@ projects.patch("/settings", async (req, res) => {
   if (b.modeRender === "fast" || b.modeRender === "quality") patch.modeRender = b.modeRender;
   if (typeof b.otomatis === "boolean") patch.otomatis = b.otomatis;
   if (typeof b.subtitle === "boolean") patch.subtitle = b.subtitle;
+  if (typeof b.narasiTts === "boolean") patch.narasiTts = b.narasiTts;
+  if ("volumeKlip" in b) {
+    const v = Number(b.volumeKlip);
+    if (!Number.isFinite(v) || v < 0 || v > 1) return void res.status(400).json({ error: "volumeKlip harus 0 sampai 1" });
+    patch.volumeKlip = v;
+  }
   res.json(await updateSettings(patch));
 });
 

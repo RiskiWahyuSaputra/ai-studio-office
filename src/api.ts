@@ -5,6 +5,7 @@ export interface InitState {
   settings: Settings;
   ai: string;
   platform: Record<string, { siap: boolean; akun?: string; catatan?: string; perluLogin: boolean }>;
+  suara: { id: string; ket: string }[];
 }
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {

@@ -3,6 +3,7 @@
  */
 import * as agen from "./agents.ts";
 import * as editor from "./editor.ts";
+import * as tts from "./tts.ts";
 import * as analis from "./analyst.ts";
 import { registerStage } from "./pipeline.ts";
 import { getSettings, updateSettings } from "./store.ts";
@@ -64,7 +65,16 @@ registerStage("render", {
 registerStage("edit", {
   status: "Ngedit video...",
   async run(p) {
-    const v = await editor.render(p, getSettings().subtitle);
+    const s = getSettings();
+    let narasi: string[] | undefined;
+    if (s.narasiTts) {
+      const dir = editor.projectDir(p.id);
+      const suara = p.suara ?? tts.suaraBawaan(p.format);
+      narasi = [];
+      // berurutan supaya tidak membanjiri kuota TTS
+      for (const a of p.adegan ?? []) narasi.push(await tts.narasi(dir, a.narasi, suara, p.format));
+    }
+    const v = await editor.render(p, { subtitle: s.subtitle, narasi, volumeKlip: s.volumeKlip });
     return {
       apply: (x) => void (x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString() }),
       pesan: `Video final ${Math.round(v.durasi)} detik siap`,

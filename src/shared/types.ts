@@ -7,15 +7,15 @@ export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string;
   pixel: {
     nama: "Pixel Art",
     ringkas: "Animasi pixel 16-bit ala game retro. Unik, gampang dikenali, dan lebih jarang ditolak Flow.",
-    kepala: "Vertical 9:16 pixel art animation",
+    kepala: "Video vertikal 9:16, animasi pixel art",
     prompt:
-      "16-bit pixel art animation in the style of a classic 1990s console RPG, crisp visible square pixels, limited vibrant color palette, dithered shading, sprite-like character animation, layered parallax background, retro chiptune-flavored ambient sound",
+      "animasi pixel art 16-bit bergaya game RPG konsol klasik tahun 1990-an, piksel persegi yang tajam dan terlihat jelas, palet warna cerah yang terbatas, bayangan dithering, animasi karakter seperti sprite, latar parallax berlapis, suara latar bernuansa chiptune retro",
   },
   sinematik: {
     nama: "Sinematik",
     ringkas: "Realistis seperti film. Lebih dramatis, tapi lebih sering ditolak untuk tema sensitif.",
-    kepala: "Vertical 9:16 video",
-    prompt: "cinematic, photorealistic, natural lighting, realistic ambient sound",
+    kepala: "Video vertikal 9:16",
+    prompt: "sinematik, fotorealistis, pencahayaan alami, suara latar yang realistis",
   },
 };
 
@@ -123,6 +123,8 @@ export interface Project {
   format: Format;
   /** gaya visual klip Veo; proyek lama tanpa field ini dianggap sinematik */
   gaya?: Gaya;
+  /** nama suara Gemini TTS untuk narasi; sama di semua adegan */
+  suara?: string;
   ide: string;
   dibuat: string;
   diubah: string;
@@ -151,6 +153,10 @@ export interface Settings {
   durasiKlip: number;
   otomatis: boolean;
   subtitle: boolean;
+  /** narasi dibuat Gemini TTS (suara konsisten) dan prompt Veo diminta tanpa dialog */
+  narasiTts: boolean;
+  /** volume suara asli klip saat ditimpa narasi, 0..1 */
+  volumeKlip: number;
 }
 
 export type Activity =

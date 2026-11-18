@@ -181,12 +181,12 @@ panel.addEventListener("click", async (ev) => {
       const n = scenes.length;
       // Asisten Flow butuh perintah eksplisit, kalau tidak semua prompt dianggap satu video
       const kepala =
-        `Generate ${n} SEPARATE videos — exactly one video for each of the ${n} scenes below (${n} videos in total). ` +
-        `Do NOT merge scenes into one video. Use each scene's prompt exactly as written, vertical 9:16, about 8 seconds each.`;
+        `Buat ${n} video TERPISAH: tepat satu video untuk setiap ${n} adegan di bawah (total ${n} video). ` +
+        `JANGAN gabungkan adegan menjadi satu video. Pakai prompt tiap adegan persis seperti tertulis, vertikal 9:16, sekitar 8 detik per video.`;
       const isi = scenes
-        .map((sc) => `=== SCENE ${sc.dataset.no} of ${n} (video #${sc.dataset.no}) ===\n${sc.querySelector("textarea")?.value.trim() ?? ""}`)
+        .map((sc) => `=== ADEGAN ${sc.dataset.no} dari ${n} (video ke-${sc.dataset.no}) ===\n${sc.querySelector("textarea")?.value.trim() ?? ""}`)
         .join("\n\n");
-      await run(() => navigator.clipboard.writeText(`${kepala}\n\n${isi}\n\n=== END: ${n} videos total ===`), `${n} prompt disalin. Flow akan membuat ${n} video terpisah.`);
+      await run(() => navigator.clipboard.writeText(`${kepala}\n\n${isi}\n\n=== SELESAI: total ${n} video ===`), `${n} prompt disalin. Flow akan membuat ${n} video terpisah.`);
       return;
     }
     case "simpan-naskah": {
@@ -223,6 +223,22 @@ panel.addEventListener("click", async (ev) => {
       if (st) {
         state.platform = st;
         render(true);
+      }
+      return;
+    }
+    case "contoh-suara": {
+      if (!p) return;
+      const sel = panel.querySelector<HTMLSelectElement>('[data-action-change="ganti-suara"]');
+      el.setAttribute("disabled", "");
+      el.textContent = "Membuat contoh...";
+      const r = await run(() => api.post<{ url: string }>(`/api/projects/${p.id}/suara/contoh`, { suara: sel?.value }));
+      el.removeAttribute("disabled");
+      el.textContent = "Dengar contoh";
+      const audio = panel.querySelector<HTMLAudioElement>(".contoh-suara");
+      if (r && audio) {
+        audio.hidden = false;
+        audio.src = r.url;
+        void audio.play().catch(() => {});
       }
       return;
     }
@@ -265,6 +281,8 @@ panel.addEventListener("submit", async (ev) => {
           modeRender: fd.get("modeRender") as "fast" | "quality",
           otomatis: fd.get("otomatis") === "on",
           subtitle: fd.get("subtitle") === "on",
+          narasiTts: fd.get("narasiTts") === "on",
+          volumeKlip: Math.min(100, Math.max(0, num("volumeKlip"))) / 100,
         }),
       "Pengaturan disimpan",
     );
@@ -274,6 +292,10 @@ panel.addEventListener("submit", async (ev) => {
 panel.addEventListener("change", async (ev) => {
   const input = ev.target as HTMLInputElement;
   const p = current();
+  if (p && input.dataset.actionChange === "ganti-suara") {
+    await run(() => api.patch(p.id, { suara: input.value }), `Suara narasi: ${input.value}`);
+    return;
+  }
   if (p && input.dataset.actionChange === "ganti-gaya") {
     const adaKlip = p.adegan?.some((a) => a.klip);
     const pesan = `Ganti gaya ke ${(input as unknown as HTMLSelectElement).selectedOptions[0].text}? Bayu akan menulis ulang semua prompt${adaKlip ? " dan klip yang sudah diunggah akan dilepas" : ""}.`;
@@ -305,7 +327,7 @@ office.onSelect((id) => {
 
 async function boot() {
   const s = await api.state();
-  state = { projects: new Map(s.projects.map((p) => [p.id, p])), settings: s.settings, ai: s.ai, platform: s.platform, view: { kind: "list" } };
+  state = { projects: new Map(s.projects.map((p) => [p.id, p])), settings: s.settings, ai: s.ai, platform: s.platform, suara: s.suara, view: { kind: "list" } };
   for (const p of s.projects) {
     if (p.status === "jalan") office.setWorking(memberForStage(p.tahap).id, true, "Lanjut kerja...");
   }

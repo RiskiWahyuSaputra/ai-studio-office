@@ -22,8 +22,8 @@ const SEJARAH: Bank[] = [
       "Tahun 1527 Fatahillah merebut pelabuhan ini dan menamainya Jayakarta.",
     ],
     kataKunci: ["sunda kelapa", "sejarah jakarta", "pov sejarah"],
-    latar: "a bustling 16th-century wooden harbor in Java, tall Portuguese carracks, pinisi boats, spice sacks, tropical morning light",
-    tokoh: "a Sundanese porter in his late twenties wearing a simple batik sarong and headcloth",
+    latar: "pelabuhan kayu yang ramai di Jawa abad ke-16, kapal layar Portugis yang tinggi, perahu pinisi, karung rempah, cahaya pagi tropis",
+    tokoh: "kuli angkut Sunda berusia akhir 20-an memakai sarung batik sederhana dan ikat kepala",
   },
   {
     topik: "Kehidupan di Majapahit",
@@ -34,8 +34,8 @@ const SEJARAH: Bank[] = [
       "Majapahit memakai uang kepeng dari Tiongkok sebagai alat tukar.",
     ],
     kataKunci: ["majapahit", "trowulan", "pov sejarah"],
-    latar: "a 14th-century Javanese market with red brick gates, terracotta pottery, Chinese copper coins, lush banyan trees",
-    tokoh: "a Javanese spice merchant in his thirties wearing a dark kain and a simple head wrap",
+    latar: "pasar Jawa abad ke-14 dengan gapura bata merah, gerabah terakota, uang kepeng tembaga, pohon beringin yang rimbun",
+    tokoh: "pedagang rempah Jawa berusia 30-an memakai kain gelap dan ikat kepala sederhana",
   },
   {
     topik: "Batavia tahun 1920-an",
@@ -46,8 +46,8 @@ const SEJARAH: Bank[] = [
       "Layanan trem di Jakarta dihentikan tahun 1960.",
     ],
     kataKunci: ["batavia", "trem jakarta", "sejarah jakarta"],
-    latar: "1920s colonial Batavia street, white colonial buildings, an old electric tram, bicycles and horse carriages, sepia warm tones",
-    tokoh: "a Betawi tram driver in his thirties wearing a khaki uniform and black peci",
+    latar: "jalan Batavia tahun 1920-an, gedung kolonial putih, trem listrik tua, sepeda dan delman, nuansa sepia hangat",
+    tokoh: "sopir trem Betawi berusia 30-an memakai seragam khaki dan peci hitam",
   },
 ];
 
@@ -60,8 +60,8 @@ const HEWAN: Bank[] = [
       "Pasar tradisional jadi wilayah favorit kucing kampung karena banyak sisa ikan.",
     ],
     kataKunci: ["kucing oren", "oyen", "vlog kucing"],
-    latar: "a busy Indonesian traditional wet market at morning, fish stalls, colorful plastic baskets, vendors",
-    tokoh: "a chubby orange tabby cat with a tiny vlog camera, expressive face",
+    latar: "pasar tradisional Indonesia yang ramai di pagi hari, lapak ikan, keranjang plastik warna-warni, para pedagang",
+    tokoh: "kucing oren gemuk membawa kamera vlog mungil, wajahnya ekspresif",
   },
   {
     topik: "Komodo yang bosan jadi tontonan",
@@ -71,8 +71,8 @@ const HEWAN: Bank[] = [
       "Komodo hanya hidup di beberapa pulau di Nusa Tenggara Timur.",
     ],
     kataKunci: ["komodo", "labuan bajo", "vlog hewan"],
-    latar: "dry savanna hills of Rinca Island, turquoise sea in the background, bright midday sun",
-    tokoh: "a large Komodo dragon talking to the camera like a tired vlogger",
+    latar: "bukit sabana kering di Pulau Rinca, laut biru toska di belakang, matahari siang yang terik",
+    tokoh: "komodo besar yang bicara ke kamera seperti vlogger yang lelah",
   },
   {
     topik: "Ayam jago reporter subuh",
@@ -82,8 +82,8 @@ const HEWAN: Bank[] = [
       "Ayam pelung dari Cianjur terkenal dengan kokok panjangnya.",
     ],
     kataKunci: ["ayam jago", "berita kampung", "vlog hewan"],
-    latar: "an Indonesian village at dawn, rice fields, misty mountains, wooden houses",
-    tokoh: "a proud rooster with a tiny microphone acting like a TV reporter",
+    latar: "desa di Indonesia saat subuh, sawah, gunung berkabut, rumah kayu",
+    tokoh: "ayam jago gagah memegang mikrofon mungil seperti reporter TV",
   },
 ];
 
@@ -101,9 +101,9 @@ function pilih(format: Format, ide: string): Bank {
       kataKunci: [ide.trim().toLowerCase(), format === "pov-sejarah" ? "pov sejarah" : "vlog hewan"],
       latar:
         format === "pov-sejarah"
-          ? `a historically accurate Indonesian setting of "${ide.trim()}", period-correct clothing and architecture`
-          : `an Indonesian everyday setting related to "${ide.trim()}"`,
-      tokoh: format === "pov-sejarah" ? "an ordinary adult local person of that era, in their thirties" : "the animal character, expressive and funny",
+          ? `latar Indonesia yang akurat secara sejarah tentang "${ide.trim()}", pakaian dan bangunan sesuai zamannya`
+          : `suasana sehari-hari di Indonesia yang berkaitan dengan "${ide.trim()}"`,
+      tokoh: format === "pov-sejarah" ? "warga biasa dewasa dari masa itu, berusia 30-an" : "tokoh hewan yang ekspresif dan lucu",
     };
   }
   return bank[Math.floor(Math.random() * bank.length)];
@@ -157,23 +157,31 @@ export function naskahTemplat(format: Format, r: Riset): Naskah {
   };
 }
 
-export function adeganTemplat(format: Format, ide: string, n: Naskah, durasiKlip: number, gayaVisual: Gaya = "sinematik"): Adegan[] {
+export function adeganTemplat(
+  format: Format,
+  ide: string,
+  n: Naskah,
+  durasiKlip: number,
+  gayaVisual: Gaya = "sinematik",
+  narasiTts = false,
+): Adegan[] {
   const g = GAYA[gayaVisual];
   const b = pilih(format, ide);
   const baris = [n.hook, ...n.narasi.split("\n"), n.cta].filter((s) => s.trim());
   const gaya =
     format === "pov-sejarah"
-      ? `first-person POV, ${g.prompt}`
-      : `vlog style, the animal talks to the camera, comedic timing, ${g.prompt}`;
+      ? `sudut pandang orang pertama (POV), ${g.prompt}`
+      : `gaya vlog, hewan bicara ke kamera, waktu komedi yang pas, ${g.prompt}`;
   return baris.slice(0, 7).map((teks, i) => ({
     no: i + 1,
     durasi: durasiKlip,
     visual: i === 0 ? `Pembuka: ${b.sudut}` : `Adegan ${i + 1} di latar ${b.topik}`,
     narasi: teks,
     prompt:
-      `${g.kepala}. ${b.latar}. ${i === 0 ? "Opening shot" : "Shot " + (i + 1)}: ${b.tokoh}` +
-      `${format === "vlog-hewan" ? ` says in Indonesian: "${teks}"` : `, while a calm Indonesian narrator says: "${teks}"`}. ` +
-      `${gaya}. No text, no subtitles, no watermark.`,
+      `${g.kepala}. ${b.latar}. ${i === 0 ? "Adegan pembuka" : "Adegan " + (i + 1)}: ${b.tokoh}` +
+      (narasiTts
+        ? `${format === "vlog-hewan" ? " bicara ke kamera dengan gerak mulut yang ekspresif" : ""}. ${gaya}. Tanpa dialog, tanpa ucapan, tanpa suara narator, hanya efek suara latar. Tanpa teks, tanpa subtitle, tanpa watermark.`
+        : `${format === "vlog-hewan" ? ` berkata: "${teks}"` : `, sementara narator berkata dengan tenang: "${teks}"`}. ${gaya}. Tanpa teks, tanpa subtitle, tanpa watermark.`),
   }));
 }
 

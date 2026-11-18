@@ -24,6 +24,8 @@ const defaultSettings = (): Settings => ({
   durasiKlip: 8,
   otomatis: true,
   subtitle: true,
+  narasiTts: true,
+  volumeKlip: 0.3,
 });
 
 let db: Db;

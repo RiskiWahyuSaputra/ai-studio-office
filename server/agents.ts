@@ -46,7 +46,14 @@ Balas JSON: {"judulKerja": string, "hook": string, "narasi": string, "cta": stri
 
 export async function storyboard(p: Project, s: Settings): Promise<Adegan[]> {
   const n = p.naskah!;
-  if (!aiAktif()) return adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip, p.gaya);
+  if (!aiAktif()) return adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip, p.gaya, s.narasiTts);
+  const aturanSuara = s.narasiTts
+    ? `SUARA: narasi akan diisi TERPISAH oleh pengisi suara (TTS) supaya suaranya konsisten. Jadi JANGAN tulis kalimat ucapan di prompt. ${
+        p.format === "vlog-hewan"
+          ? "Hewan tetap tampak berbicara ke kamera (mulut bergerak, ekspresif), tapi tanpa suara ucapan."
+          : "Tokoh tidak berbicara."
+      } Akhiri setiap prompt dengan "Tanpa dialog, tanpa ucapan, tanpa suara narator, hanya efek suara latar. Tanpa teks, tanpa subtitle, tanpa watermark."`
+    : `SUARA: ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip di prompt (Veo membuat suaranya). Akhiri dengan "Tanpa teks, tanpa subtitle, tanpa watermark."`;
   const hasil = await generateJson<{ adegan: Omit<Adegan, "no" | "durasi">[] }>(`${KONTEKS(p)}
 
 Peranmu: Sutradara & Prompt Engineer untuk Google Veo.
@@ -56,12 +63,14 @@ Riset: ${JSON.stringify(p.riset)}
 Pecah naskah menjadi 5–7 adegan (hook = adegan 1, cta = adegan terakhir). Untuk tiap adegan tulis:
 - visual: deskripsi singkat bahasa Indonesia.
 - narasi: kalimat yang diucapkan di adegan itu (ambil dari naskah).
-- prompt: prompt Veo dalam BAHASA INGGRIS, satu paragraf, diawali "${GAYA[p.gaya ?? "sinematik"].kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip (Veo bisa membuat suara). Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis. Akhiri dengan "No text, no subtitles, no watermark."
+- prompt: prompt Veo dalam BAHASA INDONESIA (jangan pakai bahasa Inggris), satu paragraf, diawali "${GAYA[p.gaya ?? "sinematik"].kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis.
+- narasi tiap adegan maksimal 18 kata supaya muat dibacakan dalam satu klip 8 detik.
+${aturanSuara}
 ${p.format === "pov-sejarah" ? "Pakai sudut pandang orang pertama (first-person POV) dan detail periode yang akurat." : "Hewan berbicara langsung ke kamera seperti vlogger; ekspresif dan kocak."}
 
 ${ATURAN_AMAN}
 GAYA VISUAL: ${GAYA[p.gaya ?? "sinematik"].nama}. Masukkan frasa gaya ini di setiap prompt: "${GAYA[p.gaya ?? "sinematik"].prompt}".
-${p.gaya === "pixel" ? "Jangan pakai kata photorealistic, realistic, atau cinematic film. Deskripsikan tokoh sebagai karakter pixel art (pixel art character) dengan ciri warna yang sama persis di tiap adegan supaya konsisten." : ""}
+${p.gaya === "pixel" ? "Jangan pakai kata fotorealistis, realistis, atau film sinematik. Deskripsikan tokoh sebagai karakter pixel art dengan ciri warna yang sama persis di tiap adegan supaya konsisten." : ""}
 
 Kalau naskah melanggar aturan di atas, ubah kalimat narasinya agar aman (dan tulis versi aman itu di field "narasi").
 

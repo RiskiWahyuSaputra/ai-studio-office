@@ -14,9 +14,9 @@ Format kanal:
 | Ratna | Produser | Menerima proyek baru, membagi tugas |
 | Dimas | Peneliti Tren | 1. Riset topik & fakta |
 | Sari | Penulis Naskah | 2. Hook, narasi, CTA |
-| Bayu | Sutradara & Prompt | 3. Adegan + prompt Veo (bahasa Inggris, dialog Indonesia) |
+| Bayu | Sutradara & Prompt | 3. Adegan + prompt Veo berbahasa Indonesia (gaya Pixel Art atau Sinematik) |
 | Hadi | Akuntan Kredit | 4. Estimasi kredit Flow, catat pemakaian bulanan |
-| Nanda | Editor Video | 5. Gabung klip jadi 1080×1920 + subtitle (ffmpeg) |
+| Nanda | Editor Video | 5. Narasi TTS + gabung klip jadi 1080×1920 + subtitle (ffmpeg) |
 | Putri | Social Media | 6. Judul, caption, hashtag · 7. Unggah ke YouTube/TikTok/Instagram |
 | Yoga | Analis Data | 8. Tarik statistik & saran video berikutnya |
 
@@ -74,6 +74,10 @@ Sebelum app lolos audit TikTok, postingan hanya bisa berstatus privat (`SELF_ONL
 Butuh akun Instagram Professional (Business/Creator) dan token long-lived dengan izin `instagram_content_publish`. Isi `INSTAGRAM_USER_ID` dan `INSTAGRAM_ACCESS_TOKEN`. Mode bawaan `resumable` mengirim file langsung dari server, jadi tidak butuh URL publik.
 
 Semua unggahan ditandai sebagai konten AI (`containsSyntheticMedia` di YouTube, `is_aigc` di TikTok), dan deskripsinya mencantumkan bahwa video dibuat dengan AI.
+
+### Narasi suara
+
+Secara bawaan narasi dibacakan oleh **Gemini TTS** dengan satu suara tetap per proyek (pilih dan dengarkan contohnya di bagian "Suara narasi"). Prompt Veo diminta tanpa dialog, lalu Nanda menempelkan narasi di atas klip dan mengecilkan suara asli klip jadi latar. Durasi adegan otomatis menyesuaikan panjang narasi. Matikan di Pengaturan kalau ingin memakai suara dari Veo sendiri.
 
 ### Kredit Flow
 
