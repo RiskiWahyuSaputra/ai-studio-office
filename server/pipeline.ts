@@ -5,6 +5,7 @@
 import { memberForStage, memberById, type StageId } from "../src/shared/team.ts";
 import { STAGES, type Project } from "../src/shared/types.ts";
 import { activity } from "./events.ts";
+import { GeminiSibuk } from "./ai.ts";
 import { addLog, getProject, getSettings, listProjects, updateProject } from "./store.ts";
 
 export interface StageResult {
@@ -26,6 +27,11 @@ export interface StageDef {
 const defs: Partial<Record<StageId, StageDef>> = {};
 const busy = new Set<string>();
 
+/** Proyek yang ditunda karena Gemini sibuk: id -> { kapan boleh dicoba, sudah berapa kali } */
+const tunda = new Map<string, { sampai: number; kali: number }>();
+const MAKS_ULANG = 5;
+const JEDA_ULANG_MS = [60_000, 120_000, 180_000, 300_000, 300_000];
+
 export function registerStage(stage: StageId, def: StageDef) {
   defs[stage] = def;
 }
@@ -42,6 +48,8 @@ export function kick() {
   for (const p of antre) {
     const def = defs[p.tahap];
     if (!def) continue;
+    const t = tunda.get(p.id);
+    if (t && Date.now() < t.sampai) continue;
     const m = memberForStage(p.tahap);
     if (busy.has(m.id)) continue;
     busy.add(m.id);
@@ -81,12 +89,27 @@ async function jalankan(id: string, stage: StageId, def: StageDef, memberId: str
         }
       }
     });
+    tunda.delete(id);
     activity({ type: "selesai-kerja", memberId });
     if (pindahKe) serah(memberId, pindahKe, hasil.pesan);
     else activity({ type: "bicara", memberId, teks: hasil.tunggu ? "Giliranmu, Bos!" : "Beres!" });
   } catch (e) {
     const pesan = e instanceof Error ? e.message : String(e);
     activity({ type: "selesai-kerja", memberId });
+    const kali = (tunda.get(id)?.kali ?? 0) + 1;
+    if (e instanceof GeminiSibuk && kali <= MAKS_ULANG && getProject(id)) {
+      const jeda = JEDA_ULANG_MS[kali - 1];
+      tunda.set(id, { sampai: Date.now() + jeda, kali });
+      setTimeout(kick, jeda + 500);
+      activity({ type: "bicara", memberId, teks: "Gemini penuh, ngopi dulu..." });
+      await updateProject(id, (x) => {
+        x.status = "antre";
+        x.galat = undefined;
+        addLog(x, m.nama, `Gemini sedang penuh, dicoba lagi ${jeda / 60000} menit lagi (percobaan ${kali}/${MAKS_ULANG})`);
+      });
+      return;
+    }
+    tunda.delete(id);
     activity({ type: "bicara", memberId, teks: "Waduh, ada kendala..." });
     if (getProject(id)) {
       await updateProject(id, (x) => {
@@ -135,6 +158,7 @@ export async function ulang(id: string, stage: StageId) {
   if (p.status === "jalan") throw new Error("Tunggu tahap yang sedang jalan selesai dulu");
   const urutan = STAGES.findIndex((s) => s.id === stage);
   if (urutan < 0 || urutan > STAGES.findIndex((s) => s.id === p.tahap)) throw new Error("Tahap belum dicapai");
+  tunda.delete(id);
   const hasil = await updateProject(id, (x) => {
     x.tahap = stage;
     x.status = defs[stage] ? "antre" : "menunggu-kamu";
