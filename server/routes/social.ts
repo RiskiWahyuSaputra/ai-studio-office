@@ -4,6 +4,8 @@ import { projectDir } from "../editor.ts";
 import { activity } from "../events.ts";
 import { getToken, setToken } from "../platforms/tokens.ts";
 import { ytAuthUrl, ytCallback, ytConfigured, ytUpload } from "../platforms/youtube.ts";
+import { ttAuthUrl, ttCallback, ttConfigured, ttUpload } from "../platforms/tiktok.ts";
+import { igConfigured, igPublicPath, igUpload } from "../platforms/instagram.ts";
 import { addLog, getProject, updateProject } from "../store.ts";
 import type { Platform, Project } from "../../src/shared/types.ts";
 
@@ -32,6 +34,17 @@ export const uploaders: Partial<Record<Platform, Uploader>> = {
         kategori: p.format === "pov-sejarah" ? "27" : "24",
       }),
   },
+  tiktok: {
+    configured: ttConfigured,
+    catatan: "Isi TIKTOK_CLIENT_KEY dan TIKTOK_CLIENT_SECRET di .env",
+    authUrl: ttAuthUrl,
+    upload: (p, file, o) => ttUpload(file, p.paket!.tiktok.caption, o.privasi || "SELF_ONLY"),
+  },
+  instagram: {
+    configured: igConfigured,
+    catatan: "Isi INSTAGRAM_USER_ID dan INSTAGRAM_ACCESS_TOKEN di .env",
+    upload: (p, file) => igUpload(file, igPublicPath(p.id, file), p.paket!.instagram.caption),
+  },
 };
 
 export async function platformStatus() {
@@ -40,7 +53,7 @@ export async function platformStatus() {
     const t = await getToken(k);
     out[k] = {
       siap: u.configured() && (!u.authUrl || Boolean(t)),
-      akun: t?.akun,
+      akun: t?.akun ?? (k === "instagram" && u.configured() ? `ID ${process.env.INSTAGRAM_USER_ID}` : undefined),
       catatan: u.configured() ? undefined : u.catatan,
       perluLogin: Boolean(u.authUrl),
     };
@@ -60,6 +73,16 @@ social.get("/oauth/youtube/callback", async (req, res) => {
     if (req.query.error) throw new Error(String(req.query.error));
     await ytCallback(String(req.query.code ?? ""), String(req.query.state ?? ""));
     res.redirect("/?terhubung=youtube");
+  } catch (e) {
+    res.redirect(`/?gagal=${encodeURIComponent((e as Error).message)}`);
+  }
+});
+
+social.get("/oauth/tiktok/callback", async (req, res) => {
+  try {
+    if (req.query.error) throw new Error(String(req.query.error_description ?? req.query.error));
+    await ttCallback(String(req.query.code ?? ""), String(req.query.state ?? ""));
+    res.redirect("/?terhubung=tiktok");
   } catch (e) {
     res.redirect(`/?gagal=${encodeURIComponent((e as Error).message)}`);
   }
