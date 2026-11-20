@@ -40,6 +40,6 @@ if (PROD) {
 }
 
 app.listen(PORT, () => {
-  console.log(`Kantor Piksel buka di http://localhost:${PORT} (otak karyawan: ${namaModel()})`);
+  console.log(`Kantor PovQ buka di http://localhost:${PORT} (otak karyawan: ${namaModel()})`);
   kick();
 });
