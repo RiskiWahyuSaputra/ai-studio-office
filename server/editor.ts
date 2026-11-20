@@ -80,6 +80,9 @@ export function buatSrt(adegan: Adegan[], waktu: Waktu[]): string {
 }
 
 export interface OpsiRender {
+  /** nama file keluaran (bawaan final.mp4) dan subtitle (bawaan subtitle.srt) */
+  keluaran?: string;
+  subtitleFile?: string;
   subtitle: boolean;
   /** nama file WAV narasi per adegan (urut sesuai adegan), atau undefined bila tanpa narasi */
   narasi?: string[];
@@ -115,7 +118,9 @@ export async function render(p: Project, o: OpsiRender): Promise<{ file: string;
     const durasi = Math.max(durVideo, butuh);
     return { durasi, mulaiNarasi: JEDA_AWAL, panjangNarasi: panjang, tempo, lambat, tahan: durasi - durVideo };
   });
-  await fs.writeFile(path.join(dir, "subtitle.srt"), buatSrt(adegan, rencana));
+  const keluaran = o.keluaran ?? "final.mp4";
+  const srt = o.subtitleFile ?? "subtitle.srt";
+  await fs.writeFile(path.join(dir, srt), buatSrt(adegan, rencana));
 
   const args: string[] = ["-y", "-hide_banner"];
   adegan.forEach((a) => args.push("-i", a.klip!));
@@ -154,7 +159,7 @@ export async function render(p: Project, o: OpsiRender): Promise<{ file: string;
   filters.push(`${concatIn.join("")}concat=n=${adegan.length}:v=1:a=1[vc][ac]`);
   filters.push(
     o.subtitle
-      ? `[vc]subtitles=subtitle.srt:force_style='FontName=Montserrat,FontSize=13,Bold=1,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=70'[vo]`
+      ? `[vc]subtitles=${srt}:force_style='FontName=Montserrat,FontSize=13,Bold=1,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=1,Outline=2,Shadow=0,Alignment=2,MarginV=70'[vo]`
       : `[vc]null[vo]`,
   );
   args.push(
@@ -163,9 +168,9 @@ export async function render(p: Project, o: OpsiRender): Promise<{ file: string;
     "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
     "-c:a", "aac", "-b:a", "160k",
     "-movflags", "+faststart",
-    "final.mp4",
+    keluaran,
   );
   await run("ffmpeg", args, dir);
-  const hasil = await probe(path.join(dir, "final.mp4"));
-  return { file: "final.mp4", durasi: hasil.durasi };
+  const hasil = await probe(path.join(dir, keluaran));
+  return { file: keluaran, durasi: hasil.durasi };
 }

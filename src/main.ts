@@ -231,6 +231,17 @@ panel.addEventListener("click", async (ev) => {
       if (p) await run(() => api.patch(p.id, { naskah: collect(box) }), "Naskah disimpan");
       return;
     }
+    case "simpan-naskah-part": {
+      const box = el.closest("[data-edit]")!;
+      const part = [...box.querySelectorAll<HTMLElement>("[data-part]")].map((fs) => {
+        const o: Record<string, string> = {};
+        fs.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>("[data-p]").forEach((f) => (o[f.dataset.p!] = f.value));
+        return o;
+      });
+      const judulKerja = box.querySelector<HTMLInputElement>('[data-f="judulKerja"]')?.value;
+      if (p) await run(() => api.patch(p.id, { naskah: { judulKerja, part } }), "Naskah disimpan");
+      return;
+    }
     case "simpan-paket": {
       const box = el.closest("[data-edit]")!;
       const f = collect(box);
@@ -338,7 +349,7 @@ panel.addEventListener("submit", async (ev) => {
   const form = ev.target as HTMLFormElement;
   const fd = new FormData(form);
   if (form.id === "form-baru") {
-    const p = await run(() => api.create(String(fd.get("format")), String(fd.get("ide") ?? ""), String(fd.get("gaya") ?? "pixel")), "Proyek diserahkan ke tim");
+    const p = await run(() => api.create(String(fd.get("format")), String(fd.get("ide") ?? ""), String(fd.get("gaya") ?? "animasi-2d"), Number(fd.get("rencanaPart") ?? 1)), "Proyek diserahkan ke tim");
     if (p) {
       state.projects.set(p.id, p);
       setView({ kind: "project", id: p.id });

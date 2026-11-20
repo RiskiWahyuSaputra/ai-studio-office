@@ -34,6 +34,8 @@ Klik karyawan di kantor untuk melihat kerjaan dan catatannya. Saat bekerja, kary
 5. Cek caption, lalu unggah ke tiap platform dari panel.
 6. Yoga menarik statistik dan memberi saran.
 
+**Cerita bersambung sekaligus:** pilih *Jumlah part* (2–5) saat membuat proyek. Sari menulis cerita utuh sampai tamat yang dibagi per part, Bayu membuat adegan untuk semua part, kamu render sekali di Flow dan impor satu ZIP, lalu Nanda merender satu video per part dan memecahnya jadi proyek Part 1, Part 2, dst. untuk caption dan unggah masing-masing.
+
 Sudah mengedit video sendiri? Pakai **Unggah video final** di tahap render untuk melewati Nanda.
 
 ## Menjalankan

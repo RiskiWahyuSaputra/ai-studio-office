@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { ROOT } from "./paths.ts";
 import { broadcast } from "./events.ts";
-import type { Format, Gaya, Project, Settings } from "../src/shared/types.ts";
+import type { Adegan, Format, Gaya, Naskah, Project, Settings, Video } from "../src/shared/types.ts";
 
 interface Db {
   projects: Project[];
@@ -63,12 +63,13 @@ export const listProjects = () => [...db.projects].sort((a, b) => b.dibuat.local
 export const getProject = (id: string) => db.projects.find((p) => p.id === id);
 export const getSettings = () => db.settings;
 
-export async function createProject(format: Format, ide: string, gaya: Gaya): Promise<Project> {
+export async function createProject(format: Format, ide: string, gaya: Gaya, rencanaPart = 1): Promise<Project> {
   const now = new Date().toISOString();
   const p: Project = {
     id: randomUUID().slice(0, 8),
     format,
     gaya,
+    rencanaPart: rencanaPart > 1 ? rencanaPart : undefined,
     ide: ide.trim(),
     dibuat: now,
     diubah: now,
@@ -92,6 +93,47 @@ export async function updateProject(id: string, fn: (p: Project) => void): Promi
   await save();
   broadcast({ type: "project", project: p });
   return p;
+}
+
+/**
+ * Pecah proyek produksi (cerita utuh) menjadi satu proyek per part. Tiap part sudah membawa
+ * video finalnya dan mulai dari tahap Judul & Caption.
+ */
+export async function buatProyekPart(
+  induk: Project,
+  bagian: { part: number; naskah: Naskah; adegan: Adegan[]; video: Video }[],
+): Promise<Project[]> {
+  const total = bagian.length;
+  const dibuat: Project[] = [];
+  for (const b of bagian) {
+    const now = new Date().toISOString();
+    const p: Project = {
+      id: randomUUID().slice(0, 8),
+      format: induk.format,
+      gaya: induk.gaya,
+      suara: induk.suara,
+      modelSuara: induk.modelSuara,
+      ide: induk.ide,
+      dibuat: now,
+      diubah: now,
+      tahap: "paket",
+      status: "antre",
+      riset: induk.riset ? structuredClone(induk.riset) : undefined,
+      karakter: induk.karakter ? structuredClone(induk.karakter) : undefined,
+      naskah: b.naskah,
+      adegan: b.adegan,
+      video: b.video,
+      seri: { id: induk.id, part: b.part, totalPart: total, sebelumnya: dibuat.map((x) => x.id) },
+      unggahan: [],
+      statistik: [],
+      log: [{ waktu: now, oleh: "Nanda", pesan: `Part ${b.part} dari ${total}, dipecah dari proyek produksi ${induk.id}` }],
+    };
+    db.projects.push(p);
+    dibuat.push(p);
+  }
+  await save();
+  for (const p of dibuat) broadcast({ type: "project", project: p });
+  return dibuat;
 }
 
 /** Proyek lanjutan dari sebuah cerita: riset, gaya, dan suara diwarisi; mulai dari tahap Naskah. */

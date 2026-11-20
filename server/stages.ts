@@ -5,8 +5,10 @@ import * as agen from "./agents.ts";
 import * as editor from "./editor.ts";
 import * as tts from "./tts.ts";
 import * as analis from "./analyst.ts";
-import { registerStage } from "./pipeline.ts";
-import { getSettings, updateSettings } from "./store.ts";
+import { kick, registerStage } from "./pipeline.ts";
+import { addLog, buatProyekPart, getProject, getSettings, updateProject, updateSettings } from "./store.ts";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 registerStage("riset", {
   status: "Riset topik...",
@@ -72,25 +74,96 @@ registerStage("edit", {
   status: "Ngedit video...",
   async run(p) {
     const s = getSettings();
-    let narasi: string[] | undefined;
-    let modelSuara: string | undefined;
-    if (s.narasiTts) {
-      const dir = editor.projectDir(p.id);
-      const suara = p.suara ?? tts.suaraBawaan(p.format);
-      const hasil = await tts.narasiSemua(dir, (p.adegan ?? []).map((a) => a.narasi), suara, p.format, p.modelSuara);
-      narasi = hasil.files;
-      modelSuara = hasil.model;
+    const dir = editor.projectDir(p.id);
+    const suara = p.suara ?? tts.suaraBawaan(p.format);
+    const semua = p.adegan ?? [];
+    const nPart = p.naskah?.part?.length ?? 1;
+
+    if (nPart <= 1 || !semua.some((a) => a.part)) {
+      let narasi: string[] | undefined;
+      let modelSuara: string | undefined;
+      if (s.narasiTts) {
+        const hasil = await tts.narasiSemua(dir, semua.map((a) => a.narasi), suara, p.format, p.modelSuara);
+        narasi = hasil.files;
+        modelSuara = hasil.model;
+      }
+      const v = await editor.render(p, { subtitle: s.subtitle, narasi, volumeKlip: s.volumeKlip });
+      return {
+        apply: (x) => {
+          x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString() };
+          if (modelSuara) x.modelSuara = modelSuara;
+        },
+        pesan: `Video final ${Math.round(v.durasi)} detik siap`,
+      };
     }
-    const v = await editor.render(p, { subtitle: s.subtitle, narasi, volumeKlip: s.volumeKlip });
+
+    // cerita utuh: satu video per part, suara narasi memakai model yang sama untuk semua part
+    let modelSuara = p.modelSuara;
+    const bagian: Parameters<typeof buatProyekPart>[1] = [];
+    for (let k = 1; k <= nPart; k++) {
+      const adeganPart = semua.filter((a) => a.part === k);
+      let narasi: string[] | undefined;
+      if (s.narasiTts) {
+        const hasil = await tts.narasiSemua(dir, adeganPart.map((a) => a.narasi), suara, p.format, modelSuara);
+        narasi = hasil.files;
+        modelSuara = hasil.model;
+      }
+      const v = await editor.render(
+        { ...p, adegan: adeganPart },
+        { subtitle: s.subtitle, narasi, volumeKlip: s.volumeKlip, keluaran: `final-part-${k}.mp4`, subtitleFile: `subtitle-part-${k}.srt` },
+      );
+      const b = p.naskah!.part![k - 1];
+      bagian.push({
+        part: k,
+        naskah: { judulKerja: `${p.naskah!.judulKerja} (Part ${k})`, hook: b.hook, narasi: b.narasi, cta: b.cta },
+        adegan: adeganPart.map((a, i) => ({ ...a, no: i + 1, klip: undefined })),
+        video: { file: v.file, durasi: v.durasi, subtitle: `subtitle-part-${k}.srt`, dibuat: new Date().toISOString() },
+      });
+    }
+    let idPart: string[] = [];
     return {
       apply: (x) => {
-        x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString() };
         if (modelSuara) x.modelSuara = modelSuara;
       },
-      pesan: `Video final ${Math.round(v.durasi)} detik siap`,
+      pesan: `${nPart} video part siap (${bagian.map((b) => `${Math.round(b.video.durasi)} dtk`).join(", ")}), dipecah jadi ${nPart} proyek`,
+      selesai: true,
+      sesudah: async () => {
+        const induk = getProject(p.id);
+        if (!induk) return;
+        const lama = (induk.dipecahMenjadi ?? []).map((id) => getProject(id)).filter((x): x is NonNullable<typeof x> => Boolean(x));
+        if (lama.length === bagian.length) {
+          // render ulang: perbarui video proyek part yang sudah ada, jangan buat dobel
+          for (const [i, x] of lama.entries()) {
+            const tujuan = editor.projectDir(x.id);
+            await fs.mkdir(tujuan, { recursive: true });
+            await fs.copyFile(path.join(dir, bagian[i].video.file), path.join(tujuan, bagian[i].video.file));
+            await fs.copyFile(path.join(dir, bagian[i].video.subtitle), path.join(tujuan, bagian[i].video.subtitle));
+            await updateProject(x.id, (y) => {
+              y.video = bagian[i].video;
+              y.adegan = bagian[i].adegan;
+              addLog(y, "Nanda", "Video part diperbarui dari render ulang proyek produksi");
+            });
+          }
+          return;
+        }
+        const dibuat = await buatProyekPart({ ...induk, modelSuara }, bagian);
+        idPart = dibuat.map((x) => x.id);
+        // pindahkan video & subtitle tiap part ke folder proyek part-nya
+        for (const [i, x] of dibuat.entries()) {
+          const tujuan = editor.projectDir(x.id);
+          await fs.mkdir(tujuan, { recursive: true });
+          await fs.copyFile(path.join(dir, bagian[i].video.file), path.join(tujuan, bagian[i].video.file));
+          await fs.copyFile(path.join(dir, bagian[i].video.subtitle), path.join(tujuan, bagian[i].video.subtitle));
+        }
+        await updateProject(p.id, (x) => {
+          x.dipecahMenjadi = idPart;
+          addLog(x, "Nanda", `Dipecah menjadi ${idPart.length} proyek part: ${idPart.join(", ")}`);
+        });
+        kick();
+      },
     };
   },
-  siap: (p) => (p.video ? null : "Video final belum ada"),
+  siap: (p) => (p.video || p.dipecahMenjadi?.length ? null : "Video final belum ada"),
 });
 
 registerStage("paket", {

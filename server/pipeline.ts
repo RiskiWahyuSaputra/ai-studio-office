@@ -13,6 +13,10 @@ export interface StageResult {
   pesan: string;
   /** true = tahap ini butuh tindakanmu sebelum lanjut */
   tunggu?: boolean;
+  /** true = proyek ini selesai di tahap ini (mis. sudah dipecah jadi proyek per part) */
+  selesai?: boolean;
+  /** dijalankan setelah hasil disimpan (mis. membuat proyek lain) */
+  sesudah?: () => Promise<void>;
 }
 
 export interface StageDef {
@@ -77,7 +81,9 @@ async function jalankan(id: string, stage: StageId, def: StageDef, memberId: str
       if (x.tahap !== stage) return;
       hasil.apply(x);
       addLog(x, m.nama, hasil.pesan);
-      if (hasil.tunggu || !getSettings().otomatis) {
+      if (hasil.selesai) {
+        x.status = "selesai";
+      } else if (hasil.tunggu || !getSettings().otomatis) {
         x.status = "menunggu-kamu";
       } else {
         pindahKe = nextStage(stage);
@@ -90,6 +96,7 @@ async function jalankan(id: string, stage: StageId, def: StageDef, memberId: str
       }
     });
     tunda.delete(id);
+    await hasil.sesudah?.();
     activity({ type: "selesai-kerja", memberId });
     if (pindahKe) serah(memberId, pindahKe, hasil.pesan);
     else activity({ type: "bicara", memberId, teks: hasil.tunggu ? "Giliranmu, Bos!" : "Beres!" });

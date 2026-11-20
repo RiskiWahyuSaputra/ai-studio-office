@@ -127,11 +127,19 @@ export interface Riset {
   kataKunci: string[];
 }
 
+export interface BagianNaskah {
+  hook: string;
+  narasi: string;
+  cta: string;
+}
+
 export interface Naskah {
   judulKerja: string;
   hook: string;
   narasi: string;
   cta: string;
+  /** cerita utuh yang dibagi per part (diisi kalau rencanaPart > 1) */
+  part?: BagianNaskah[];
 }
 
 export interface Adegan {
@@ -142,6 +150,8 @@ export interface Adegan {
   prompt: string;
   /** prompt dengan penanda {{Nama}}; dipakai untuk menempel ulang lembar karakter */
   promptMentah?: string;
+  /** nomor part (cerita utuh yang dipecah jadi beberapa video) */
+  part?: number;
   klip?: string;
 }
 
@@ -217,6 +227,10 @@ export interface Project {
   seri?: Seri;
   /** lembar karakter tetap; diwariskan ke part berikutnya */
   karakter?: Karakter[];
+  /** cerita utuh sampai tamat, nanti dipecah jadi sekian video saat edit */
+  rencanaPart?: number;
+  /** proyek produksi yang sudah dipecah: id proyek tiap part */
+  dipecahMenjadi?: string[];
   ide: string;
   dibuat: string;
   diubah: string;

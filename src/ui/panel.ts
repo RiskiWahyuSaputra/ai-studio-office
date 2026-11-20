@@ -73,6 +73,16 @@ function renderList(s: UiState): string {
           .join("")}
       </fieldset>
       <label class="field">
+        <span>Jumlah part (cerita utuh, nanti dipecah jadi beberapa video)</span>
+        <select name="rencanaPart">
+          <option value="1">1 video</option>
+          <option value="2">2 part</option>
+          <option value="3">3 part</option>
+          <option value="4">4 part</option>
+          <option value="5">5 part</option>
+        </select>
+      </label>
+      <label class="field">
         <span>Ide (opsional)</span>
         <input name="ide" maxlength="200" placeholder="mis. Batavia 1740, kucing oren di pasar" />
       </label>
@@ -199,6 +209,11 @@ function aksi(p: Project, s: UiState): string {
   if (p.status === "gagal")
     return `<div class="callout callout-bad"><strong>${esc(tahapNama)} gagal:</strong> ${esc(p.galat)}
       <div class="row"><button class="btn" data-action="ulang" data-tahap="${p.tahap}">Coba lagi</button></div></div>`;
+  if (p.status === "selesai" && p.dipecahMenjadi?.length)
+    return `<div class="callout callout-ok">Video sudah dipecah menjadi ${p.dipecahMenjadi.length} part. Lanjutkan caption & unggah di proyek tiap part:
+      <div class="row">${p.dipecahMenjadi
+        .map((id, i) => (s.projects.has(id) ? `<button class="btn btn-sm" data-action="buka" data-id="${id}">Buka Part ${i + 1}</button>` : ""))
+        .join("")}</div></div>`;
   if (p.status === "selesai")
     return `<div class="callout callout-ok">Proyek selesai. Lihat saran Yoga di bawah untuk video berikutnya.</div>`;
   const petunjuk = PETUNJUK[p.tahap]?.(p, s) ?? `Cek hasil ${esc(tahapNama)}, sunting bila perlu, lalu lanjutkan.`;
@@ -232,6 +247,24 @@ function sectionRiset(p: Project) {
 function sectionNaskah(p: Project) {
   const n = p.naskah;
   if (!n) return "";
+  if (n.part?.length) {
+    return `<details class="card" open><summary><h3>Naskah utuh · Sari</h3>${ulangBtn("naskah")}</summary>
+    <div class="stack" data-edit="naskah-part">
+      <label class="field"><span>Judul cerita</span><input data-f="judulKerja" value="${esc(n.judulKerja)}" /></label>
+      ${n.part
+        .map(
+          (b, i) => `<fieldset class="part-box" data-part="${i}">
+          <legend>Part ${i + 1}${i === n.part!.length - 1 ? " (tamat)" : ""}</legend>
+          <label class="field"><span>Hook</span><textarea data-p="hook" rows="2">${esc(b.hook)}</textarea></label>
+          <label class="field"><span>Narasi</span><textarea data-p="narasi" rows="5">${esc(b.narasi)}</textarea></label>
+          <label class="field"><span>Ajakan (CTA)</span><input data-p="cta" value="${esc(b.cta)}" /></label>
+        </fieldset>`,
+        )
+        .join("")}
+      <div class="row"><button class="btn btn-sm" data-action="simpan-naskah-part">Simpan naskah</button></div>
+    </div>
+  </details>`;
+  }
   return `<details class="card" open><summary><h3>Naskah · Sari</h3>${ulangBtn("naskah")}</summary>
     <div class="stack" data-edit="naskah">
       <label class="field"><span>Judul kerja</span><input data-f="judulKerja" value="${esc(n.judulKerja)}" /></label>
@@ -413,6 +446,7 @@ function sectionAdegan(p: Project) {
     <ol class="scenes">${p.adegan
       .map(
         (a) => `
+      ${a.part && a.part !== p.adegan![p.adegan!.indexOf(a) - 1]?.part ? `<li class="part-judul">Part ${a.part}</li>` : ""}
       <li class="scene${bolehUnggahKlip(p) ? " droppable" : ""}" data-no="${a.no}" ${bolehUnggahKlip(p) ? `data-drop="klip"` : ""}>
         <div class="scene-head"><strong>Adegan ${a.no}</strong><span class="muted">${a.durasi} dtk</span>${a.klip ? `<span class="badge badge-selesai">Klip ada</span>` : ""}</div>
         <p class="muted">${esc(a.visual)}</p>
@@ -511,10 +545,10 @@ function sectionKarakter(p: Project) {
 }
 
 function sectionSeri(p: Project, s: UiState) {
-  if (!p.naskah) return "";
+  if (!p.naskah || p.dipecahMenjadi?.length || p.naskah.part?.length) return "";
   const idSeri = p.seri?.id ?? p.id;
   const anggota = [...s.projects.values()]
-    .filter((x) => x.id === idSeri || x.seri?.id === idSeri)
+    .filter((x) => (x.id === idSeri && !x.dipecahMenjadi?.length) || x.seri?.id === idSeri)
     .sort((a, b) => (a.seri?.part ?? 1) - (b.seri?.part ?? 1));
   const part = p.seri?.part ?? 1;
   const total = p.seri?.totalPart;
@@ -562,7 +596,7 @@ function renderProject(p: Project, s: UiState): string {
   <div class="crumbs"><button class="link" data-action="kembali">← Semua proyek</button>
     <span class="hapus-box"><button class="link link-bad" data-action="hapus">Hapus proyek</button></span></div>
   <section class="card">
-    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}${p.seri ? ` · Part ${p.seri.part} dari ${p.seri.totalPart}` : ""}</p>
+    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}${p.seri ? ` · Part ${p.seri.part} dari ${p.seri.totalPart}` : ""}${p.naskah?.part?.length ? ` · Cerita utuh ${p.naskah.part.length} part` : p.rencanaPart ? ` · Rencana ${p.rencanaPart} part` : ""}</p>
     <h2>${esc(judulProyek(p))}</h2>
     <p class="muted">Dibuat ${waktu(p.dibuat)} ${badge(p)}</p>
     ${stepper(p)}

@@ -6,7 +6,7 @@ import { getProject } from "./store.ts";
 import { adeganTemplat, naskahTemplat, paketTemplat, risetTemplat } from "./templates.ts";
 import { ATURAN_AMAN } from "../src/shared/kebijakan.ts";
 import { kembangkan } from "../src/shared/karakter.ts";
-import { GAYA, FORMATS, type Karakter, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
+import { GAYA, FORMATS, type BagianNaskah, type Karakter, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
 
 const KONTEKS = (p: Project) =>
   `Kamu bagian dari tim kreator konten video AI berbahasa Indonesia untuk YouTube Shorts, TikTok, dan Instagram Reels.
@@ -55,9 +55,48 @@ ${lalu || "(tidak tersedia)"}
 - judulKerja: judul cerita yang sama dengan part sebelumnya, ditambah " (Part ${part})".`;
 }
 
+/** Gabungkan naskah per part ke field utama (hook part 1, semua narasi, cta part terakhir). */
+export function rangkumPart(judulKerja: string, part: BagianNaskah[]): Naskah {
+  return {
+    judulKerja,
+    hook: part[0]?.hook ?? "",
+    narasi: part.map((b, i) => `[Part ${i + 1}]\n${b.narasi}`).join("\n"),
+    cta: part.at(-1)?.cta ?? "",
+    part,
+  };
+}
+
 export async function naskah(p: Project): Promise<Naskah> {
   const r = p.riset!;
-  if (!aiAktif()) return naskahTemplat(p.format, r, p.seri);
+  const N = p.rencanaPart ?? 1;
+  if (!aiAktif()) {
+    if (N <= 1) return naskahTemplat(p.format, r, p.seri);
+    const part = Array.from({ length: N }, (_, i) => naskahTemplat(p.format, r, { id: p.id, part: i + 1, totalPart: N, sebelumnya: [] }));
+    return rangkumPart(r.sudut, part.map(({ hook, narasi, cta }) => ({ hook, narasi, cta })));
+  }
+  if (N > 1) {
+    const hasil = await generateJson<{ judulKerja: string; part: BagianNaskah[] }>(`${KONTEKS(p)}
+
+Peranmu: Penulis Naskah.
+Riset: ${JSON.stringify(r)}
+
+Tulis SATU cerita utuh dari awal sampai TAMAT dalam bahasa Indonesia, dibagi menjadi ${N} part. Tiap part adalah video terpisah 40–60 detik yang diunggah berurutan.
+Untuk tiap part:
+- hook: 1 kalimat pembuka yang bikin berhenti scroll. Part 2 dst diawali "Part N." lalu pengingat singkat yang bikin penasaran.
+- narasi: 4–6 baris, dipisah "\\n", tiap baris maks 20 kata, melanjutkan langsung dari part sebelumnya tanpa mengulang.
+- cta: part 1 sampai ${N - 1} diakhiri cliffhanger + ajakan follow untuk part berikutnya; part ${N} menuntaskan cerita (ungkap misteri / twist penutup yang memuaskan) dan bilang ceritanya tamat.
+${FORMATS[p.format].naskah}
+
+${ATURAN_AMAN}
+
+Nama tokoh nyata boleh muncul di judulKerja, tapi TIDAK di hook, narasi, atau cta.
+JANGAN menyebut usia tokoh di narasi.
+
+Balas JSON: {"judulKerja": string, "part": [{"hook": string, "narasi": string, "cta": string}]} dengan tepat ${N} part.`);
+    const part = (hasil.part ?? []).slice(0, N).filter((b) => b?.hook && b?.narasi);
+    if (part.length < N) throw new Error(`Naskah hanya berisi ${part.length} dari ${N} part, coba ulangi`);
+    return rangkumPart(hasil.judulKerja, part);
+  }
   return generateJson<Naskah>(`${KONTEKS(p)}
 
 Peranmu: Penulis Naskah.
@@ -82,7 +121,16 @@ const ATURAN_KARAKTER = `Deskripsi karakter WAJIB sangat spesifik supaya wajahny
 
 export async function storyboard(p: Project, s: Settings): Promise<{ adegan: Adegan[]; karakter?: Karakter[] }> {
   const n = p.naskah!;
-  if (!aiAktif()) return { adegan: adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip, p.gaya, s.narasiTts) };
+  const N = n.part?.length ?? 1;
+  if (!aiAktif()) {
+    if (N <= 1) return { adegan: adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip, p.gaya, s.narasiTts) };
+    const semua: Adegan[] = [];
+    n.part!.forEach((b, i) => {
+      const per = adeganTemplat(p.format, p.ide || p.riset!.topik, { judulKerja: n.judulKerja, ...b }, s.durasiKlip, p.gaya, s.narasiTts);
+      for (const a of per) semua.push({ ...a, no: semua.length + 1, part: i + 1 });
+    });
+    return { adegan: semua };
+  }
   // lembar karakter: milik proyek ini, atau warisan part sebelumnya
   const warisan = p.karakter?.length ? p.karakter : partSebelumnya(p).at(-1)?.karakter;
   const aturanSuara = s.narasiTts
@@ -105,7 +153,11 @@ ${(() => {
       ? `INI LANJUTAN CERITA (Part ${p.seri?.part}). Pakai deskripsi tokoh, pakaian, dan latar yang SAMA PERSIS dengan prompt Part sebelumnya ini:\n${contoh}\n`
       : "";
   })()}
-Pecah naskah menjadi ${s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan (hook = adegan 1, cta = adegan terakhir). Untuk tiap adegan tulis:
+${
+  N > 1
+    ? `Naskah ini satu cerita utuh yang terdiri dari ${N} part (lihat field "part"). Untuk SETIAP part, pecah menjadi ${s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan: adegan pertama part = hook part itu, adegan terakhir part = cta part itu. Urutkan adegan dari part 1 sampai part ${N}, dan isi field "part" (angka) di tiap adegan.`
+    : `Pecah naskah menjadi ${s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan (hook = adegan 1, cta = adegan terakhir).`
+} Untuk tiap adegan tulis:
 - visual: deskripsi singkat bahasa Indonesia.
 - narasi: kalimat yang diucapkan di adegan itu (ambil dari naskah).
 - prompt: prompt Veo dalam BAHASA INDONESIA (jangan pakai bahasa Inggris), satu paragraf, diawali "${GAYA[p.gaya ?? "sinematik"].kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis.
@@ -129,18 +181,29 @@ ${
 }
 Di setiap prompt, JANGAN menulis ulang deskripsi tokoh. Tulis penanda {{Nama}} (dengan kurung kurawal ganda) di tempat tokoh itu muncul, mis. "{{Raka}} berjalan pelan menyusuri lorong". Aplikasi akan menempelkan deskripsi lengkapnya secara otomatis. Tokoh figuran tanpa wajah jelas (siluet, bayangan) boleh dideskripsikan langsung.
 
-Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}], "adegan": [{"visual": string, "narasi": string, "prompt": string}]}`);
+Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}], "adegan": [{"visual": string, "narasi": string, "prompt": string${N > 1 ? ', "part": number' : ""}}]}`);
   const karakter = [...(warisan ?? [])];
   for (const k of hasil.karakter ?? []) {
     if (k?.nama && k?.deskripsi && !karakter.some((x) => x.nama.toLowerCase() === k.nama.toLowerCase())) karakter.push({ nama: k.nama.trim(), deskripsi: k.deskripsi.trim() });
   }
-  const adegan = hasil.adegan.slice(0, 10).map((a, i) => ({
+  const adegan = hasil.adegan.slice(0, 10 * N).map((a, i) => ({
     ...a,
+    part: N > 1 ? Math.min(N, Math.max(1, Math.round(Number(a.part) || 1))) : undefined,
     no: i + 1,
     durasi: s.durasiKlip,
     promptMentah: a.prompt,
     prompt: kembangkan(a.prompt, karakter),
   }));
+  if (N > 1) {
+    // part harus naik berurutan dan setiap part punya adegan
+    let terakhir = 1;
+    for (const a of adegan) {
+      a.part = Math.max(terakhir, a.part ?? terakhir);
+      terakhir = a.part;
+    }
+    const kosong = Array.from({ length: N }, (_, i) => i + 1).filter((k) => !adegan.some((a) => a.part === k));
+    if (kosong.length) throw new Error(`Adegan untuk part ${kosong.join(", ")} tidak dibuat, coba ulangi`);
+  }
   return { adegan, karakter: karakter.length ? karakter : undefined };
 }
 

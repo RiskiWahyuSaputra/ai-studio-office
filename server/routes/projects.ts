@@ -4,7 +4,7 @@ import { projectDir } from "../editor.ts";
 import { SUARA, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
 import { FORMATS, GAYA, type Format, type Gaya, type Karakter } from "../../src/shared/types.ts";
 import { terapkanKarakter } from "../../src/shared/karakter.ts";
-import { ekstrakKarakter } from "../agents.ts";
+import { ekstrakKarakter, rangkumPart } from "../agents.ts";
 import {
   createLanjutan,
   createProject,
@@ -35,7 +35,8 @@ projects.post("/projects", async (req, res) => {
   if (!(format in FORMATS)) return void res.status(400).json({ error: "Format tidak dikenal" });
   const ide = String(req.body?.ide ?? "").slice(0, 500);
   const gaya: Gaya = req.body?.gaya in GAYA ? req.body.gaya : "animasi-2d";
-  const p = await createProject(format, ide, gaya);
+  const rencanaPart = Math.min(5, Math.max(1, Math.floor(Number(req.body?.rencanaPart) || 1)));
+  const p = await createProject(format, ide, gaya, rencanaPart);
   activity({ type: "bicara", memberId: "produser", teks: "Proyek baru masuk!" });
   activity({ type: "serah", dari: "produser", ke: "peneliti", label: ide ? ide.slice(0, 26) : "Cari topik ya" });
   setTimeout(kick, 2500);
@@ -133,7 +134,14 @@ projects.patch("/projects/:id", async (req, res) => {
   const hasil = await updateProject(p.id, (x) => {
     if (b.gaya in GAYA) x.gaya = b.gaya;
     if (typeof b.suara === "string" && SUARA.some((v) => v.id === b.suara)) x.suara = b.suara;
-    if (b.naskah && x.naskah) x.naskah = { ...x.naskah, ...pickStr(b.naskah, ["judulKerja", "hook", "narasi", "cta"]) };
+    if (b.naskah && x.naskah) {
+      if (Array.isArray(b.naskah.part) && x.naskah.part) {
+        const part = x.naskah.part.map((lama, i) => ({ ...lama, ...pickStr(b.naskah.part[i] ?? {}, ["hook", "narasi", "cta"]) }));
+        x.naskah = rangkumPart(typeof b.naskah.judulKerja === "string" ? b.naskah.judulKerja : x.naskah.judulKerja, part);
+      } else {
+        x.naskah = { ...x.naskah, ...pickStr(b.naskah, ["judulKerja", "hook", "narasi", "cta"]) };
+      }
+    }
     if (Array.isArray(b.adegan) && x.adegan) {
       for (const a of b.adegan) {
         const t = x.adegan.find((y) => y.no === a.no);
