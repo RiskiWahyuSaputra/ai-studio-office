@@ -50,7 +50,7 @@ async function panggilTts(model: string, key: string, teks: string, suara: strin
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": key },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: `${arahan}\n${teks}` }] }],
+        contents: [{ parts: [{ text: arahan ? `${arahan} ${teks}` : teks }] }],
         generationConfig: {
           responseModalities: ["AUDIO"],
           speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: suara } } },
@@ -74,8 +74,15 @@ async function panggilTts(model: string, key: string, teks: string, suara: strin
 }
 
 /** Satu kalimat dengan satu model tertentu; dicoba ulang beberapa kali kalau model sibuk. */
-async function satuKalimat(dir: string, teks: string, suara: string, format: Format, model: string): Promise<string> {
-  const arahan = ARAHAN(format);
+/** Batas wajar panjang rekaman. Lebih dari ini = model ikut membacakan arahan atau bicara terlalu lambat. */
+const batasDurasi = (jumlahKata: number, jeda = 0) => jumlahKata * 0.75 + 2.5 + jeda;
+const hitungKata = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
+/** Model yang ketahuan ikut membacakan arahan gaya; kalimat berikutnya langsung tanpa arahan (hemat kuota). */
+const modelTanpaGaya = new Set<string>();
+
+async function satuKalimat(dir: string, teks: string, suara: string, format: Format, model: string, tanpaGaya = false): Promise<string> {
+  if (modelTanpaGaya.has(model)) tanpaGaya = true;
+  const arahan = tanpaGaya ? "" : ARAHAN(format);
   const nama = `suara-${kunci(teks, suara, arahan, model)}.wav`;
   const file = path.join(dir, nama);
   try {
@@ -97,6 +104,14 @@ async function satuKalimat(dir: string, teks: string, suara: string, format: For
       } else {
         const rate = r.mime.match(/rate=(\d+)/)?.[1] ?? "24000";
         await ffmpeg(["-f", "s16le", "-ar", rate, "-ac", "1", "-i", "pipe:0", "-ar", "48000", "-ac", "2", file], r.bytes);
+      }
+      const durasi = await durasiAudio(file);
+      if (!tanpaGaya && durasi > batasDurasi(hitungKata(teks))) {
+        // kemungkinan arahan gaya ikut dibacakan: buang, ulangi tanpa arahan
+        console.warn(`[tts] ${model}: ${durasi.toFixed(1)} dtk untuk ${hitungKata(teks)} kata, terlalu panjang. Ulangi tanpa arahan gaya.`);
+        await fs.rm(file, { force: true });
+        modelTanpaGaya.add(model);
+        return satuKalimat(dir, teks, suara, format, model, true);
       }
       return nama;
     } catch (e) {
@@ -156,7 +171,9 @@ async function durasiAudio(file: string): Promise<number> {
  * lalu dipotong di jeda terpanjang. Mengembalikan null kalau potongannya meragukan.
  */
 async function gabungan(dir: string, teks: string[], suara: string, format: Format, model: string): Promise<string[] | null> {
-  const arahan = `${ARAHAN(format)} Berhenti sekitar satu setengah detik di antara setiap baris.`;
+  // model yang tidak cocok dengan arahan gaya juga tidak dipakai untuk rekaman gabungan
+  if (modelTanpaGaya.has(model)) return null;
+  const arahan = ARAHAN(format);
   const id = kunci(teks.join("\n\n"), suara, arahan, model);
   const keluaran = teks.map((_, i) => `suara-${id}-${i + 1}.wav`);
   try {
@@ -175,6 +192,14 @@ async function gabungan(dir: string, teks: string[], suara: string, format: Form
   } catch {
     const r = await panggilTts(model, key, teks.join("\n\n"), suara, arahan);
     await simpanAudio(utuh, r.mime, r.bytes);
+    const total = await durasiAudio(utuh);
+    const kataTotal = teks.reduce((n, t) => n + hitungKata(t), 0);
+    if (total > batasDurasi(kataTotal, 1.5 * teks.length)) {
+      console.warn(`[tts] rekaman gabungan ${total.toFixed(1)} dtk terlalu panjang untuk ${kataTotal} kata, pakai per kalimat`);
+      await fs.rm(utuh, { force: true });
+      modelTanpaGaya.add(model);
+      return null;
+    }
   }
   const potong = await titikPotong(utuh, teks);
   if (!potong) {

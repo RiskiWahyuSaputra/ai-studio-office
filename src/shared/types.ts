@@ -47,7 +47,7 @@ export interface PanduanFormat {
   sutradara: string;
   /** tokoh utama berbicara langsung ke kamera (mis. vlog) */
   bicaraKeKamera: boolean;
-  /** arahan gaya baca untuk Gemini TTS */
+  /** arahan gaya baca untuk Gemini TTS, format resmi "Say …:" supaya tidak ikut dibacakan */
   arahanTts: string;
   /** suara TTS bawaan */
   suara: string;
@@ -65,7 +65,7 @@ export const FORMATS: Record<Format, PanduanFormat> = {
     naskah: 'Narasi orang kedua ("kamu"), membuat penonton merasa ada di sana.',
     sutradara: "Pakai sudut pandang orang pertama (first-person POV) dan detail periode yang akurat. Pencahayaan hangat dan sinematik.",
     bicaraKeKamera: false,
-    arahanTts: "Bacakan dalam bahasa Indonesia dengan suara narator yang tenang, hangat, dan sedikit dramatis, tempo sedang:",
+    arahanTts: "Say in a calm, warm, slightly dramatic documentary narrator voice:",
     suara: "Charon",
     kategoriYt: "27",
     saranSeri: "Buat seri lanjutan dari era yang sama supaya penonton menunggu bagian berikutnya.",
@@ -77,7 +77,7 @@ export const FORMATS: Record<Format, PanduanFormat> = {
     naskah: "Narasi diucapkan oleh hewan itu sendiri (orang pertama), lucu, boleh pakai bahasa gaul ringan.",
     sutradara: "Hewan berbicara langsung ke kamera seperti vlogger; ekspresif dan kocak. Warna cerah dan pencahayaan siang yang ceria.",
     bicaraKeKamera: true,
-    arahanTts: "Ucapkan dalam bahasa Indonesia dengan gaya vlogger yang lucu, ceria, dan ekspresif, tempo agak cepat:",
+    arahanTts: "Say in a cheerful, playful, energetic vlogger voice:",
     suara: "Puck",
     kategoriYt: "24",
     saranSeri: "Jadikan karakter hewan ini tokoh tetap supaya penonton kenal.",
@@ -92,8 +92,7 @@ export const FORMATS: Record<Format, PanduanFormat> = {
     sutradara:
       "Pencahayaan gelap kebiruan atau cahaya bulan, kontras tinggi; jangan pakai warna cerah atau suasana ceria. Bangun suasana horor lewat cahaya redup, kabut, bayangan panjang, lampu berkedip, sudut kamera rendah, dan sosok misterius yang hanya terlihat samar atau siluet dari kejauhan. Tidak ada darah, luka, mayat, atau wajah menyeramkan close-up.",
     bicaraKeKamera: false,
-    arahanTts:
-      "Bacakan dalam bahasa Indonesia seperti pendongeng cerita horor: suara pelan, sedikit berbisik, mencekam, tempo lambat dengan jeda dramatis:",
+    arahanTts: "Say in a slow, quiet, eerie whisper like a horror storyteller:",
     suara: "Enceladus",
     kategoriYt: "24",
     saranSeri: "Jadikan seri bersambung (Part 1, Part 2) supaya penonton kembali untuk akhir ceritanya.",
