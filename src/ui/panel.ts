@@ -542,7 +542,7 @@ function sectionSeri(p: Project, s: UiState) {
 function renderProject(p: Project, s: UiState): string {
   return `
   <div class="crumbs"><button class="link" data-action="kembali">← Semua proyek</button>
-    <button class="link link-bad" data-action="hapus">Hapus</button></div>
+    <span class="hapus-box"><button class="link link-bad" data-action="hapus">Hapus proyek</button></span></div>
   <section class="card">
     <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}${p.seri ? ` · Part ${p.seri.part} dari ${p.seri.totalPart}` : ""}</p>
     <h2>${esc(judulProyek(p))}</h2>

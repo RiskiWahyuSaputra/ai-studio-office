@@ -161,8 +161,29 @@ panel.addEventListener("click", async (ev) => {
       return setView({ kind: "member", id: el.dataset.id! });
     case "kembali":
       return setView({ kind: "list" });
-    case "hapus":
-      if (p && confirm("Hapus proyek ini beserta catatannya?")) await run(() => api.remove(p.id), "Proyek dihapus");
+    case "hapus": {
+      // konfirmasi dua langkah di panel (dialog confirm() browser bisa diblokir tanpa terlihat)
+      const box = el.closest(".hapus-box");
+      if (!box) return;
+      box.innerHTML = `<span class="muted">Hapus beserta video & catatannya?</span>
+        <button class="btn btn-sm btn-bahaya" data-action="hapus-yakin">Ya, hapus</button>
+        <button class="link" data-action="hapus-batal">Batal</button>`;
+      setTimeout(() => {
+        if (box.isConnected && box.querySelector('[data-action="hapus-yakin"]')) render(true);
+      }, 8000);
+      return;
+    }
+    case "hapus-batal":
+      render(true);
+      return;
+    case "hapus-yakin":
+      if (!p) return;
+      el.setAttribute("disabled", "");
+      await run(async () => {
+        await api.remove(p.id);
+        state.projects.delete(p.id);
+        setView({ kind: "list" });
+      }, "Proyek dihapus");
       return;
     case "lanjut":
       if (p) await run(() => api.lanjut(p.id));
