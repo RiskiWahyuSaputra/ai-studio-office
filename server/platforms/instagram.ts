@@ -10,6 +10,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { baseUrl } from "./tokens.ts";
+import { fetchUlang } from "../net.ts";
 
 const host = () => process.env.INSTAGRAM_GRAPH_HOST || "graph.facebook.com";
 const ver = () => process.env.INSTAGRAM_API_VERSION || "v23.0";
@@ -21,7 +22,7 @@ export const igConfigured = () => Boolean(process.env.INSTAGRAM_ACCESS_TOKEN && 
 async function graph<T>(method: "GET" | "POST", p: string, params: Record<string, string> = {}): Promise<T> {
   const q = new URLSearchParams({ ...params, access_token: token() });
   const url = `https://${host()}/${ver()}/${p}`;
-  const res = method === "GET" ? await fetch(`${url}?${q}`) : await fetch(url, { method, body: q });
+  const res = method === "GET" ? await fetchUlang(`${url}?${q}`) : await fetchUlang(url, { method, body: q });
   const j = (await res.json()) as T & { error?: { message: string } };
   if (!res.ok || j.error) throw new Error(`Instagram: ${j.error?.message ?? res.status}`);
   return j;
@@ -39,7 +40,7 @@ export async function igUpload(file: string, publicPath: string, caption: string
     const c = await graph<{ id: string; uri?: string }>("POST", `${userId()}/media`, { ...base, upload_type: "resumable" });
     containerId = c.id;
     const data = await fs.readFile(file);
-    const res = await fetch(c.uri ?? `https://rupload.facebook.com/ig-api-upload/${ver()}/${c.id}`, {
+    const res = await fetchUlang(c.uri ?? `https://rupload.facebook.com/ig-api-upload/${ver()}/${c.id}`, {
       method: "POST",
       headers: { authorization: `OAuth ${token()}`, offset: "0", file_size: String(data.length) },
       body: data,

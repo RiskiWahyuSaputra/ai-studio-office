@@ -7,6 +7,7 @@
 import fs from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { baseUrl, getToken, setToken } from "./tokens.ts";
+import { fetchUlang } from "../net.ts";
 
 const API = "https://open.tiktokapis.com/v2";
 /**
@@ -43,7 +44,7 @@ interface TokenRes {
 }
 
 async function tokenRequest(body: Record<string, string>) {
-  const res = await fetch(`${API}/oauth/token/`, {
+  const res = await fetchUlang(`${API}/oauth/token/`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_key: process.env.TIKTOK_CLIENT_KEY!, client_secret: process.env.TIKTOK_CLIENT_SECRET!, ...body }),
@@ -64,7 +65,7 @@ const PESAN_GALAT: Record<string, string> = {
 };
 
 async function api<T>(access: string, path: string, body?: unknown, method = "POST"): Promise<T> {
-  const res = await fetch(`${API}${path}`, {
+  const res = await fetchUlang(`${API}${path}`, {
     method,
     headers: { authorization: `Bearer ${access}`, "content-type": "application/json; charset=UTF-8" },
     body: body === undefined ? undefined : JSON.stringify(body),
@@ -117,7 +118,7 @@ async function kirimFile(uploadUrl: string, data: Buffer<ArrayBuffer>, chunk: nu
   for (let i = 0; i < count; i++) {
     const start = i * chunk;
     const end = i === count - 1 ? size : start + chunk;
-    const res = await fetch(uploadUrl, {
+    const res = await fetchUlang(uploadUrl, {
       method: "PUT",
       headers: { "content-type": "video/mp4", "content-range": `bytes ${start}-${end - 1}/${size}` },
       body: data.subarray(start, end),

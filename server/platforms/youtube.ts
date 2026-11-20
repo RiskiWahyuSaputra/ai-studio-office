@@ -6,6 +6,7 @@
 import fs from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { baseUrl, getToken, setToken } from "./tokens.ts";
+import { fetchUlang } from "../net.ts";
 
 const SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.readonly"];
 const redirect = () => `${baseUrl()}/api/oauth/youtube/callback`;
@@ -29,7 +30,7 @@ export function ytAuthUrl() {
 }
 
 async function tokenRequest(body: Record<string, string>) {
-  const res = await fetch("https://oauth2.googleapis.com/token", {
+  const res = await fetchUlang("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID!, client_secret: process.env.GOOGLE_CLIENT_SECRET!, ...body }),
@@ -43,7 +44,7 @@ export async function ytCallback(code: string, state: string) {
   if (!pendingStates.delete(state)) throw new Error("State OAuth tidak cocok, coba hubungkan ulang");
   const j = await tokenRequest({ code, grant_type: "authorization_code", redirect_uri: redirect() });
   const token = { access_token: j.access_token!, refresh_token: j.refresh_token, expires_at: Date.now() + (j.expires_in ?? 3600) * 1000 };
-  const ch = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
+  const ch = await fetchUlang("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
     headers: { authorization: `Bearer ${token.access_token}` },
   }).then((r) => r.json() as Promise<{ items?: { id: string; snippet: { title: string } }[] }>);
   await setToken("youtube", { ...token, akun: ch.items?.[0]?.snippet.title ?? "Channel YouTube", extra: { channelId: ch.items?.[0]?.id ?? "" } });
@@ -70,7 +71,7 @@ export interface YtMeta {
 export async function ytUpload(file: string, m: YtMeta): Promise<{ id: string; url: string }> {
   const access = await ytAccess();
   const data = await fs.readFile(file);
-  const init = await fetch("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status", {
+  const init = await fetchUlang("https://www.googleapis.com/upload/youtube/v3/videos?uploadType=resumable&part=snippet,status", {
     method: "POST",
     headers: {
       authorization: `Bearer ${access}`,
@@ -97,7 +98,7 @@ export async function ytUpload(file: string, m: YtMeta): Promise<{ id: string; u
   if (!init.ok) throw new Error(`YouTube menolak: ${await errText(init)}`);
   const loc = init.headers.get("location");
   if (!loc) throw new Error("YouTube tidak memberi alamat unggah");
-  const up = await fetch(loc, { method: "PUT", headers: { "content-type": "video/mp4" }, body: data });
+  const up = await fetchUlang(loc, { method: "PUT", headers: { "content-type": "video/mp4" }, body: data });
   if (!up.ok) throw new Error(`Unggah YouTube gagal: ${await errText(up)}`);
   const v = (await up.json()) as { id: string };
   return { id: v.id, url: `https://youtube.com/shorts/${v.id}` };
@@ -106,7 +107,7 @@ export async function ytUpload(file: string, m: YtMeta): Promise<{ id: string; u
 export async function ytStats(ids: string[]) {
   if (!ids.length) return [];
   const access = await ytAccess();
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids.join(",")}`, {
+  const res = await fetchUlang(`https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${ids.join(",")}`, {
     headers: { authorization: `Bearer ${access}` },
   });
   if (!res.ok) throw new Error(`Statistik YouTube gagal: ${await errText(res)}`);
