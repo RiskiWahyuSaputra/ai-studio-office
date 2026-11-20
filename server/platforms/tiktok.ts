@@ -24,7 +24,7 @@ export function ttAuthUrl() {
   const q = new URLSearchParams({
     client_key: process.env.TIKTOK_CLIENT_KEY!,
     // video.list hanya bisa dipakai kalau scope itu tersedia di app-mu (dipakai untuk statistik)
-    scope: process.env.TIKTOK_SCOPES || "user.info.basic,video.publish",
+    scope: process.env.TIKTOK_SCOPES || "user.info.basic,video.publish,video.upload",
     response_type: "code",
     redirect_uri: redirect(),
     state,
@@ -52,6 +52,16 @@ async function tokenRequest(body: Record<string, string>) {
   return j;
 }
 
+const PESAN_GALAT: Record<string, string> = {
+  unaudited_client_can_only_post_to_private_accounts:
+    "app belum diaudit TikTok, jadi hanya bisa langsung posting ke akun yang disetel privat. Pilih \"Kirim ke draft TikTok\", atau setel akunmu privat sementara.",
+  scope_not_authorized: "izin belum diberikan. Klik Putuskan lalu Hubungkan TikTok lagi supaya izin baru ikut diminta.",
+  spam_risk_too_many_posts: "terlalu banyak posting hari ini. Coba lagi besok.",
+  spam_risk_user_banned_from_posting: "akun ini sedang dibatasi untuk posting.",
+  privacy_level_option_mismatch: "pilihan privasi tidak tersedia untuk akun ini.",
+  access_token_invalid: "sesi TikTok habis. Klik Putuskan lalu Hubungkan TikTok lagi.",
+};
+
 async function api<T>(access: string, path: string, body?: unknown, method = "POST"): Promise<T> {
   const res = await fetch(`${API}${path}`, {
     method,
@@ -59,7 +69,10 @@ async function api<T>(access: string, path: string, body?: unknown, method = "PO
     body: body === undefined ? undefined : JSON.stringify(body),
   });
   const j = (await res.json()) as { data: T; error?: { code: string; message: string } };
-  if (!res.ok || (j.error && j.error.code !== "ok")) throw new Error(`TikTok: ${j.error?.message || j.error?.code || res.status}`);
+  if (!res.ok || (j.error && j.error.code !== "ok")) {
+    const kode = j.error?.code ?? String(res.status);
+    throw new Error(`TikTok: ${PESAN_GALAT[kode] ?? j.error?.message ?? kode} (${kode})`);
+  }
   return j.data;
 }
 
@@ -98,7 +111,48 @@ async function access(): Promise<{ token: string; username: string }> {
 
 const MB = 1024 * 1024;
 
-export async function ttUpload(file: string, caption: string, privasi: string): Promise<{ id: string; url?: string }> {
+async function kirimFile(uploadUrl: string, data: Buffer<ArrayBuffer>, chunk: number, count: number) {
+  const size = data.length;
+  for (let i = 0; i < count; i++) {
+    const start = i * chunk;
+    const end = i === count - 1 ? size : start + chunk;
+    const res = await fetch(uploadUrl, {
+      method: "PUT",
+      headers: { "content-type": "video/mp4", "content-range": `bytes ${start}-${end - 1}/${size}` },
+      body: data.subarray(start, end),
+    });
+    if (!res.ok) throw new Error(`Unggah potongan TikTok gagal (${res.status})`);
+  }
+}
+
+const potongan = (size: number) => (size <= 64 * MB ? { chunk: size, count: 1 } : { chunk: 10 * MB, count: Math.floor(size / (10 * MB)) });
+
+/**
+ * Kirim ke kotak masuk TikTok sebagai draft (scope video.upload). Diizinkan untuk app yang belum
+ * diaudit; kamu menyelesaikan posting (caption & privasi) dari aplikasi TikTok.
+ */
+async function ttDraft(file: string): Promise<{ id: string; url?: string; pesan?: string }> {
+  const { token } = await access();
+  const data = await fs.readFile(file);
+  const { chunk, count } = potongan(data.length);
+  const init = await api<{ publish_id: string; upload_url: string }>(token, "/post/publish/inbox/video/init/", {
+    source_info: { source: "FILE_UPLOAD", video_size: data.length, chunk_size: chunk, total_chunk_count: count },
+  });
+  await kirimFile(init.upload_url, data, chunk, count);
+  for (let i = 0; i < 60; i++) {
+    await new Promise((r) => setTimeout(r, 5000));
+    const st = await api<{ status: string; fail_reason?: string }>(token, "/post/publish/status/fetch/", { publish_id: init.publish_id });
+    if (st.status === "FAILED") throw new Error(`TikTok menolak: ${st.fail_reason ?? "tanpa alasan"}`);
+    if (st.status === "SEND_TO_USER_INBOX" || st.status === "PUBLISH_COMPLETE") break;
+  }
+  return {
+    id: init.publish_id,
+    pesan: "Masuk ke kotak masuk TikTok. Buka aplikasi TikTok, ketuk notifikasinya, tempel caption, lalu posting.",
+  };
+}
+
+export async function ttUpload(file: string, caption: string, privasi: string): Promise<{ id: string; url?: string; pesan?: string }> {
+  if (privasi === "DRAFT") return ttDraft(file);
   const { token, username } = await access();
   const creator = await api<{ privacy_level_options: string[] }>(token, "/post/publish/creator_info/query/", {});
   const privacy = creator.privacy_level_options.includes(privasi) ? privasi : "SELF_ONLY";
@@ -109,8 +163,7 @@ export async function ttUpload(file: string, caption: string, privasi: string): 
   const data = await fs.readFile(file);
   const size = data.length;
   // TikTok: potongan 5–64 MB; file kecil dikirim utuh, potongan terakhir menampung sisa
-  const chunk = size <= 64 * MB ? size : 10 * MB;
-  const count = size <= 64 * MB ? 1 : Math.floor(size / chunk);
+  const { chunk, count } = potongan(size);
 
   const init = await api<{ publish_id: string; upload_url: string }>(token, "/post/publish/video/init/", {
     post_info: {
@@ -124,16 +177,7 @@ export async function ttUpload(file: string, caption: string, privasi: string): 
     source_info: { source: "FILE_UPLOAD", video_size: size, chunk_size: chunk, total_chunk_count: count },
   });
 
-  for (let i = 0; i < count; i++) {
-    const start = i * chunk;
-    const end = i === count - 1 ? size : start + chunk;
-    const res = await fetch(init.upload_url, {
-      method: "PUT",
-      headers: { "content-type": "video/mp4", "content-range": `bytes ${start}-${end - 1}/${size}` },
-      body: data.subarray(start, end),
-    });
-    if (!res.ok) throw new Error(`Unggah potongan TikTok gagal (${res.status})`);
-  }
+  await kirimFile(init.upload_url, data, chunk, count);
 
   // tunggu TikTok memproses video
   for (let i = 0; i < 60; i++) {

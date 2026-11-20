@@ -308,7 +308,7 @@ function sectionUnggah(p: Project, s: UiState) {
            </select>`
         : k === "tiktok"
           ? `<select data-opsi="privasi" aria-label="Privasi TikTok">
-               <option value="SELF_ONLY">Hanya saya</option><option value="PUBLIC_TO_EVERYONE">Publik</option><option value="MUTUAL_FOLLOW_FRIENDS">Teman</option>
+               <option value="DRAFT">Kirim ke draft TikTok (posting dari aplikasi)</option><option value="SELF_ONLY">Langsung, hanya saya</option><option value="PUBLIC_TO_EVERYONE">Langsung, publik</option><option value="MUTUAL_FOLLOW_FRIENDS">Langsung, teman</option>
              </select>`
           : "";
       return `<div class="platform" data-platform="${k}">

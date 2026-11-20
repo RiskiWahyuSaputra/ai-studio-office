@@ -70,7 +70,7 @@ Selama project API belum lolos audit Google, video yang diunggah otomatis bersta
 2. Scope: `user.info.basic`, `video.publish` (tambahkan `video.list` lewat `TIKTOK_SCOPES` kalau tersedia, untuk statistik otomatis). Redirect URI: `https://riskiwahyusaputra.github.io/kantor-piksel/tiktok-callback.html`. Halaman itu (`docs/tiktok-callback.html`) meneruskan login ke `http://localhost:8787`, jadi tidak perlu tunnel. Isi `TIKTOK_REDIRECT_URI` dengan alamat yang sama.
 3. Isi `TIKTOK_CLIENT_KEY` dan `TIKTOK_CLIENT_SECRET`.
 
-Sebelum app lolos audit TikTok, postingan hanya bisa berstatus privat (`SELF_ONLY`).
+Sebelum app lolos audit TikTok, posting langsung hanya bisa ke akun yang disetel privat. Pakai pilihan **Kirim ke draft TikTok**: video masuk ke kotak masuk TikTok, lalu kamu tempel caption dan posting dari aplikasinya.
 
 ### Instagram Reels
 

@@ -17,7 +17,7 @@ interface Uploader {
   configured: () => boolean;
   catatan: string;
   authUrl?: () => string;
-  upload: (p: Project, file: string, opsi: Record<string, string>) => Promise<{ id: string; url?: string }>;
+  upload: (p: Project, file: string, opsi: Record<string, string>) => Promise<{ id: string; url?: string; pesan?: string }>;
 }
 
 export const uploaders: Partial<Record<Platform, Uploader>> = {
@@ -123,7 +123,7 @@ social.post("/projects/:id/unggah/:platform", async (req, res) => {
     const r = await u.upload(structuredClone(p), file, opsi);
     await updateProject(p.id, (x) => {
       const e = x.unggahan.find((y) => y.platform === platform && y.waktu === mulai);
-      if (e) Object.assign(e, { status: "berhasil", idEksternal: r.id, url: r.url, waktu: new Date().toISOString() });
+      if (e) Object.assign(e, { status: "berhasil", idEksternal: r.id, url: r.url, pesan: r.pesan, waktu: new Date().toISOString() });
       addLog(x, "Putri", `Tayang di ${NAMA[platform]}${r.url ? `: ${r.url}` : ""}`);
     });
     activity({ type: "bicara", memberId: "sosmed", teks: `Sudah naik di ${NAMA[platform]}!` });
