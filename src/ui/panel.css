@@ -193,3 +193,7 @@ a.btn { text-decoration: none; display: inline-block; }
 .gaya-opt input { accent-color: var(--accent); margin: 0; }
 .gaya-ganti { display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--ink-2); margin-bottom: 10px; }
 .gaya-ganti select { font: 12px var(--font-body); background: #110f19; color: var(--ink); border: 2px solid var(--line); padding: 5px; }
+
+.seri-list { margin: 0 0 8px; padding-left: 20px; }
+.seri-list li { margin-bottom: 4px; }
+.seri-list .link { color: var(--accent); text-decoration: underline; padding: 0; }

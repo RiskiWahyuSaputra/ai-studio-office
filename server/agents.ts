@@ -2,6 +2,7 @@
  * Tugas tiap karyawan. Masing-masing memakai Gemini bila tersedia, kalau tidak memakai templat.
  */
 import { aiAktif, generateJson } from "./ai.ts";
+import { getProject } from "./store.ts";
 import { adeganTemplat, naskahTemplat, paketTemplat, risetTemplat } from "./templates.ts";
 import { ATURAN_AMAN } from "../src/shared/kebijakan.ts";
 import { GAYA, FORMATS, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
@@ -25,9 +26,37 @@ Balas JSON:
 {"topik": string, "sudut": string (kalimat pembuka konsep, mis. "POV: kamu ..."), "alasan": string (kenapa berpotensi ditonton), "fakta": string[] (3-5 fakta pendek), "kataKunci": string[] (3-6 kata kunci pencarian)}`);
 }
 
+/** Part-part sebelumnya dari cerita bersambung (yang masih ada). */
+function partSebelumnya(p: Project): Project[] {
+  return (p.seri?.sebelumnya ?? []).map((id) => getProject(id)).filter((x): x is Project => Boolean(x?.naskah));
+}
+
+function arahanSeri(p: Project): string {
+  if (!p.seri) return "";
+  const { part, totalPart } = p.seri;
+  const lalu = partSebelumnya(p)
+    .map((x) => `--- Part ${x.seri?.part ?? "?"} ---\nHook: ${x.naskah!.hook}\n${x.naskah!.narasi}`)
+    .join("\n\n");
+  const akhir = part >= totalPart;
+  return `
+INI CERITA BERSAMBUNG: Part ${part} dari ${totalPart}.
+Naskah part sebelumnya:
+${lalu || "(tidak tersedia)"}
+
+- Lanjutkan LANGSUNG dari akhir part terakhir di atas; jangan mengulang kejadian yang sudah diceritakan.
+- Tokoh, tempat, dan sudut pandang ("aku" atau "kamu") harus sama dengan part sebelumnya; jangan mencampur keduanya.
+- hook: buka dengan "Part ${part}." lalu satu kalimat pengingat singkat yang bikin penasaran.
+- ${
+    akhir
+      ? "Ini PART TERAKHIR: tuntaskan ceritanya (ungkap misterinya atau beri twist penutup yang memuaskan). cta: ajak follow untuk cerita baru, sebut bahwa cerita ini tamat."
+      : `Akhiri dengan cliffhanger yang kuat. cta: ajak follow dan sebut "Part ${part + 1}" menyusul.`
+  }
+- judulKerja: judul cerita yang sama dengan part sebelumnya, ditambah " (Part ${part})".`;
+}
+
 export async function naskah(p: Project): Promise<Naskah> {
   const r = p.riset!;
-  if (!aiAktif()) return naskahTemplat(p.format, r);
+  if (!aiAktif()) return naskahTemplat(p.format, r, p.seri);
   return generateJson<Naskah>(`${KONTEKS(p)}
 
 Peranmu: Penulis Naskah.
@@ -40,6 +69,8 @@ Tulis naskah video 40–60 detik dalam bahasa Indonesia yang santai dan mudah di
 ${FORMATS[p.format].naskah}
 
 ${ATURAN_AMAN}
+${arahanSeri(p)}
+
 Nama tokoh nyata boleh muncul di judulKerja, tapi TIDAK di hook, narasi, atau cta (karena kalimat itu diucapkan di video).
 Aturan usia dewasa itu untuk deskripsi visual nanti; JANGAN menyebut usia tokoh di narasi (terdengar janggal saat dibacakan).
 
@@ -62,6 +93,13 @@ Peranmu: Sutradara & Prompt Engineer untuk Google Veo.
 Naskah: ${JSON.stringify(n)}
 Riset: ${JSON.stringify(p.riset)}
 
+${(() => {
+    const lalu = partSebelumnya(p).at(-1);
+    const contoh = lalu?.adegan?.slice(0, 3).map((a) => a.prompt).join("\n");
+    return contoh
+      ? `INI LANJUTAN CERITA (Part ${p.seri?.part}). Pakai deskripsi tokoh, pakaian, dan latar yang SAMA PERSIS dengan prompt Part sebelumnya ini:\n${contoh}\n`
+      : "";
+  })()}
 Pecah naskah menjadi ${s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan (hook = adegan 1, cta = adegan terakhir). Untuk tiap adegan tulis:
 - visual: deskripsi singkat bahasa Indonesia.
 - narasi: kalimat yang diucapkan di adegan itu (ambil dari naskah).
@@ -89,6 +127,7 @@ export async function paket(p: Project): Promise<PaketUnggah> {
   return generateJson<PaketUnggah>(`${KONTEKS(p)}
 
 Peranmu: Social Media Manager.
+${p.seri ? `Video ini Part ${p.seri.part} dari ${p.seri.totalPart} sebuah cerita bersambung: cantumkan "Part ${p.seri.part}" di judul dan caption${p.seri.part >= p.seri.totalPart ? ", dan sebut bahwa ini part terakhir (tamat)" : `, dan sebut Part ${p.seri.part + 1} menyusul`}.` : ""}
 Naskah: ${JSON.stringify(n)}
 Riset: ${JSON.stringify(r)}
 

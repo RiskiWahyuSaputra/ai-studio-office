@@ -226,6 +226,19 @@ panel.addEventListener("click", async (ev) => {
       }
       return;
     }
+    case "buat-lanjutan": {
+      if (!p) return;
+      const sel = panel.querySelector<HTMLSelectElement>('[data-seri="total"]');
+      const body = sel ? { totalPart: Number(sel.value) } : {};
+      el.setAttribute("disabled", "");
+      const baru = await run(() => api.post(`/api/projects/${p.id}/lanjutan`, body), "Part berikutnya diserahkan ke Sari");
+      el.removeAttribute("disabled");
+      if (baru) {
+        state.projects.set(baru.id, baru);
+        setView({ kind: "project", id: baru.id });
+      }
+      return;
+    }
     case "contoh-suara": {
       if (!p) return;
       const sel = panel.querySelector<HTMLSelectElement>('[data-action-change="ganti-suara"]');

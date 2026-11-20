@@ -80,7 +80,7 @@ export const FORMATS: Record<Format, PanduanFormat> = {
     riset:
       "Pilih legenda urban, cerita rakyat seram, atau kisah fiksi horor yang terasa dekat (kos-kosan, rumah nenek, jalan sepi, pasar malam, angkot terakhir). Kalau berasal dari cerita rakyat, sebut daerah asalnya di fakta. Jangan mengaku kisah fiksi sebagai kejadian nyata, dan jangan menyebut nama orang atau alamat nyata.",
     naskah:
-      'Dituturkan seperti pendongeng horor (orang pertama "aku" atau orang kedua "kamu"), pelan dan mencekam, ketegangan naik baris demi baris, akhiri dengan twist atau cliffhanger. Seramnya dari suasana, suara, dan bayangan, bukan dari kekerasan.',
+      'Dituturkan seperti pendongeng horor, pilih SATU sudut pandang (orang pertama "aku" ATAU orang kedua "kamu") dan pakai konsisten di semua kalimat, pelan dan mencekam, ketegangan naik baris demi baris, akhiri dengan twist atau cliffhanger. Seramnya dari suasana, suara, dan bayangan, bukan dari kekerasan.',
     sutradara:
       "Pencahayaan gelap kebiruan atau cahaya bulan, kontras tinggi; jangan pakai warna cerah atau suasana ceria. Bangun suasana horor lewat cahaya redup, kabut, bayangan panjang, lampu berkedip, sudut kamera rendah, dan sosok misterius yang hanya terlihat samar atau siluet dari kejauhan. Tidak ada darah, luka, mayat, atau wajah menyeramkan close-up.",
     bicaraKeKamera: false,
@@ -180,6 +180,15 @@ export interface Analisis {
   dibuat: string;
 }
 
+export interface Seri {
+  /** id proyek Part 1, dipakai sebagai id seri */
+  id: string;
+  part: number;
+  totalPart: number;
+  /** id proyek part-part sebelumnya, urut dari Part 1 */
+  sebelumnya: string[];
+}
+
 export interface Project {
   id: string;
   format: Format;
@@ -189,6 +198,8 @@ export interface Project {
   suara?: string;
   /** model TTS yang dipakai render terakhir, supaya render ulang memakai warna suara yang sama */
   modelSuara?: string;
+  /** bagian dari cerita bersambung */
+  seri?: Seri;
   ide: string;
   dibuat: string;
   diubah: string;

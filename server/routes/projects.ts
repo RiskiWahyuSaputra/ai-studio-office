@@ -4,6 +4,7 @@ import { projectDir } from "../editor.ts";
 import { SUARA, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
 import { FORMATS, GAYA, type Format, type Gaya } from "../../src/shared/types.ts";
 import {
+  createLanjutan,
   createProject,
   deleteProject,
   getProject,
@@ -37,6 +38,26 @@ projects.post("/projects", async (req, res) => {
   activity({ type: "serah", dari: "produser", ke: "peneliti", label: ide ? ide.slice(0, 26) : "Cari topik ya" });
   setTimeout(kick, 2500);
   res.status(201).json(p);
+});
+
+/** Buat part berikutnya dari cerita ini. */
+projects.post("/projects/:id/lanjutan", async (req, res) => {
+  const asal = getProject(req.params.id);
+  if (!asal) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
+  if (!asal.naskah) return void res.status(400).json({ error: "Part ini belum punya naskah" });
+  const partSekarang = asal.seri?.part ?? 1;
+  const totalPart = Math.floor(Number(req.body?.totalPart ?? asal.seri?.totalPart ?? partSekarang + 1));
+  if (!Number.isFinite(totalPart) || totalPart <= partSekarang || totalPart > 10) {
+    return void res.status(400).json({ error: `Total part harus antara ${partSekarang + 1} dan 10` });
+  }
+  const sudahAda = listProjects().find((x) => x.seri?.sebelumnya.at(-1) === asal.id);
+  if (sudahAda) return void res.status(409).json({ error: "Part berikutnya untuk cerita ini sudah dibuat", id: sudahAda.id });
+  const p = await createLanjutan(asal, totalPart);
+  await updateProject(p.id, (x) => addLog(x, "Ratna", `Lanjutan Part ${x.seri!.part} dari ${totalPart} dibuat dari proyek ${asal.id}`));
+  activity({ type: "bicara", memberId: "produser", teks: `Part ${p.seri!.part} dimulai!` });
+  activity({ type: "serah", dari: "produser", ke: "penulis", label: `Lanjutan Part ${p.seri!.part}` });
+  setTimeout(kick, 2500);
+  res.status(201).json(getProject(p.id));
 });
 
 projects.post("/projects/:id/lanjut", async (req, res) => {

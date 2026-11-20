@@ -94,6 +94,37 @@ export async function updateProject(id: string, fn: (p: Project) => void): Promi
   return p;
 }
 
+/** Proyek lanjutan dari sebuah cerita: riset, gaya, dan suara diwarisi; mulai dari tahap Naskah. */
+export async function createLanjutan(asal: Project, totalPart: number): Promise<Project> {
+  const now = new Date().toISOString();
+  const seriAsal = asal.seri ?? { id: asal.id, part: 1, totalPart, sebelumnya: [] };
+  const p: Project = {
+    id: randomUUID().slice(0, 8),
+    format: asal.format,
+    gaya: asal.gaya,
+    suara: asal.suara,
+    modelSuara: asal.modelSuara,
+    ide: asal.ide,
+    dibuat: now,
+    diubah: now,
+    tahap: "naskah",
+    status: "antre",
+    riset: asal.riset ? structuredClone(asal.riset) : undefined,
+    seri: { id: seriAsal.id, part: seriAsal.part + 1, totalPart, sebelumnya: [...seriAsal.sebelumnya, asal.id] },
+    unggahan: [],
+    statistik: [],
+    log: [],
+  };
+  // pastikan Part 1 juga tahu dirinya bagian dari seri
+  if (!asal.seri) asal.seri = seriAsal;
+  else asal.seri.totalPart = totalPart;
+  db.projects.push(p);
+  await save();
+  broadcast({ type: "project", project: asal });
+  broadcast({ type: "project", project: p });
+  return p;
+}
+
 export async function deleteProject(id: string) {
   db.projects = db.projects.filter((p) => p.id !== id);
   await save();

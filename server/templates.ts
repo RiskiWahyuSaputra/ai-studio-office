@@ -1,7 +1,7 @@
 /**
  * Isi cadangan saat GEMINI_API_KEY belum diisi, supaya alur kantor tetap bisa dicoba.
  */
-import { GAYA, type Adegan, type Format, type Gaya, type Naskah, type PaketUnggah, type Riset } from "../src/shared/types.ts";
+import { GAYA, type Adegan, type Format, type Gaya, type Naskah, type PaketUnggah, type Riset, type Seri } from "../src/shared/types.ts";
 
 interface Bank {
   topik: string;
@@ -173,7 +173,21 @@ export function risetTemplat(format: Format, ide: string): Riset {
   };
 }
 
-export function naskahTemplat(format: Format, r: Riset): Naskah {
+export function naskahTemplat(format: Format, r: Riset, seri?: Seri): Naskah {
+  if (seri && seri.part > 1) {
+    const akhir = seri.part >= seri.totalPart;
+    return {
+      judulKerja: `${r.sudut} (Part ${seri.part})`,
+      hook: `Part ${seri.part}. Ingat sosok di ujung lorong itu?`,
+      narasi: [
+        "Malam berikutnya, aku tidak bisa tidur sama sekali.",
+        "Suara itu kembali, kali ini lebih dekat dari sebelumnya.",
+        "Aku mengikuti suaranya sampai ke ujung lorong.",
+        akhir ? "Ternyata selama ini, aku yang dianggap penghuni asing di sana." : "Dan pintu di ujung lorong itu perlahan terbuka sendiri.",
+      ].join("\n"),
+      cta: akhir ? "Cerita ini tamat. Follow buat kisah seram berikutnya!" : `Part ${seri.part + 1} menyusul. Follow biar nggak ketinggalan!`,
+    };
+  }
   if (format === "cerita-horor") {
     return {
       judulKerja: r.sudut,

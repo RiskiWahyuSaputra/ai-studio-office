@@ -449,12 +449,59 @@ function sectionLog(p: Project) {
 const ulangBtn = (tahap: string) =>
   `<button class="btn btn-ghost btn-sm" data-action="ulang" data-tahap="${tahap}" title="Minta karyawan mengerjakan ulang">Ulangi</button>`;
 
+function sectionSeri(p: Project, s: UiState) {
+  if (!p.naskah) return "";
+  const idSeri = p.seri?.id ?? p.id;
+  const anggota = [...s.projects.values()]
+    .filter((x) => x.id === idSeri || x.seri?.id === idSeri)
+    .sort((a, b) => (a.seri?.part ?? 1) - (b.seri?.part ?? 1));
+  const part = p.seri?.part ?? 1;
+  const total = p.seri?.totalPart;
+  const berikut = anggota.find((x) => x.seri?.sebelumnya.at(-1) === p.id);
+  const tamat = total !== undefined && part >= total;
+
+  const daftar =
+    anggota.length > 1
+      ? `<ol class="seri-list">${anggota
+          .map(
+            (x) => `<li>${
+              x.id === p.id
+                ? `<strong>Part ${x.seri?.part ?? 1}</strong> (sedang dibuka)`
+                : `<button class="link" data-action="buka" data-id="${x.id}">Part ${x.seri?.part ?? 1}</button>`
+            } ${badge(x)}</li>`,
+          )
+          .join("")}</ol>`
+      : "";
+
+  let aksiSeri: string;
+  if (berikut) {
+    aksiSeri = `<button class="btn btn-sm" data-action="buka" data-id="${berikut.id}">Buka Part ${part + 1}</button>`;
+  } else if (tamat) {
+    aksiSeri = `<p class="hint">Ini part terakhir. Ceritanya tamat di sini.</p>`;
+  } else {
+    const pilihan = Array.from({ length: 10 - part }, (_, i) => part + 1 + i)
+      .map((n) => `<option value="${n}" ${n === (total ?? part + 1) ? "selected" : ""}>${n} part</option>`)
+      .join("");
+    aksiSeri = `<div class="row">
+        ${total ? "" : `<label class="gaya-ganti">Cerita tamat di<select data-seri="total" aria-label="Jumlah part sampai tamat">${pilihan}</select></label>`}
+        <button class="btn btn-sm btn-primary" data-action="buat-lanjutan">Buat Part ${part + 1}${total ? ` dari ${total}` : ""}</button>
+      </div>
+      <p class="hint">Sari melanjutkan dari akhir part ini. Tokoh, latar, gaya visual, dan suara narasi sama persis. Part terakhir ditulis sebagai penutup cerita.</p>`;
+  }
+
+  return `<section class="card"><h3>Cerita bersambung</h3>
+    <p class="muted">${p.seri || anggota.length > 1 ? `Part ${part}${total ? ` dari ${total}` : ""}` : "Belum bersambung. Lanjutkan cerita ini ke part berikutnya?"}</p>
+    ${daftar}
+    ${aksiSeri}
+  </section>`;
+}
+
 function renderProject(p: Project, s: UiState): string {
   return `
   <div class="crumbs"><button class="link" data-action="kembali">← Semua proyek</button>
     <button class="link link-bad" data-action="hapus">Hapus</button></div>
   <section class="card">
-    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}</p>
+    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}${p.seri ? ` · Part ${p.seri.part} dari ${p.seri.totalPart}` : ""}</p>
     <h2>${esc(judulProyek(p))}</h2>
     <p class="muted">Dibuat ${waktu(p.dibuat)} ${badge(p)}</p>
     ${stepper(p)}
@@ -462,6 +509,7 @@ function renderProject(p: Project, s: UiState): string {
   </section>
   ${sectionAnalisis(p)}
   ${sectionUnggah(p, s)}
+  ${sectionSeri(p, s)}
   ${sectionPaket(p)}
   ${sectionVideo(p)}
   ${sectionSuara(p, s)}
