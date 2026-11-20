@@ -18,6 +18,7 @@ export async function riset(p: Project): Promise<Riset> {
 Peranmu: Peneliti Tren.
 ${p.ide ? `Ide dari pemilik kanal: "${p.ide}".` : "Pemilik kanal belum memberi ide; pilih sendiri topik yang berpotensi viral bulan ini."}
 Pilih satu topik dan satu sudut cerita yang kuat untuk video pendek. Untuk format sejarah, fakta harus akurat dan bisa dicek; jangan mengarang tanggal atau nama.
+${FORMATS[p.format].riset}
 Sudut cerita harus dari sudut pandang orang DEWASA biasa (bukan anak/remaja, bukan tokoh terkenal), karena videonya dibuat dengan Google Veo yang menolak keduanya.
 
 Balas JSON:
@@ -36,10 +37,11 @@ Tulis naskah video 40–60 detik dalam bahasa Indonesia yang santai dan mudah di
 - hook: 1 kalimat, harus membuat orang berhenti scroll dalam 2 detik pertama.
 - narasi: 4–6 baris, dipisah "\\n". Tiap baris dibacakan sekitar 8 detik (maks 20 kata). Masukkan fakta riset secara alami.
 - cta: 1 kalimat ajakan komentar/follow.
-${p.format === "vlog-hewan" ? "Narasi diucapkan oleh hewan itu sendiri (orang pertama), lucu, boleh pakai bahasa gaul ringan." : "Narasi orang kedua (\"kamu\"), membuat penonton merasa ada di sana."}
+${FORMATS[p.format].naskah}
 
 ${ATURAN_AMAN}
 Nama tokoh nyata boleh muncul di judulKerja, tapi TIDAK di hook, narasi, atau cta (karena kalimat itu diucapkan di video).
+Aturan usia dewasa itu untuk deskripsi visual nanti; JANGAN menyebut usia tokoh di narasi (terdengar janggal saat dibacakan).
 
 Balas JSON: {"judulKerja": string, "hook": string, "narasi": string, "cta": string}`);
 }
@@ -49,8 +51,8 @@ export async function storyboard(p: Project, s: Settings): Promise<Adegan[]> {
   if (!aiAktif()) return adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip, p.gaya, s.narasiTts);
   const aturanSuara = s.narasiTts
     ? `SUARA: narasi akan diisi TERPISAH oleh pengisi suara (TTS) supaya suaranya konsisten. Jadi JANGAN tulis kalimat ucapan di prompt. ${
-        p.format === "vlog-hewan"
-          ? "Hewan tetap tampak berbicara ke kamera (mulut bergerak, ekspresif), tapi tanpa suara ucapan."
+        FORMATS[p.format].bicaraKeKamera
+          ? "Tokoh tetap tampak berbicara ke kamera (mulut bergerak, ekspresif), tapi tanpa suara ucapan."
           : "Tokoh tidak berbicara."
       } Akhiri setiap prompt dengan "Tanpa dialog, tanpa ucapan, tanpa suara narator, hanya efek suara latar. Tanpa teks, tanpa subtitle, tanpa watermark."`
     : `SUARA: ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip di prompt (Veo membuat suaranya). Akhiri dengan "Tanpa teks, tanpa subtitle, tanpa watermark."`;
@@ -66,12 +68,14 @@ Pecah naskah menjadi ${s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan (hook = ad
 - prompt: prompt Veo dalam BAHASA INDONESIA (jangan pakai bahasa Inggris), satu paragraf, diawali "${GAYA[p.gaya ?? "sinematik"].kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis.
 - narasi tiap adegan maksimal ${Math.max(6, Math.floor(s.durasiKlip * 2.2))} kata supaya muat dibacakan dalam satu klip ${s.durasiKlip} detik. Kalau naskah lebih panjang, pecah jadi lebih banyak adegan (maksimal 10) atau ringkas kalimatnya.
 ${aturanSuara}
-${p.format === "pov-sejarah" ? "Pakai sudut pandang orang pertama (first-person POV) dan detail periode yang akurat." : "Hewan berbicara langsung ke kamera seperti vlogger; ekspresif dan kocak."}
+${FORMATS[p.format].sutradara}
 
 ${ATURAN_AMAN}
 GAYA VISUAL: ${GAYA[p.gaya ?? "sinematik"].nama}. Masukkan frasa gaya ini di setiap prompt: "${GAYA[p.gaya ?? "sinematik"].prompt}".
-${p.gaya === "pixel" ? "Jangan pakai kata fotorealistis, realistis, atau film sinematik. Deskripsikan tokoh sebagai karakter pixel art dengan ciri warna yang sama persis di tiap adegan supaya konsisten." : ""}
+${GAYA[p.gaya ?? "sinematik"].tokoh ? `Jangan pakai kata fotorealistis, realistis, atau film sinematik. Deskripsikan tokoh sebagai ${GAYA[p.gaya ?? "sinematik"].tokoh} dengan ciri warna dan pakaian yang sama persis di tiap adegan supaya konsisten.` : ""}
 
+Frasa gaya di atas hanya mengatur gaya gambar; pencahayaan dan suasana ikuti arahan format.
+Kalau narasi menyebut usia tokoh (mis. "pria berusia 30 tahun"), hapus bagian itu dari narasi; usia cukup ditulis di prompt.
 Kalau naskah melanggar aturan di atas, ubah kalimat narasinya agar aman (dan tulis versi aman itu di field "narasi").
 
 Balas JSON: {"adegan": [{"visual": string, "narasi": string, "prompt": string}]}`);

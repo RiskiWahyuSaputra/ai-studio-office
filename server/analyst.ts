@@ -79,7 +79,7 @@ Balas JSON: {"ringkasan": string (2-4 kalimat), "saran": string[] (3-5 saran kon
       : "Belum ada statistik. Hubungkan platform atau isi angka manual, lalu minta Yoga menganalisis ulang.",
     saran: [
       views < rata ? "Coba hook yang lebih mengejutkan di 2 detik pertama." : "Pertahankan gaya hook ini untuk video berikutnya.",
-      p.format === "pov-sejarah" ? "Buat seri lanjutan dari era yang sama supaya penonton menunggu bagian berikutnya." : "Jadikan karakter hewan ini tokoh tetap supaya penonton kenal.",
+      FORMATS[p.format].saranSeri,
       "Unggah di jam ramai (sekitar 18.00–21.00 WIB) dan bandingkan hasilnya.",
     ],
     dibuat: new Date().toISOString(),

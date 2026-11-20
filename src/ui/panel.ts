@@ -368,7 +368,7 @@ function peringatan(prompt: string) {
     : "";
 }
 
-const SUARA_BAWAAN = (p: Project) => p.suara ?? (p.format === "vlog-hewan" ? "Puck" : "Charon");
+const SUARA_BAWAAN = (p: Project) => p.suara ?? FORMATS[p.format].suara;
 
 function sectionSuara(p: Project, s: UiState) {
   if (!s.settings.narasiTts || !p.adegan?.length) return "";

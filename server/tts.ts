@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { GeminiSibuk } from "./ai.ts";
-import type { Format } from "../src/shared/types.ts";
+import { FORMATS, type Format } from "../src/shared/types.ts";
 
 const DEFAULT_TTS = "gemini-2.5-flash-preview-tts,gemini-3.1-flash-tts-preview,gemini-3.8-flash-tts";
 const ttsModels = () =>
@@ -16,12 +16,9 @@ const ttsModels = () =>
     .map((m) => m.trim())
     .filter(Boolean);
 
-export const ARAHAN: Record<Format, string> = {
-  "pov-sejarah": "Bacakan dalam bahasa Indonesia dengan suara narator yang tenang, hangat, dan sedikit dramatis, tempo sedang:",
-  "vlog-hewan": "Ucapkan dalam bahasa Indonesia dengan gaya vlogger yang lucu, ceria, dan ekspresif, tempo agak cepat:",
-};
+export const ARAHAN = (f: Format) => FORMATS[f].arahanTts;
 
-export const suaraBawaan = (f: Format) => (f === "vlog-hewan" ? "Puck" : "Charon");
+export const suaraBawaan = (f: Format) => FORMATS[f].suara;
 
 const kunci = (teks: string, suara: string, arahan: string, model: string) =>
   createHash("sha1").update(`${model}\n${suara}\n${arahan}\n${teks}`).digest("hex").slice(0, 12);
@@ -78,7 +75,7 @@ async function panggilTts(model: string, key: string, teks: string, suara: strin
 
 /** Satu kalimat dengan satu model tertentu; dicoba ulang beberapa kali kalau model sibuk. */
 async function satuKalimat(dir: string, teks: string, suara: string, format: Format, model: string): Promise<string> {
-  const arahan = ARAHAN[format];
+  const arahan = ARAHAN(format);
   const nama = `suara-${kunci(teks, suara, arahan, model)}.wav`;
   const file = path.join(dir, nama);
   try {
@@ -159,7 +156,7 @@ async function durasiAudio(file: string): Promise<number> {
  * lalu dipotong di jeda terpanjang. Mengembalikan null kalau potongannya meragukan.
  */
 async function gabungan(dir: string, teks: string[], suara: string, format: Format, model: string): Promise<string[] | null> {
-  const arahan = `${ARAHAN[format]} Berhenti sekitar satu setengah detik di antara setiap baris.`;
+  const arahan = `${ARAHAN(format)} Berhenti sekitar satu setengah detik di antara setiap baris.`;
   const id = kunci(teks.join("\n\n"), suara, arahan, model);
   const keluaran = teks.map((_, i) => `suara-${id}-${i + 1}.wav`);
   try {
@@ -277,6 +274,7 @@ export const SUARA = [
   { id: "Fenrir", ket: "Pria, bersemangat" },
   { id: "Orus", ket: "Pria, tegas" },
   { id: "Algenib", ket: "Pria, serak berat" },
+  { id: "Enceladus", ket: "Pria, berbisik (cerita horor)" },
   { id: "Sadaltager", ket: "Pria, berwawasan" },
   { id: "Kore", ket: "Wanita, tegas" },
   { id: "Aoede", ket: "Wanita, santai" },

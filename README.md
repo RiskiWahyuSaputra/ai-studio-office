@@ -6,6 +6,9 @@ Format kanal:
 
 - **POV Sejarah Nusantara**: penonton diajak "hidup" di satu momen sejarah Indonesia.
 - **Vlog Hewan Lokal**: hewan khas Indonesia nge-vlog dengan gaya kocak.
+- **Cerita Horor Nusantara**: legenda urban dan kisah seram lokal, dituturkan pelan dan mencekam (tanpa darah atau kekerasan).
+
+Gaya visual per proyek: **Animasi** (kartun 3D, bawaan), **Pixel Art**, atau **Sinematik**.
 
 ## Tim
 

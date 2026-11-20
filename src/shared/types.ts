@@ -1,13 +1,22 @@
 import type { StageId } from "./team.ts";
 
-export type Format = "pov-sejarah" | "vlog-hewan";
-export type Gaya = "pixel" | "sinematik";
+export type Format = "pov-sejarah" | "vlog-hewan" | "cerita-horor";
+export type Gaya = "animasi" | "pixel" | "sinematik";
 
-export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string }> = {
+export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string; tokoh?: string }> = {
+  animasi: {
+    nama: "Animasi",
+    ringkas: "Kartun 3D ekspresif seperti film animasi. Cocok untuk semua format, termasuk horor yang tetap enak ditonton.",
+    kepala: "Video vertikal 9:16, animasi 3D",
+    tokoh: "karakter animasi 3D bergaya kartun",
+    prompt:
+      "animasi 3D bergaya film animasi modern, karakter berproporsi kartun dengan mata besar dan ekspresi wajah yang hidup, tekstur halus, gerakan kamera yang mulus",
+  },
   pixel: {
     nama: "Pixel Art",
     ringkas: "Animasi pixel 16-bit ala game retro. Unik, gampang dikenali, dan lebih jarang ditolak Flow.",
     kepala: "Video vertikal 9:16, animasi pixel art",
+    tokoh: "karakter pixel art",
     prompt:
       "animasi pixel art 16-bit bergaya game RPG konsol klasik tahun 1990-an, piksel persegi yang tajam dan terlihat jelas, palet warna cerah yang terbatas, bayangan dithering, animasi karakter seperti sprite, latar parallax berlapis, suara latar bernuansa chiptune retro",
   },
@@ -19,19 +28,72 @@ export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string;
   },
 };
 
-export type Platform = "youtube" | "tiktok" | "instagram";
-export type StageStatus = "antre" | "jalan" | "menunggu-kamu" | "selesai" | "gagal";
+export interface PanduanFormat {
+  nama: string;
+  ringkas: string;
+  /** arahan tambahan untuk Peneliti */
+  riset: string;
+  /** sudut pandang & gaya bahasa narasi untuk Penulis */
+  naskah: string;
+  /** arahan visual untuk Sutradara */
+  sutradara: string;
+  /** tokoh utama berbicara langsung ke kamera (mis. vlog) */
+  bicaraKeKamera: boolean;
+  /** arahan gaya baca untuk Gemini TTS */
+  arahanTts: string;
+  /** suara TTS bawaan */
+  suara: string;
+  /** kategori YouTube: 24 Entertainment, 27 Education */
+  kategoriYt: string;
+  /** saran lanjutan dari Analis */
+  saranSeri: string;
+}
 
-export const FORMATS: Record<Format, { nama: string; ringkas: string }> = {
+export const FORMATS: Record<Format, PanduanFormat> = {
   "pov-sejarah": {
     nama: "POV Sejarah Nusantara",
     ringkas: "Penonton diajak 'hidup' di satu momen sejarah Indonesia lewat sudut pandang orang pertama.",
+    riset: "Fakta harus akurat dan bisa dicek; jangan mengarang tanggal atau nama.",
+    naskah: 'Narasi orang kedua ("kamu"), membuat penonton merasa ada di sana.',
+    sutradara: "Pakai sudut pandang orang pertama (first-person POV) dan detail periode yang akurat. Pencahayaan hangat dan sinematik.",
+    bicaraKeKamera: false,
+    arahanTts: "Bacakan dalam bahasa Indonesia dengan suara narator yang tenang, hangat, dan sedikit dramatis, tempo sedang:",
+    suara: "Charon",
+    kategoriYt: "27",
+    saranSeri: "Buat seri lanjutan dari era yang sama supaya penonton menunggu bagian berikutnya.",
   },
   "vlog-hewan": {
     nama: "Vlog Hewan Lokal",
     ringkas: "Hewan khas Indonesia nge-vlog dengan gaya kocak tentang kehidupan sehari-harinya.",
+    riset: "Fakta tentang hewannya harus benar (habitat, makanan, kebiasaan).",
+    naskah: "Narasi diucapkan oleh hewan itu sendiri (orang pertama), lucu, boleh pakai bahasa gaul ringan.",
+    sutradara: "Hewan berbicara langsung ke kamera seperti vlogger; ekspresif dan kocak. Warna cerah dan pencahayaan siang yang ceria.",
+    bicaraKeKamera: true,
+    arahanTts: "Ucapkan dalam bahasa Indonesia dengan gaya vlogger yang lucu, ceria, dan ekspresif, tempo agak cepat:",
+    suara: "Puck",
+    kategoriYt: "24",
+    saranSeri: "Jadikan karakter hewan ini tokoh tetap supaya penonton kenal.",
+  },
+  "cerita-horor": {
+    nama: "Cerita Horor Nusantara",
+    ringkas: "Kisah seram dan legenda urban Indonesia, dituturkan pelan dan mencekam dengan akhir yang bikin merinding.",
+    riset:
+      "Pilih legenda urban, cerita rakyat seram, atau kisah fiksi horor yang terasa dekat (kos-kosan, rumah nenek, jalan sepi, pasar malam, angkot terakhir). Kalau berasal dari cerita rakyat, sebut daerah asalnya di fakta. Jangan mengaku kisah fiksi sebagai kejadian nyata, dan jangan menyebut nama orang atau alamat nyata.",
+    naskah:
+      'Dituturkan seperti pendongeng horor (orang pertama "aku" atau orang kedua "kamu"), pelan dan mencekam, ketegangan naik baris demi baris, akhiri dengan twist atau cliffhanger. Seramnya dari suasana, suara, dan bayangan, bukan dari kekerasan.',
+    sutradara:
+      "Pencahayaan gelap kebiruan atau cahaya bulan, kontras tinggi; jangan pakai warna cerah atau suasana ceria. Bangun suasana horor lewat cahaya redup, kabut, bayangan panjang, lampu berkedip, sudut kamera rendah, dan sosok misterius yang hanya terlihat samar atau siluet dari kejauhan. Tidak ada darah, luka, mayat, atau wajah menyeramkan close-up.",
+    bicaraKeKamera: false,
+    arahanTts:
+      "Bacakan dalam bahasa Indonesia seperti pendongeng cerita horor: suara pelan, sedikit berbisik, mencekam, tempo lambat dengan jeda dramatis:",
+    suara: "Enceladus",
+    kategoriYt: "24",
+    saranSeri: "Jadikan seri bersambung (Part 1, Part 2) supaya penonton kembali untuk akhir ceritanya.",
   },
 };
+
+export type Platform = "youtube" | "tiktok" | "instagram";
+export type StageStatus = "antre" | "jalan" | "menunggu-kamu" | "selesai" | "gagal";
 
 export const STAGES: { id: StageId; nama: string; pendek: string }[] = [
   { id: "riset", nama: "Riset", pendek: "Riset" },

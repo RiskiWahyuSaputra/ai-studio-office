@@ -7,7 +7,7 @@ import { ytAuthUrl, ytCallback, ytConfigured, ytUpload } from "../platforms/yout
 import { ttAuthUrl, ttCallback, ttConfigured, ttUpload } from "../platforms/tiktok.ts";
 import { igConfigured, igPublicPath, igUpload } from "../platforms/instagram.ts";
 import { addLog, getProject, updateProject } from "../store.ts";
-import type { Platform, Project } from "../../src/shared/types.ts";
+import { FORMATS, type Platform, type Project } from "../../src/shared/types.ts";
 
 export const social = Router();
 
@@ -31,7 +31,7 @@ export const uploaders: Partial<Record<Platform, Uploader>> = {
         deskripsi: p.paket!.youtube.deskripsi,
         tags: p.paket!.youtube.tags,
         privasi: o.privasi === "public" || o.privasi === "unlisted" ? o.privasi : "private",
-        kategori: p.format === "pov-sejarah" ? "27" : "24",
+        kategori: FORMATS[p.format].kategoriYt,
       }),
   },
   tiktok: {
