@@ -9,7 +9,11 @@ import { randomBytes } from "node:crypto";
 import { baseUrl, getToken, setToken } from "./tokens.ts";
 
 const API = "https://open.tiktokapis.com/v2";
-const redirect = () => `${baseUrl()}/api/oauth/tiktok/callback`;
+/**
+ * TikTok hanya menerima redirect HTTPS. Bawaannya memakai halaman perantara di GitHub Pages
+ * (docs/tiktok-callback.html) yang meneruskan ke localhost:8787, jadi tidak perlu tunnel.
+ */
+const redirect = () => process.env.TIKTOK_REDIRECT_URI || `${baseUrl()}/api/oauth/tiktok/callback`;
 const pendingStates = new Set<string>();
 
 export const ttConfigured = () => Boolean(process.env.TIKTOK_CLIENT_KEY && process.env.TIKTOK_CLIENT_SECRET);
