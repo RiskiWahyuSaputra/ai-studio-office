@@ -17,6 +17,8 @@ document.body.appendChild(toastBox);
 let state: UiState;
 let online = false;
 let pending = false;
+/** hasil pencocokan terakhir, ditampilkan di atas daftar adegan */
+let hasilPencocokan: ({ id: string } & { pasangan: { no: number; nama: string; alasan: string }[]; sisa: string[] }) | null = null;
 
 function toast(text: string, bad = false) {
   const el = document.createElement("div");
@@ -49,11 +51,25 @@ function render(force = false) {
   const open = [...panel.querySelectorAll("details")].map((d) => d.open);
   const scroll = panel.scrollTop;
   panel.innerHTML = renderPanel(state);
+  tampilkanPencocokan();
   // pertahankan details yang dibuka/ditutup
   const ds = panel.querySelectorAll("details");
   if (!force && ds.length === open.length) ds.forEach((d, i) => (d.open = open[i]));
   panel.scrollTop = scroll;
   panel.querySelectorAll<HTMLElement>(".counter").forEach(updateCounter);
+}
+
+function tampilkanPencocokan() {
+  const p = current();
+  const box = panel.querySelector<HTMLElement>("[data-pencocokan]");
+  if (!box || !p || !hasilPencocokan || hasilPencocokan.id !== p.id) return;
+  const r = hasilPencocokan;
+  box.innerHTML = `<div class="pencocokan">
+      <div class="row-between"><strong>Hasil pencocokan</strong><button class="link" data-action="tutup-pencocokan">Tutup</button></div>
+      <ul>${r.pasangan.map((x) => `<li>Adegan ${x.no} ← ${esc(x.nama)} <em>(${esc(x.alasan)})</em></li>`).join("")}</ul>
+      ${r.sisa.length ? `<p class="bad">Tidak terpakai (adegan sudah penuh): ${r.sisa.map(esc).join(", ")}</p>` : ""}
+      ${r.pasangan.some((x) => x.alasan === "urutan") ? `<p class="hint">Yang bertanda "urutan" ditebak dari urutan waktu dibuat. Cek pratinjaunya.</p>` : ""}
+    </div>`;
 }
 
 function updateCounter(c: HTMLElement) {
@@ -247,6 +263,19 @@ panel.addEventListener("click", async (ev) => {
       }
       return;
     }
+    case "tukar-klip": {
+      if (!p) return;
+      const sel = el.closest(".scene")?.querySelector<HTMLSelectElement>("[data-tukar]");
+      const b = Number(sel?.value);
+      if (!b) return toast("Pilih adegan tujuan dulu", true);
+      hasilPencocokan = null;
+      await run(() => api.post(`/api/projects/${p.id}/klip-tukar`, { a: Number(el.dataset.no), b }), `Klip adegan ${el.dataset.no} dan ${b} ditukar`);
+      return;
+    }
+    case "tutup-pencocokan":
+      hasilPencocokan = null;
+      render(true);
+      return;
     case "buat-lanjutan": {
       if (!p) return;
       const sel = panel.querySelector<HTMLSelectElement>('[data-seri="total"]');
@@ -343,49 +372,41 @@ panel.addEventListener("submit", async (ev) => {
   }
 });
 
-/** Pasangkan banyak file ke adegan: angka di nama file dulu, sisanya urut nama ke adegan kosong. */
-function pasangkan(files: File[], p: Project): { no: number; file: File }[] {
-  const nos = (p.adegan ?? []).map((a) => a.no);
-  const hasil: { no: number; file: File }[] = [];
-  const terpakai = new Set<number>();
-  const sisa: File[] = [];
-  const urut = [...files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-  for (const f of urut) {
-    const angka = [...f.name.replace(/\.[^.]+$/, "").matchAll(/\d+/g)].map((m) => Number(m[0]));
-    const no = angka.reverse().find((n) => nos.includes(n) && !terpakai.has(n));
-    if (no !== undefined) {
-      hasil.push({ no, file: f });
-      terpakai.add(no);
-    } else sisa.push(f);
-  }
-  const kosong = (p.adegan ?? []).filter((a) => !a.klip && !terpakai.has(a.no)).map((a) => a.no);
-  const cadangan = nos.filter((n) => !terpakai.has(n) && !kosong.includes(n));
-  for (const f of sisa) {
-    const no = kosong.shift() ?? cadangan.shift();
-    if (no === undefined) break;
-    hasil.push({ no, file: f });
-    terpakai.add(no);
-  }
-  return hasil.sort((a, b) => a.no - b.no);
+async function unggahSatu(p: Project, no: number, file: File) {
+  const fd = new FormData();
+  fd.append("file", file);
+  toast(`Mengunggah ${file.name} ke adegan ${no}...`);
+  await run(() => api.upload(`/api/projects/${p.id}/klip/${no}`, fd), `Klip adegan ${no} terunggah`);
 }
 
-async function unggahKlip(p: Project, daftar: { no: number; file: File }[]) {
-  if (!daftar.length) return toast("Tidak ada file video yang bisa dipasangkan", true);
-  toast(`Mengunggah ${daftar.length} klip...`);
-  let ok = 0;
-  for (const { no, file } of daftar) {
-    const fd = new FormData();
-    fd.append("file", file);
-    const kartu = panel.querySelector(`.scene[data-no="${no}"]`);
-    kartu?.classList.add("is-busy");
-    const r = await run(() => api.upload(`/api/projects/${p.id}/klip/${no}`, fd));
-    kartu?.classList.remove("is-busy");
-    if (r) ok++;
-  }
-  toast(`${ok} dari ${daftar.length} klip terunggah: ${daftar.map((d) => `${d.file.name} → adegan ${d.no}`).join(", ")}`);
+interface HasilMassal {
+  pasangan: { no: number; nama: string; alasan: string }[];
+  sisa: string[];
 }
 
-const videoSaja = (list: FileList | null | undefined) => [...(list ?? [])].filter((f) => f.type.startsWith("video/") || /\.(mp4|mov|webm|mkv)$/i.test(f.name));
+/** Banyak video dan/atau ZIP "download proyek" Flow: server yang memasangkan ke adegan. */
+async function unggahMassal(p: Project, files: File[]) {
+  if (!files.length) return toast("Yang diseret bukan video atau ZIP", true);
+  const fd = new FormData();
+  const waktu: Record<string, number> = {};
+  for (const f of files) {
+    fd.append("files", f);
+    waktu[f.name] = f.lastModified;
+  }
+  fd.append("waktu", JSON.stringify(waktu));
+  const zona = panel.querySelector(".dropzone");
+  zona?.classList.add("is-busy");
+  toast(`Mengunggah ${files.length} file${files.some((f) => /\.zip$/i.test(f.name)) ? " (ZIP dibongkar di server)" : ""}...`);
+  const r = await run(() => api.post<HasilMassal>(`/api/projects/${p.id}/klip-massal`, fd));
+  zona?.classList.remove("is-busy");
+  if (!r) return;
+  hasilPencocokan = { id: p.id, ...r };
+  render(true);
+  toast(`${r.pasangan.length} klip terpasang. Cek pratinjau tiap adegan; pakai "Tukar" kalau ada yang tertukar.`);
+}
+
+const videoSaja = (list: FileList | null | undefined) =>
+  [...(list ?? [])].filter((f) => f.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|m4v|zip)$/i.test(f.name) || /zip/.test(f.type));
 
 panel.addEventListener("dragover", (ev) => {
   const zona = (ev.target as HTMLElement).closest<HTMLElement>("[data-drop]");
@@ -407,10 +428,10 @@ panel.addEventListener("drop", async (ev) => {
   zona.classList.remove("drag-over");
   const files = videoSaja(ev.dataTransfer?.files);
   if (!files.length) return toast("Yang diseret bukan file video", true);
-  if (zona.dataset.drop === "klip" && files.length === 1) {
-    await unggahKlip(p, [{ no: Number(zona.dataset.no), file: files[0] }]);
+  if (zona.dataset.drop === "klip" && files.length === 1 && !/\.zip$/i.test(files[0].name)) {
+    await unggahSatu(p, Number(zona.dataset.no), files[0]);
   } else {
-    await unggahKlip(p, pasangkan(files, p));
+    await unggahMassal(p, files);
   }
 });
 // cegah browser membuka file video kalau dilepas di luar zona
@@ -421,7 +442,7 @@ panel.addEventListener("change", async (ev) => {
   const input = ev.target as HTMLInputElement;
   const p = current();
   if (p && input.dataset.upload === "semua") {
-    await unggahKlip(p, pasangkan(videoSaja(input.files), p));
+    await unggahMassal(p, videoSaja(input.files));
     input.value = "";
     return;
   }

@@ -401,10 +401,11 @@ function sectionAdegan(p: Project) {
         </select></label>`;
   const zonaSemua = bolehUnggahKlip(p)
     ? `<div class="dropzone" data-drop="semua" tabindex="0">
-        <strong>Seret semua klip dari Flow ke sini</strong>
-        <span>Dicocokkan otomatis: nama file yang mengandung angka (mis. <code>3.mp4</code>, <code>adegan-3.mp4</code>) masuk ke adegan itu, sisanya mengisi adegan kosong sesuai urutan nama file.</span>
-        <label class="btn btn-sm file-btn">atau pilih beberapa file<input type="file" accept="video/*" multiple data-upload="semua" /></label>
-      </div>`
+        <strong>Seret ZIP "download proyek" Flow atau semua klip ke sini</strong>
+        <span>ZIP dibongkar otomatis. Tiap video dipasangkan ke adegan lewat angka di nama file, kemiripan nama dengan prompt, lalu urutan waktu dibuat. Hasilnya bisa dicek dan ditukar di bawah.</span>
+        <label class="btn btn-sm file-btn">atau pilih file<input type="file" accept="video/*,.zip,application/zip" multiple data-upload="semua" /></label>
+      </div>
+      <div data-pencocokan></div>`
     : "";
   return `<details class="card" open><summary><h3>Adegan & prompt Veo · Bayu</h3>${ulangBtn("storyboard")}</summary>
     ${gantiGaya}
@@ -425,8 +426,25 @@ function sectionAdegan(p: Project) {
               ? `<label class="btn btn-sm file-btn">${a.klip ? "Ganti klip" : "Unggah klip"}<input type="file" accept="video/*" data-upload="klip" data-no="${a.no}" /></label><span class="hint">atau seret file ke kartu ini</span>`
               : ""
           }
-          ${a.klip ? `<a class="link" href="/media/${p.id}/${encodeURIComponent(a.klip)}" target="_blank" rel="noopener">Lihat</a>` : ""}
         </div>
+        ${
+          a.klip
+            ? `<div class="klip-mini">
+                <video src="/media/${p.id}/${encodeURIComponent(a.klip)}#t=1" muted playsinline preload="metadata" controls></video>
+                ${
+                  bolehUnggahKlip(p) && p.adegan!.length > 1
+                    ? `<div class="tukar">
+                        <select data-tukar aria-label="Tukar klip dengan adegan">
+                          <option value="">Tukar dengan…</option>
+                          ${p.adegan!.filter((b) => b.no !== a.no).map((b) => `<option value="${b.no}">Adegan ${b.no}</option>`).join("")}
+                        </select>
+                        <button class="btn btn-sm" data-action="tukar-klip" data-no="${a.no}">Tukar</button>
+                      </div>`
+                    : ""
+                }
+              </div>`
+            : ""
+        }
       </li>`,
       )
       .join("")}</ol>
