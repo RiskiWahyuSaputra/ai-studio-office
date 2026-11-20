@@ -27,8 +27,14 @@ registerStage("naskah", {
 registerStage("storyboard", {
   status: "Bikin prompt Veo...",
   async run(p) {
-    const adegan = await agen.storyboard(p, getSettings());
-    return { apply: (x) => void (x.adegan = adegan), pesan: `${adegan.length} adegan + prompt siap` };
+    const { adegan, karakter } = await agen.storyboard(p, getSettings());
+    return {
+      apply: (x) => {
+        x.adegan = adegan;
+        if (karakter) x.karakter = karakter;
+      },
+      pesan: `${adegan.length} adegan + prompt siap${karakter ? `, ${karakter.length} karakter tetap` : ""}`,
+    };
   },
 });
 

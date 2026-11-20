@@ -110,6 +110,7 @@ export async function createLanjutan(asal: Project, totalPart: number): Promise<
     tahap: "naskah",
     status: "antre",
     riset: asal.riset ? structuredClone(asal.riset) : undefined,
+    karakter: asal.karakter ? structuredClone(asal.karakter) : undefined,
     seri: { id: seriAsal.id, part: seriAsal.part + 1, totalPart, sebelumnya: [...seriAsal.sebelumnya, asal.id] },
     unggahan: [],
     statistik: [],

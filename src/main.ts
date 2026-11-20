@@ -239,6 +239,26 @@ panel.addEventListener("click", async (ev) => {
       }
       return;
     }
+    case "ekstrak-karakter": {
+      if (!p) return;
+      el.setAttribute("disabled", "");
+      el.textContent = "Bayu menyusun karakter...";
+      await run(() => api.post(`/api/projects/${p.id}/karakter/ekstrak`), "Lembar karakter siap");
+      el.removeAttribute("disabled");
+      return;
+    }
+    case "simpan-karakter": {
+      if (!p) return;
+      const karakter = [...panel.querySelectorAll<HTMLElement>(".karakter")].map((li) => ({
+        nama: li.querySelector<HTMLInputElement>('[data-k="nama"]')!.value,
+        deskripsi: li.querySelector<HTMLTextAreaElement>('[data-k="deskripsi"]')!.value,
+      }));
+      await run(() => api.patch(p.id, { karakter }), "Karakter disimpan, prompt diperbarui");
+      return;
+    }
+    case "salin-gambar-karakter":
+      await run(() => navigator.clipboard.writeText(el.dataset.prompt ?? ""), "Prompt gambar karakter disalin");
+      return;
     case "contoh-suara": {
       if (!p) return;
       const sel = panel.querySelector<HTMLSelectElement>('[data-action-change="ganti-suara"]');

@@ -2,7 +2,9 @@ import { Router } from "express";
 import fs from "node:fs/promises";
 import { projectDir } from "../editor.ts";
 import { SUARA, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
-import { FORMATS, GAYA, type Format, type Gaya } from "../../src/shared/types.ts";
+import { FORMATS, GAYA, type Format, type Gaya, type Karakter } from "../../src/shared/types.ts";
+import { terapkanKarakter } from "../../src/shared/karakter.ts";
+import { ekstrakKarakter } from "../agents.ts";
 import {
   createLanjutan,
   createProject,
@@ -93,6 +95,21 @@ projects.post("/projects/:id/suara/contoh", async (req, res) => {
   }
 });
 
+/** Buat lembar karakter dari prompt yang sudah ada (proyek lama). */
+projects.post("/projects/:id/karakter/ekstrak", async (req, res) => {
+  const p = getProject(req.params.id);
+  if (!p?.adegan?.length) return void res.status(400).json({ error: "Proyek ini belum punya adegan" });
+  try {
+    const karakter = await ekstrakKarakter(p);
+    res.json(await updateProject(p.id, (x) => {
+      x.karakter = karakter;
+      addLog(x, "Bayu", `Membuat lembar karakter: ${karakter.map((k) => k.nama).join(", ")}`);
+    }));
+  } catch (e) {
+    res.status(503).json({ error: (e as Error).message });
+  }
+});
+
 /** Isi statistik manual (mis. TikTok yang belum lolos audit API). */
 projects.post("/projects/:id/statistik", async (req, res) => {
   const b = req.body ?? {};
@@ -120,8 +137,20 @@ projects.patch("/projects/:id", async (req, res) => {
     if (Array.isArray(b.adegan) && x.adegan) {
       for (const a of b.adegan) {
         const t = x.adegan.find((y) => y.no === a.no);
-        if (t) Object.assign(t, pickStr(a, ["visual", "narasi", "prompt"]));
+        if (t) {
+          const lama = t.prompt;
+          Object.assign(t, pickStr(a, ["visual", "narasi", "prompt"]));
+          // prompt yang kamu sunting sendiri tidak ditimpa lagi oleh lembar karakter
+          if (t.prompt !== lama) t.promptMentah = undefined;
+        }
       }
+    }
+    if (Array.isArray(b.karakter)) {
+      x.karakter = b.karakter
+        .filter((k: unknown) => typeof (k as Karakter)?.nama === "string" && typeof (k as Karakter)?.deskripsi === "string")
+        .slice(0, 5)
+        .map((k: Karakter) => ({ nama: k.nama.trim().slice(0, 40), deskripsi: k.deskripsi.trim().slice(0, 1500) }));
+      if (x.adegan) x.adegan = terapkanKarakter(x.adegan, x.karakter!);
     }
     if (b.paket && x.paket) {
       if (b.paket.youtube) {

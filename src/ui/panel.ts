@@ -1,5 +1,6 @@
 import { TEAM, memberById, memberForStage } from "../shared/team.ts";
 import { cekKebijakan } from "../shared/kebijakan.ts";
+import { promptGambar } from "../shared/karakter.ts";
 import { FORMATS, GAYA, STAGES, type Platform, type Project, type Settings } from "../shared/types.ts";
 
 export type View = { kind: "list" } | { kind: "project"; id: string } | { kind: "member"; id: string };
@@ -449,6 +450,40 @@ function sectionLog(p: Project) {
 const ulangBtn = (tahap: string) =>
   `<button class="btn btn-ghost btn-sm" data-action="ulang" data-tahap="${tahap}" title="Minta karyawan mengerjakan ulang">Ulangi</button>`;
 
+function sectionKarakter(p: Project) {
+  if (!p.adegan?.length && !p.karakter?.length) return "";
+  const daftar = p.karakter ?? [];
+  if (!daftar.length) {
+    return `<section class="card"><h3>Karakter · Bayu</h3>
+      <p class="muted">Proyek ini belum punya lembar karakter, jadi wajah tokoh bisa berubah-ubah antar klip.</p>
+      <div class="row"><button class="btn btn-sm btn-primary" data-action="ekstrak-karakter">Buat lembar karakter dari prompt</button></div>
+      <p class="hint">Bayu menyusun deskripsi tokoh yang lengkap dari prompt yang ada. Part berikutnya akan mewarisinya.</p>
+    </section>`;
+  }
+  return `<details class="card" open><summary><h3>Karakter · Bayu</h3></summary>
+    <p class="hint">Deskripsi ini ditempel persis sama ke setiap prompt dan diwariskan ke part berikutnya.</p>
+    <ol class="karakter-list">${daftar
+      .map(
+        (k, i) => `<li class="karakter" data-i="${i}">
+        <label class="field"><span>Nama</span><input data-k="nama" value="${esc(k.nama)}" maxlength="40" /></label>
+        <label class="field"><span>Deskripsi tetap</span><textarea data-k="deskripsi" rows="4">${esc(k.deskripsi)}</textarea></label>
+        ${peringatan(k.deskripsi)}
+        <div class="row"><button class="btn btn-sm" data-action="salin-gambar-karakter" data-i="${i}" data-prompt="${esc(promptGambar(k, p.gaya))}">Salin prompt gambar referensi</button></div>
+      </li>`,
+      )
+      .join("")}</ol>
+    <div class="row"><button class="btn btn-sm" data-action="simpan-karakter">Simpan karakter</button></div>
+    <details class="manual"><summary>Supaya wajahnya benar-benar sama di Flow</summary>
+      <ol class="langkah">
+        <li>Klik <strong>Salin prompt gambar referensi</strong>, lalu buat gambarnya di Flow (menu <strong>Karakter</strong>) atau di aplikasi Gemini.</li>
+        <li>Simpan gambar itu sebagai <strong>Karakter</strong> di Flow dengan nama yang sama.</li>
+        <li>Saat merender tiap adegan, pilih karakter itu sebagai referensi (bahan/ingredient) sebelum menempel prompt.</li>
+        <li>Pakai karakter Flow yang sama untuk semua part cerita ini.</li>
+      </ol>
+    </details>
+  </details>`;
+}
+
 function sectionSeri(p: Project, s: UiState) {
   if (!p.naskah) return "";
   const idSeri = p.seri?.id ?? p.id;
@@ -513,6 +548,7 @@ function renderProject(p: Project, s: UiState): string {
   ${sectionPaket(p)}
   ${sectionVideo(p)}
   ${sectionSuara(p, s)}
+  ${sectionKarakter(p)}
   ${sectionKredit(p, s)}
   ${sectionAdegan(p)}
   ${sectionNaskah(p)}

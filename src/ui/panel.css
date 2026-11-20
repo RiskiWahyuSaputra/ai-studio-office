@@ -197,3 +197,8 @@ a.btn { text-decoration: none; display: inline-block; }
 .seri-list { margin: 0 0 8px; padding-left: 20px; }
 .seri-list li { margin-bottom: 4px; }
 .seri-list .link { color: var(--accent); text-decoration: underline; padding: 0; }
+
+.karakter-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.karakter { border-left: 3px solid var(--accent); padding-left: 10px; display: flex; flex-direction: column; gap: 6px; }
+.langkah { margin: 8px 0 0; padding-left: 20px; font-size: 13px; }
+.langkah li { margin-bottom: 4px; }

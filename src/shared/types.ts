@@ -133,7 +133,15 @@ export interface Adegan {
   visual: string;
   narasi: string;
   prompt: string;
+  /** prompt dengan penanda {{Nama}}; dipakai untuk menempel ulang lembar karakter */
+  promptMentah?: string;
   klip?: string;
+}
+
+export interface Karakter {
+  nama: string;
+  /** deskripsi fisik & pakaian yang sangat spesifik; ditempel apa adanya ke prompt */
+  deskripsi: string;
 }
 
 export interface Kredit {
@@ -200,6 +208,8 @@ export interface Project {
   modelSuara?: string;
   /** bagian dari cerita bersambung */
   seri?: Seri;
+  /** lembar karakter tetap; diwariskan ke part berikutnya */
+  karakter?: Karakter[];
   ide: string;
   dibuat: string;
   diubah: string;

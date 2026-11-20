@@ -5,7 +5,8 @@ import { aiAktif, generateJson } from "./ai.ts";
 import { getProject } from "./store.ts";
 import { adeganTemplat, naskahTemplat, paketTemplat, risetTemplat } from "./templates.ts";
 import { ATURAN_AMAN } from "../src/shared/kebijakan.ts";
-import { GAYA, FORMATS, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
+import { kembangkan } from "../src/shared/karakter.ts";
+import { GAYA, FORMATS, type Karakter, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
 
 const KONTEKS = (p: Project) =>
   `Kamu bagian dari tim kreator konten video AI berbahasa Indonesia untuk YouTube Shorts, TikTok, dan Instagram Reels.
@@ -77,9 +78,13 @@ Aturan usia dewasa itu untuk deskripsi visual nanti; JANGAN menyebut usia tokoh 
 Balas JSON: {"judulKerja": string, "hook": string, "narasi": string, "cta": string}`);
 }
 
-export async function storyboard(p: Project, s: Settings): Promise<Adegan[]> {
+const ATURAN_KARAKTER = `Deskripsi karakter WAJIB sangat spesifik supaya wajahnya sama di setiap klip: jenis kelamin, usia angka, bentuk wajah, warna kulit, model & warna rambut, alis/mata, ciri khas (tahi lalat, bekas luka kecil, kacamata, dll), tinggi & bentuk badan, pakaian lengkap dengan warna (atasan, bawahan, alas kaki), dan aksesori. Untuk hewan: spesies, ukuran, warna & pola bulu, ciri khas, aksesori. Tulis dalam satu kalimat panjang bahasa Indonesia, tanpa menyebut nama.`;
+
+export async function storyboard(p: Project, s: Settings): Promise<{ adegan: Adegan[]; karakter?: Karakter[] }> {
   const n = p.naskah!;
-  if (!aiAktif()) return adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip, p.gaya, s.narasiTts);
+  if (!aiAktif()) return { adegan: adeganTemplat(p.format, p.ide || p.riset!.topik, n, s.durasiKlip, p.gaya, s.narasiTts) };
+  // lembar karakter: milik proyek ini, atau warisan part sebelumnya
+  const warisan = p.karakter?.length ? p.karakter : partSebelumnya(p).at(-1)?.karakter;
   const aturanSuara = s.narasiTts
     ? `SUARA: narasi akan diisi TERPISAH oleh pengisi suara (TTS) supaya suaranya konsisten. Jadi JANGAN tulis kalimat ucapan di prompt. ${
         FORMATS[p.format].bicaraKeKamera
@@ -87,7 +92,7 @@ export async function storyboard(p: Project, s: Settings): Promise<Adegan[]> {
           : "Tokoh tidak berbicara."
       } Akhiri setiap prompt dengan "Tanpa dialog, tanpa ucapan, tanpa suara narator, hanya efek suara latar. Tanpa teks, tanpa subtitle, tanpa watermark."`
     : `SUARA: ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip di prompt (Veo membuat suaranya). Akhiri dengan "Tanpa teks, tanpa subtitle, tanpa watermark."`;
-  const hasil = await generateJson<{ adegan: Omit<Adegan, "no" | "durasi">[] }>(`${KONTEKS(p)}
+  const hasil = await generateJson<{ karakter?: Karakter[]; adegan: Omit<Adegan, "no" | "durasi">[] }>(`${KONTEKS(p)}
 
 Peranmu: Sutradara & Prompt Engineer untuk Google Veo.
 Naskah: ${JSON.stringify(n)}
@@ -116,8 +121,42 @@ Frasa gaya di atas hanya mengatur gaya gambar; pencahayaan dan suasana ikuti ara
 Kalau narasi menyebut usia tokoh (mis. "pria berusia 30 tahun"), hapus bagian itu dari narasi; usia cukup ditulis di prompt.
 Kalau naskah melanggar aturan di atas, ubah kalimat narasinya agar aman (dan tulis versi aman itu di field "narasi").
 
-Balas JSON: {"adegan": [{"visual": string, "narasi": string, "prompt": string}]}`);
-  return hasil.adegan.slice(0, 10).map((a, i) => ({ ...a, no: i + 1, durasi: s.durasiKlip }));
+LEMBAR KARAKTER:
+${
+  warisan?.length
+    ? `Pakai karakter yang SUDAH ADA ini (jangan ubah deskripsinya):\n${warisan.map((k) => `- ${k.nama}: ${k.deskripsi}`).join("\n")}\nKalau butuh tokoh baru yang belum ada, tambahkan di "karakter" dengan aturan berikut. ${ATURAN_KARAKTER}`
+    : `Buat 1–3 karakter yang muncul di video di field "karakter" (nama panggilan singkat + deskripsi). ${ATURAN_KARAKTER}`
+}
+Di setiap prompt, JANGAN menulis ulang deskripsi tokoh. Tulis penanda {{Nama}} (dengan kurung kurawal ganda) di tempat tokoh itu muncul, mis. "{{Raka}} berjalan pelan menyusuri lorong". Aplikasi akan menempelkan deskripsi lengkapnya secara otomatis. Tokoh figuran tanpa wajah jelas (siluet, bayangan) boleh dideskripsikan langsung.
+
+Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}], "adegan": [{"visual": string, "narasi": string, "prompt": string}]}`);
+  const karakter = [...(warisan ?? [])];
+  for (const k of hasil.karakter ?? []) {
+    if (k?.nama && k?.deskripsi && !karakter.some((x) => x.nama.toLowerCase() === k.nama.toLowerCase())) karakter.push({ nama: k.nama.trim(), deskripsi: k.deskripsi.trim() });
+  }
+  const adegan = hasil.adegan.slice(0, 10).map((a, i) => ({
+    ...a,
+    no: i + 1,
+    durasi: s.durasiKlip,
+    promptMentah: a.prompt,
+    prompt: kembangkan(a.prompt, karakter),
+  }));
+  return { adegan, karakter: karakter.length ? karakter : undefined };
+}
+
+/** Buat lembar karakter dari prompt yang sudah ada (untuk proyek lama tanpa lembar karakter). */
+export async function ekstrakKarakter(p: Project): Promise<Karakter[]> {
+  if (!aiAktif()) throw new Error("Butuh GEMINI_API_KEY untuk membuat lembar karakter");
+  const hasil = await generateJson<{ karakter: Karakter[] }>(`${KONTEKS(p)}
+
+Peranmu: Sutradara. Berikut prompt adegan sebuah video:
+${(p.adegan ?? []).map((a) => `- ${a.prompt}`).join("\n")}
+
+Buat lembar karakter untuk 1–3 tokoh utama yang muncul (abaikan siluet/figuran). Pertahankan semua ciri yang sudah disebut di prompt, lalu lengkapi detail yang belum ada agar konsisten. ${ATURAN_KARAKTER}
+${ATURAN_AMAN}
+
+Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}]}`);
+  return (hasil.karakter ?? []).filter((k) => k?.nama && k?.deskripsi).slice(0, 3);
 }
 
 export async function paket(p: Project): Promise<PaketUnggah> {
