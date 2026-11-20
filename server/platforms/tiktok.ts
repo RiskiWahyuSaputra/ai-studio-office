@@ -33,6 +33,7 @@ export function ttAuthUrl() {
 }
 
 interface TokenRes {
+  scope?: string;
   access_token?: string;
   refresh_token?: string;
   expires_in?: number;
@@ -90,7 +91,7 @@ export async function ttCallback(code: string, state: string) {
     refresh_token: j.refresh_token,
     expires_at: Date.now() + (j.expires_in ?? 86400) * 1000,
     akun: info.user.display_name ?? "Akun TikTok",
-    extra: { username: info.user.username ?? "", openId: j.open_id ?? "" },
+    extra: { username: info.user.username ?? "", openId: j.open_id ?? "", scope: j.scope ?? "" },
   });
 }
 

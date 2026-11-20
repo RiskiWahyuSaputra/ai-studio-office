@@ -53,7 +53,9 @@ export async function platformStatus() {
     const t = await getToken(k);
     out[k] = {
       siap: u.configured() && (!u.authUrl || Boolean(t)),
-      akun: t?.akun ?? (k === "instagram" && u.configured() ? `ID ${process.env.INSTAGRAM_USER_ID}` : undefined),
+      akun:
+        (t?.akun ? `${t.akun}${k === "tiktok" && t.extra?.scope ? ` · izin: ${t.extra.scope}` : ""}` : undefined) ??
+        (k === "instagram" && u.configured() ? `ID ${process.env.INSTAGRAM_USER_ID}` : undefined),
       catatan: u.configured() ? undefined : u.catatan,
       perluLogin: Boolean(u.authUrl),
     };
