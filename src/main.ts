@@ -322,9 +322,88 @@ panel.addEventListener("submit", async (ev) => {
   }
 });
 
+/** Pasangkan banyak file ke adegan: angka di nama file dulu, sisanya urut nama ke adegan kosong. */
+function pasangkan(files: File[], p: Project): { no: number; file: File }[] {
+  const nos = (p.adegan ?? []).map((a) => a.no);
+  const hasil: { no: number; file: File }[] = [];
+  const terpakai = new Set<number>();
+  const sisa: File[] = [];
+  const urut = [...files].sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+  for (const f of urut) {
+    const angka = [...f.name.replace(/\.[^.]+$/, "").matchAll(/\d+/g)].map((m) => Number(m[0]));
+    const no = angka.reverse().find((n) => nos.includes(n) && !terpakai.has(n));
+    if (no !== undefined) {
+      hasil.push({ no, file: f });
+      terpakai.add(no);
+    } else sisa.push(f);
+  }
+  const kosong = (p.adegan ?? []).filter((a) => !a.klip && !terpakai.has(a.no)).map((a) => a.no);
+  const cadangan = nos.filter((n) => !terpakai.has(n) && !kosong.includes(n));
+  for (const f of sisa) {
+    const no = kosong.shift() ?? cadangan.shift();
+    if (no === undefined) break;
+    hasil.push({ no, file: f });
+    terpakai.add(no);
+  }
+  return hasil.sort((a, b) => a.no - b.no);
+}
+
+async function unggahKlip(p: Project, daftar: { no: number; file: File }[]) {
+  if (!daftar.length) return toast("Tidak ada file video yang bisa dipasangkan", true);
+  toast(`Mengunggah ${daftar.length} klip...`);
+  let ok = 0;
+  for (const { no, file } of daftar) {
+    const fd = new FormData();
+    fd.append("file", file);
+    const kartu = panel.querySelector(`.scene[data-no="${no}"]`);
+    kartu?.classList.add("is-busy");
+    const r = await run(() => api.upload(`/api/projects/${p.id}/klip/${no}`, fd));
+    kartu?.classList.remove("is-busy");
+    if (r) ok++;
+  }
+  toast(`${ok} dari ${daftar.length} klip terunggah: ${daftar.map((d) => `${d.file.name} → adegan ${d.no}`).join(", ")}`);
+}
+
+const videoSaja = (list: FileList | null | undefined) => [...(list ?? [])].filter((f) => f.type.startsWith("video/") || /\.(mp4|mov|webm|mkv)$/i.test(f.name));
+
+panel.addEventListener("dragover", (ev) => {
+  const zona = (ev.target as HTMLElement).closest<HTMLElement>("[data-drop]");
+  if (!zona || !ev.dataTransfer?.types.includes("Files")) return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect = "copy";
+  panel.querySelectorAll(".drag-over").forEach((x) => x !== zona && x.classList.remove("drag-over"));
+  zona.classList.add("drag-over");
+});
+panel.addEventListener("dragleave", (ev) => {
+  const zona = (ev.target as HTMLElement).closest<HTMLElement>("[data-drop]");
+  if (zona && !zona.contains(ev.relatedTarget as Node)) zona.classList.remove("drag-over");
+});
+panel.addEventListener("drop", async (ev) => {
+  const zona = (ev.target as HTMLElement).closest<HTMLElement>("[data-drop]");
+  const p = current();
+  if (!zona || !p) return;
+  ev.preventDefault();
+  zona.classList.remove("drag-over");
+  const files = videoSaja(ev.dataTransfer?.files);
+  if (!files.length) return toast("Yang diseret bukan file video", true);
+  if (zona.dataset.drop === "klip" && files.length === 1) {
+    await unggahKlip(p, [{ no: Number(zona.dataset.no), file: files[0] }]);
+  } else {
+    await unggahKlip(p, pasangkan(files, p));
+  }
+});
+// cegah browser membuka file video kalau dilepas di luar zona
+window.addEventListener("dragover", (ev) => ev.preventDefault());
+window.addEventListener("drop", (ev) => ev.preventDefault());
+
 panel.addEventListener("change", async (ev) => {
   const input = ev.target as HTMLInputElement;
   const p = current();
+  if (p && input.dataset.upload === "semua") {
+    await unggahKlip(p, pasangkan(videoSaja(input.files), p));
+    input.value = "";
+    return;
+  }
   if (p && input.dataset.actionChange === "ganti-suara") {
     await run(() => api.patch(p.id, { suara: input.value }), `Suara narasi: ${input.value}`);
     return;

@@ -399,12 +399,20 @@ function sectionAdegan(p: Project) {
         <select data-action-change="ganti-gaya" aria-label="Ganti gaya visual">
           ${Object.entries(GAYA).map(([id, g]) => `<option value="${id}" ${id === gayaNow ? "selected" : ""}>${esc(g.nama)}</option>`).join("")}
         </select></label>`;
+  const zonaSemua = bolehUnggahKlip(p)
+    ? `<div class="dropzone" data-drop="semua" tabindex="0">
+        <strong>Seret semua klip dari Flow ke sini</strong>
+        <span>Dicocokkan otomatis: nama file yang mengandung angka (mis. <code>3.mp4</code>, <code>adegan-3.mp4</code>) masuk ke adegan itu, sisanya mengisi adegan kosong sesuai urutan nama file.</span>
+        <label class="btn btn-sm file-btn">atau pilih beberapa file<input type="file" accept="video/*" multiple data-upload="semua" /></label>
+      </div>`
+    : "";
   return `<details class="card" open><summary><h3>Adegan & prompt Veo · Bayu</h3>${ulangBtn("storyboard")}</summary>
     ${gantiGaya}
+    ${zonaSemua}
     <ol class="scenes">${p.adegan
       .map(
         (a) => `
-      <li class="scene" data-no="${a.no}">
+      <li class="scene${bolehUnggahKlip(p) ? " droppable" : ""}" data-no="${a.no}" ${bolehUnggahKlip(p) ? `data-drop="klip"` : ""}>
         <div class="scene-head"><strong>Adegan ${a.no}</strong><span class="muted">${a.durasi} dtk</span>${a.klip ? `<span class="badge badge-selesai">Klip ada</span>` : ""}</div>
         <p class="muted">${esc(a.visual)}</p>
         <p class="narasi">“${esc(a.narasi)}”</p>
@@ -414,7 +422,7 @@ function sectionAdegan(p: Project) {
           <button class="btn btn-sm" data-action="salin" data-no="${a.no}">Salin prompt</button>
           ${
             bolehUnggahKlip(p)
-              ? `<label class="btn btn-sm file-btn">${a.klip ? "Ganti klip" : "Unggah klip"}<input type="file" accept="video/*" data-upload="klip" data-no="${a.no}" /></label>`
+              ? `<label class="btn btn-sm file-btn">${a.klip ? "Ganti klip" : "Unggah klip"}<input type="file" accept="video/*" data-upload="klip" data-no="${a.no}" /></label><span class="hint">atau seret file ke kartu ini</span>`
               : ""
           }
           ${a.klip ? `<a class="link" href="/media/${p.id}/${encodeURIComponent(a.klip)}" target="_blank" rel="noopener">Lihat</a>` : ""}

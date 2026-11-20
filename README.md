@@ -8,7 +8,7 @@ Format kanal:
 - **Vlog Hewan Lokal**: hewan khas Indonesia nge-vlog dengan gaya kocak.
 - **Cerita Horor Nusantara**: legenda urban dan kisah seram lokal, dituturkan pelan dan mencekam (tanpa darah atau kekerasan).
 
-Gaya visual per proyek: **Animasi** (kartun 3D, bawaan), **Pixel Art**, atau **Sinematik**.
+Gaya visual per proyek: **Animasi 2D** (bawaan), **Animasi 3D**, **Pixel Art**, atau **Sinematik**.
 
 ## Tim
 
@@ -29,7 +29,7 @@ Klik karyawan di kantor untuk melihat kerjaan dan catatannya. Saat bekerja, kary
 
 1. Buat proyek: pilih format, isi ide (atau kosongkan).
 2. Dimas, Sari, dan Bayu bekerja otomatis sampai prompt Veo siap.
-3. **Giliranmu:** buka [Google Flow](https://labs.google/fx/tools/flow), tempel prompt tiap adegan, render, lalu unggah klipnya ke adegan masing-masing. Kredit Flow tidak punya API, jadi langkah ini manual.
+3. **Giliranmu:** buka [Google Flow](https://labs.google/fx/tools/flow), tempel prompt tiap adegan, render, lalu seret semua klipnya sekaligus ke panel. Klip dicocokkan ke adegan lewat angka di nama file. Kredit Flow tidak punya API, jadi langkah ini manual.
 4. Klik **Setujui & lanjut**. Hadi mencatat kredit, Nanda merender video final, lalu Putri menulis caption.
 5. Cek caption, lalu unggah ke tiap platform dari panel.
 6. Yoga menarik statistik dan memberi saran.

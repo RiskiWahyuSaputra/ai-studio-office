@@ -1,11 +1,19 @@
 import type { StageId } from "./team.ts";
 
 export type Format = "pov-sejarah" | "vlog-hewan" | "cerita-horor";
-export type Gaya = "animasi" | "pixel" | "sinematik";
+export type Gaya = "animasi-2d" | "animasi" | "pixel" | "sinematik";
 
 export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string; tokoh?: string }> = {
+  "animasi-2d": {
+    nama: "Animasi 2D",
+    ringkas: "Kartun 2D dengan garis tegas dan warna flat. Ringan, ekspresif, dan karakternya paling mudah dibuat konsisten.",
+    kepala: "Video vertikal 9:16, animasi 2D",
+    tokoh: "karakter kartun 2D",
+    prompt:
+      "animasi kartun 2D digital, garis tepi tegas, pewarnaan flat dengan bayangan cel-shading sederhana, karakter berproporsi kartun dengan ekspresi wajah yang jelas, latar ilustrasi 2D yang dilukis, gerakan animasi yang halus, tidak 3D dan tidak fotorealistis",
+  },
   animasi: {
-    nama: "Animasi",
+    nama: "Animasi 3D",
     ringkas: "Kartun 3D ekspresif seperti film animasi. Cocok untuk semua format, termasuk horor yang tetap enak ditonton.",
     kepala: "Video vertikal 9:16, animasi 3D",
     tokoh: "karakter animasi 3D bergaya kartun",

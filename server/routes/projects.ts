@@ -34,7 +34,7 @@ projects.post("/projects", async (req, res) => {
   const format = req.body?.format as Format;
   if (!(format in FORMATS)) return void res.status(400).json({ error: "Format tidak dikenal" });
   const ide = String(req.body?.ide ?? "").slice(0, 500);
-  const gaya: Gaya = req.body?.gaya in GAYA ? req.body.gaya : "animasi";
+  const gaya: Gaya = req.body?.gaya in GAYA ? req.body.gaya : "animasi-2d";
   const p = await createProject(format, ide, gaya);
   activity({ type: "bicara", memberId: "produser", teks: "Proyek baru masuk!" });
   activity({ type: "serah", dari: "produser", ke: "peneliti", label: ide ? ide.slice(0, 26) : "Cari topik ya" });
