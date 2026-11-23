@@ -19,7 +19,7 @@ export interface Pasangan {
   alasan: "nomor" | "nama mirip prompt" | "urutan";
 }
 
-const EKSTENSI_VIDEO = /\.(mp4|mov|webm|mkv|m4v)$/i;
+const EKSTENSI_VIDEO = /\.(mp4|mov|webm|mkv|m4v|png|jpe?g|webp)$/i;
 
 /** Bongkar ZIP dan kembalikan semua video di dalamnya (termasuk di subfolder). */
 export async function bongkarZip(zip: string, tujuan: string): Promise<Kandidat[]> {

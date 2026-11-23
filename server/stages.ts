@@ -3,6 +3,8 @@
  */
 import * as agen from "./agents.ts";
 import * as editor from "./editor.ts";
+import { rakit } from "./rakit.ts";
+import { activity } from "./events.ts";
 import * as tts from "./tts.ts";
 import * as analis from "./analyst.ts";
 import { kick, registerStage } from "./pipeline.ts";
@@ -43,6 +45,14 @@ registerStage("storyboard", {
 registerStage("render", {
   status: "Hitung kredit...",
   async run(p) {
+    if (p.sumberVisual === "ilustrasi") {
+      const n = p.adegan?.length ?? 0;
+      return {
+        apply: () => {},
+        pesan: `Tanpa kredit Flow. Buat ${n} gambar di aplikasi Gemini lalu seret ke panel.`,
+        tunggu: true,
+      };
+    }
     const s = getSettings();
     const perKlip = s.modeRender === "fast" ? s.biayaFast : s.biayaQuality;
     const jumlahKlip = p.adegan?.length ?? 0;
@@ -60,7 +70,7 @@ registerStage("render", {
   },
   siap: (p) => {
     const kurang = (p.adegan ?? []).filter((a) => !a.klip).map((a) => a.no);
-    return kurang.length ? `Klip adegan ${kurang.join(", ")} belum diunggah` : null;
+    return kurang.length ? `${p.sumberVisual === "ilustrasi" ? "Gambar" : "Klip"} adegan ${kurang.join(", ")} belum diunggah` : null;
   },
   async saatLanjut(p) {
     if (!p.kredit || p.kredit.dicatat) return;
@@ -87,7 +97,14 @@ registerStage("edit", {
         narasi = hasil.files;
         modelSuara = hasil.model;
       }
-      const v = await editor.render(p, { subtitle: s.subtitle, narasi, volumeKlip: s.volumeKlip });
+      const v = await rakit(p, semua, {
+        subtitle: s.subtitle,
+        narasi,
+        volumeKlip: s.volumeKlip,
+        label: p.seri ? `Part ${p.seri.part}${p.seri.part >= p.seri.totalPart ? " · Tamat" : ""}` : undefined,
+        judul: p.seri ? p.naskah?.judulKerja.replace(/\s*\(Part \d+\)\s*$/i, "") : undefined,
+        onProgress: (x) => activity({ type: "kerja", memberId: "editor", status: `Render ${x}%...` }),
+      });
       return {
         apply: (x) => {
           x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString() };
@@ -108,10 +125,16 @@ registerStage("edit", {
         narasi = hasil.files;
         modelSuara = hasil.model;
       }
-      const v = await editor.render(
-        { ...p, adegan: adeganPart },
-        { subtitle: s.subtitle, narasi, volumeKlip: s.volumeKlip, keluaran: `final-part-${k}.mp4`, subtitleFile: `subtitle-part-${k}.srt` },
-      );
+      const v = await rakit(p, adeganPart, {
+        subtitle: s.subtitle,
+        narasi,
+        volumeKlip: s.volumeKlip,
+        keluaran: `final-part-${k}.mp4`,
+        subtitleFile: `subtitle-part-${k}.srt`,
+        label: `Part ${k}${k === nPart ? " · Tamat" : ""}`,
+        judul: p.naskah!.judulKerja,
+        onProgress: (x) => activity({ type: "kerja", memberId: "editor", status: `Part ${k}: render ${x}%...` }),
+      });
       const b = p.naskah!.part![k - 1];
       bagian.push({
         part: k,

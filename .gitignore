@@ -6,3 +6,5 @@ uploads/*
 !uploads/.gitkeep
 !data/.gitkeep
 *.log
+tools/voxcpm/.venv
+tools/voxcpm/out

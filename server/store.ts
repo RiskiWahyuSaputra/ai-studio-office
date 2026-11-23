@@ -3,7 +3,7 @@ import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { ROOT } from "./paths.ts";
 import { broadcast } from "./events.ts";
-import type { Adegan, Format, Gaya, Naskah, Project, Settings, Video } from "../src/shared/types.ts";
+import type { Adegan, Format, Gaya, Naskah, Project, Settings, SumberVisual, Video } from "../src/shared/types.ts";
 
 interface Db {
   projects: Project[];
@@ -63,13 +63,14 @@ export const listProjects = () => [...db.projects].sort((a, b) => b.dibuat.local
 export const getProject = (id: string) => db.projects.find((p) => p.id === id);
 export const getSettings = () => db.settings;
 
-export async function createProject(format: Format, ide: string, gaya: Gaya, rencanaPart = 1): Promise<Project> {
+export async function createProject(format: Format, ide: string, gaya: Gaya, rencanaPart = 1, sumberVisual: SumberVisual = "ilustrasi"): Promise<Project> {
   const now = new Date().toISOString();
   const p: Project = {
     id: randomUUID().slice(0, 8),
     format,
     gaya,
     rencanaPart: rencanaPart > 1 ? rencanaPart : undefined,
+    sumberVisual,
     ide: ide.trim(),
     dibuat: now,
     diubah: now,
@@ -111,6 +112,7 @@ export async function buatProyekPart(
       id: randomUUID().slice(0, 8),
       format: induk.format,
       gaya: induk.gaya,
+      sumberVisual: induk.sumberVisual,
       suara: induk.suara,
       modelSuara: induk.modelSuara,
       ide: induk.ide,
@@ -144,6 +146,7 @@ export async function createLanjutan(asal: Project, totalPart: number): Promise<
     id: randomUUID().slice(0, 8),
     format: asal.format,
     gaya: asal.gaya,
+    sumberVisual: asal.sumberVisual,
     suara: asal.suara,
     modelSuara: asal.modelSuara,
     ide: asal.ide,

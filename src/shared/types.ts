@@ -1,14 +1,17 @@
+import type { Gerak } from "./video.ts";
 import type { StageId } from "./team.ts";
 
 export type Format = "pov-sejarah" | "vlog-hewan" | "cerita-horor";
 export type Gaya = "animasi-2d" | "animasi" | "pixel" | "sinematik";
 
-export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string; tokoh?: string }> = {
+export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string; tokoh?: string; gambar: string }> = {
   "animasi-2d": {
     nama: "Animasi 2D",
     ringkas: "Kartun 2D dengan garis tegas dan warna flat. Ringan, ekspresif, dan karakternya paling mudah dibuat konsisten.",
     kepala: "Video vertikal 9:16, animasi 2D",
     tokoh: "karakter kartun 2D",
+    gambar:
+      "ilustrasi kartun 2D digital, garis tepi tegas, pewarnaan flat dengan bayangan cel-shading sederhana, karakter berproporsi kartun dengan ekspresi wajah yang jelas, latar ilustrasi yang dilukis dengan detail",
     prompt:
       "animasi kartun 2D digital, garis tepi tegas, pewarnaan flat dengan bayangan cel-shading sederhana, karakter berproporsi kartun dengan ekspresi wajah yang jelas, latar ilustrasi 2D yang dilukis, gerakan animasi yang halus, tidak 3D dan tidak fotorealistis",
   },
@@ -17,6 +20,7 @@ export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string;
     ringkas: "Kartun 3D ekspresif seperti film animasi. Cocok untuk semua format, termasuk horor yang tetap enak ditonton.",
     kepala: "Video vertikal 9:16, animasi 3D",
     tokoh: "karakter animasi 3D bergaya kartun",
+    gambar: "ilustrasi 3D bergaya film animasi modern, karakter berproporsi kartun dengan mata besar dan ekspresi hidup, tekstur halus, komposisi sinematik",
     prompt:
       "animasi 3D bergaya film animasi modern, karakter berproporsi kartun dengan mata besar dan ekspresi wajah yang hidup, tekstur halus, gerakan kamera yang mulus",
   },
@@ -25,6 +29,7 @@ export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string;
     ringkas: "Animasi pixel 16-bit ala game retro. Unik, gampang dikenali, dan lebih jarang ditolak Flow.",
     kepala: "Video vertikal 9:16, animasi pixel art",
     tokoh: "karakter pixel art",
+    gambar: "pixel art 16-bit bergaya game RPG konsol klasik tahun 1990-an, piksel persegi tajam, palet warna terbatas, bayangan dithering",
     prompt:
       "animasi pixel art 16-bit bergaya game RPG konsol klasik tahun 1990-an, piksel persegi yang tajam dan terlihat jelas, palet warna cerah yang terbatas, bayangan dithering, animasi karakter seperti sprite, latar parallax berlapis, suara latar bernuansa chiptune retro",
   },
@@ -33,6 +38,7 @@ export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string;
     ringkas: "Realistis seperti film. Lebih dramatis, tapi lebih sering ditolak untuk tema sensitif.",
     kepala: "Video vertikal 9:16",
     prompt: "sinematik, fotorealistis, pencahayaan alami, suara latar yang realistis",
+    gambar: "foto sinematik fotorealistis, pencahayaan dramatis, kedalaman bidang dangkal",
   },
 };
 
@@ -99,6 +105,9 @@ export const FORMATS: Record<Format, PanduanFormat> = {
   },
 };
 
+/** Sumber visual: gambar diam yang digerakkan Remotion, atau klip video dari Google Flow. */
+export type SumberVisual = "ilustrasi" | "flow";
+
 export type Platform = "youtube" | "tiktok" | "instagram";
 export type StageStatus = "antre" | "jalan" | "menunggu-kamu" | "selesai" | "gagal";
 
@@ -106,7 +115,7 @@ export const STAGES: { id: StageId; nama: string; pendek: string }[] = [
   { id: "riset", nama: "Riset", pendek: "Riset" },
   { id: "naskah", nama: "Naskah", pendek: "Naskah" },
   { id: "storyboard", nama: "Storyboard & Prompt", pendek: "Prompt" },
-  { id: "render", nama: "Render di Flow", pendek: "Render" },
+  { id: "render", nama: "Buat visual", pendek: "Visual" },
   { id: "edit", nama: "Edit Video", pendek: "Edit" },
   { id: "paket", nama: "Judul & Caption", pendek: "Caption" },
   { id: "unggah", nama: "Unggah", pendek: "Unggah" },
@@ -152,6 +161,8 @@ export interface Adegan {
   promptMentah?: string;
   /** nomor part (cerita utuh yang dipecah jadi beberapa video) */
   part?: number;
+  /** gerak kamera & efek untuk gambar diam (mode ilustrasi) */
+  gerak?: Gerak;
   klip?: string;
 }
 
@@ -227,6 +238,8 @@ export interface Project {
   seri?: Seri;
   /** lembar karakter tetap; diwariskan ke part berikutnya */
   karakter?: Karakter[];
+  /** gambar diam (ilustrasi) atau klip Flow; proyek lama tanpa field ini = flow */
+  sumberVisual?: SumberVisual;
   /** cerita utuh sampai tamat, nanti dipecah jadi sekian video saat edit */
   rencanaPart?: number;
   /** proyek produksi yang sudah dipecah: id proyek tiap part */

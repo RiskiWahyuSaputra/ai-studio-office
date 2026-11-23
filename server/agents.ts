@@ -1,3 +1,4 @@
+import { EFEK, KAMERA, type Efek, type Gerak, type Kamera } from "../src/shared/video.ts";
 /**
  * Tugas tiap karyawan. Masing-masing memakai Gemini bila tersedia, kalau tidak memakai templat.
  */
@@ -119,6 +120,20 @@ Balas JSON: {"judulKerja": string, "hook": string, "narasi": string, "cta": stri
 
 const ATURAN_KARAKTER = `Deskripsi karakter WAJIB sangat spesifik supaya wajahnya sama di setiap klip: jenis kelamin, usia angka, bentuk wajah, warna kulit, model & warna rambut, alis/mata, ciri khas (tahi lalat, bekas luka kecil, kacamata, dll), tinggi & bentuk badan, pakaian lengkap dengan warna (atasan, bawahan, alas kaki), dan aksesori. Untuk hewan: spesies, ukuran, warna & pola bulu, ciri khas, aksesori. Tulis dalam satu kalimat panjang bahasa Indonesia, tanpa menyebut nama.`;
 
+const GERAK_BAWAAN: Record<Project["format"], Gerak["efek"]> = {
+  "cerita-horor": ["kabut", "gelap"],
+  "pov-sejarah": ["debu"],
+  "vlog-hewan": [],
+};
+
+/** Validasi gerak dari AI; nilai yang tidak dikenal diganti bawaan per format. */
+export function rapikanGerak(g: unknown, format: Project["format"], i: number): Gerak {
+  const x = (g ?? {}) as { kamera?: string; efek?: unknown };
+  const kamera = KAMERA.includes(x.kamera as Kamera) ? (x.kamera as Kamera) : (["zoom-masuk", "geser-kiri", "zoom-keluar", "geser-kanan"] as Kamera[])[i % 4];
+  const efek = Array.isArray(x.efek) ? (x.efek.filter((e) => EFEK.includes(e as Efek)) as Efek[]).slice(0, 3) : GERAK_BAWAAN[format];
+  return { kamera, efek: [...new Set(efek)] };
+}
+
 export async function storyboard(p: Project, s: Settings): Promise<{ adegan: Adegan[]; karakter?: Karakter[] }> {
   const n = p.naskah!;
   const N = n.part?.length ?? 1;
@@ -131,9 +146,13 @@ export async function storyboard(p: Project, s: Settings): Promise<{ adegan: Ade
     });
     return { adegan: semua };
   }
+  const ilustrasi = p.sumberVisual === "ilustrasi";
+  const gayaGambar = GAYA[p.gaya ?? "sinematik"];
   // lembar karakter: milik proyek ini, atau warisan part sebelumnya
   const warisan = p.karakter?.length ? p.karakter : partSebelumnya(p).at(-1)?.karakter;
-  const aturanSuara = s.narasiTts
+  const aturanSuara = ilustrasi
+    ? `Ini GAMBAR DIAM untuk dibuat di aplikasi Gemini, jadi JANGAN tulis gerakan kamera, suara, atau ucapan di prompt. Sisakan ruang yang tidak terlalu ramai di sepertiga bawah gambar untuk subtitle. Akhiri setiap prompt dengan "Tanpa teks, tanpa tulisan, tanpa watermark."`
+    : s.narasiTts
     ? `SUARA: narasi akan diisi TERPISAH oleh pengisi suara (TTS) supaya suaranya konsisten. Jadi JANGAN tulis kalimat ucapan di prompt. ${
         FORMATS[p.format].bicaraKeKamera
           ? "Tokoh tetap tampak berbicara ke kamera (mulut bergerak, ekspresif), tapi tanpa suara ucapan."
@@ -142,7 +161,7 @@ export async function storyboard(p: Project, s: Settings): Promise<{ adegan: Ade
     : `SUARA: ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip di prompt (Veo membuat suaranya). Akhiri dengan "Tanpa teks, tanpa subtitle, tanpa watermark."`;
   const hasil = await generateJson<{ karakter?: Karakter[]; adegan: Omit<Adegan, "no" | "durasi">[] }>(`${KONTEKS(p)}
 
-Peranmu: Sutradara & Prompt Engineer untuk Google Veo.
+${ilustrasi ? "Peranmu: Sutradara & Ilustrator. Videonya dibuat dari satu GAMBAR DIAM per adegan yang nanti digerakkan (zoom/geser kamera, efek kabut, hujan, dll) dan diberi narasi." : "Peranmu: Sutradara & Prompt Engineer untuk Google Veo."}
 Naskah: ${JSON.stringify(n)}
 Riset: ${JSON.stringify(p.riset)}
 
@@ -155,18 +174,24 @@ ${(() => {
   })()}
 ${
   N > 1
-    ? `Naskah ini satu cerita utuh yang terdiri dari ${N} part (lihat field "part"). Untuk SETIAP part, pecah menjadi ${s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan: adegan pertama part = hook part itu, adegan terakhir part = cta part itu. Urutkan adegan dari part 1 sampai part ${N}, dan isi field "part" (angka) di tiap adegan.`
-    : `Pecah naskah menjadi ${s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan (hook = adegan 1, cta = adegan terakhir).`
+    ? `Naskah ini satu cerita utuh yang terdiri dari ${N} part (lihat field "part"). Untuk SETIAP part, pecah menjadi ${ilustrasi ? "6–8" : s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan: adegan pertama part = hook part itu, adegan terakhir part = cta part itu. Urutkan adegan dari part 1 sampai part ${N}, dan isi field "part" (angka) di tiap adegan.`
+    : `Pecah naskah menjadi ${ilustrasi ? "6–8" : s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan (hook = adegan 1, cta = adegan terakhir).`
 } Untuk tiap adegan tulis:
 - visual: deskripsi singkat bahasa Indonesia.
 - narasi: kalimat yang diucapkan di adegan itu (ambil dari naskah).
-- prompt: prompt Veo dalam BAHASA INDONESIA (jangan pakai bahasa Inggris), satu paragraf, diawali "${GAYA[p.gaya ?? "sinematik"].kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis.
-- narasi tiap adegan maksimal ${Math.max(6, Math.floor(s.durasiKlip * 2.2))} kata supaya muat dibacakan dalam satu klip ${s.durasiKlip} detik. Kalau naskah lebih panjang, pecah jadi lebih banyak adegan (maksimal 10) atau ringkas kalimatnya.
+${
+  ilustrasi
+    ? `- prompt: prompt GAMBAR dalam BAHASA INDONESIA, satu paragraf, diawali "Ilustrasi vertikal 9:16, ${gayaGambar.gambar}", lalu subjek & pose, ekspresi, latar, sudut pandang/komposisi, pencahayaan, dan suasana. Jaga tokoh dan latar konsisten antar adegan.
+- gerak: {"kamera": salah satu dari ${KAMERA.map((k) => `"${k}"`).join(", ")}, "efek": daftar 0–3 dari ${EFEK.map((e) => `"${e}"`).join(", ")}}. Pilih yang memperkuat suasana (mis. horor: zoom-masuk pelan + kabut/kedip/gelap; hujan hanya kalau adegannya memang hujan; getar untuk momen kaget). Variasikan kamera antar adegan.
+- narasi tiap adegan 1–2 kalimat, maksimal 22 kata.`
+    : `- prompt: prompt Veo dalam BAHASA INDONESIA (jangan pakai bahasa Inggris), satu paragraf, diawali "${gayaGambar.kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis.
+- narasi tiap adegan maksimal ${Math.max(6, Math.floor(s.durasiKlip * 2.2))} kata supaya muat dibacakan dalam satu klip ${s.durasiKlip} detik. Kalau naskah lebih panjang, pecah jadi lebih banyak adegan (maksimal 10) atau ringkas kalimatnya.`
+}
 ${aturanSuara}
 ${FORMATS[p.format].sutradara}
 
 ${ATURAN_AMAN}
-GAYA VISUAL: ${GAYA[p.gaya ?? "sinematik"].nama}. Masukkan frasa gaya ini di setiap prompt: "${GAYA[p.gaya ?? "sinematik"].prompt}".
+GAYA VISUAL: ${gayaGambar.nama}. Masukkan frasa gaya ini di setiap prompt: "${ilustrasi ? gayaGambar.gambar : gayaGambar.prompt}".
 ${GAYA[p.gaya ?? "sinematik"].tokoh ? `Jangan pakai kata fotorealistis, realistis, atau film sinematik. Deskripsikan tokoh sebagai ${GAYA[p.gaya ?? "sinematik"].tokoh} dengan ciri warna dan pakaian yang sama persis di tiap adegan supaya konsisten.` : ""}
 
 Frasa gaya di atas hanya mengatur gaya gambar; pencahayaan dan suasana ikuti arahan format.
@@ -181,13 +206,14 @@ ${
 }
 Di setiap prompt, JANGAN menulis ulang deskripsi tokoh. Tulis penanda {{Nama}} (dengan kurung kurawal ganda) di tempat tokoh itu muncul, mis. "{{Raka}} berjalan pelan menyusuri lorong". Aplikasi akan menempelkan deskripsi lengkapnya secara otomatis. Tokoh figuran tanpa wajah jelas (siluet, bayangan) boleh dideskripsikan langsung.
 
-Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}], "adegan": [{"visual": string, "narasi": string, "prompt": string${N > 1 ? ', "part": number' : ""}}]}`);
+Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}], "adegan": [{"visual": string, "narasi": string, "prompt": string${N > 1 ? ', "part": number' : ""}${ilustrasi ? ', "gerak": {"kamera": string, "efek": string[]}' : ""}}]}`);
   const karakter = [...(warisan ?? [])];
   for (const k of hasil.karakter ?? []) {
     if (k?.nama && k?.deskripsi && !karakter.some((x) => x.nama.toLowerCase() === k.nama.toLowerCase())) karakter.push({ nama: k.nama.trim(), deskripsi: k.deskripsi.trim() });
   }
   const adegan = hasil.adegan.slice(0, 10 * N).map((a, i) => ({
     ...a,
+    gerak: ilustrasi ? rapikanGerak(a.gerak, p.format, i) : undefined,
     part: N > 1 ? Math.min(N, Math.max(1, Math.round(Number(a.part) || 1))) : undefined,
     no: i + 1,
     durasi: s.durasiKlip,

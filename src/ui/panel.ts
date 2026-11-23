@@ -72,6 +72,13 @@ function renderList(s: UiState): string {
           )
           .join("")}
       </fieldset>
+      <fieldset class="gaya-pilih">
+        <legend>Sumber visual</legend>
+        <label class="gaya-opt" title="Satu gambar diam per adegan dari aplikasi Gemini, digerakkan oleh React (Remotion). Tanpa kredit Flow.">
+          <input type="radio" name="sumberVisual" value="ilustrasi" checked /><span>Ilustrasi + gerak</span></label>
+        <label class="gaya-opt" title="Klip video dari Google Flow (Veo). Memakai kredit Flow.">
+          <input type="radio" name="sumberVisual" value="flow" /><span>Klip Google Flow</span></label>
+      </fieldset>
       <label class="field">
         <span>Jumlah part (cerita utuh, nanti dipecah jadi beberapa video)</span>
         <select name="rencanaPart">
@@ -227,6 +234,9 @@ export const PETUNJUK: Partial<Record<Project["tahap"], (p: Project, s: UiState)
   paket: () => "Cek judul, caption, dan hashtag dari Putri di bawah. Sunting bila perlu, simpan, lalu setujui.",
   unggah: () => "Hubungkan akun lalu unggah ke platform pilihanmu di bagian Unggah. Setelah minimal satu tayang, lanjutkan ke Analisis.",
   render: (p, s) => {
+    if (p.sumberVisual === "ilustrasi") {
+      return `Buka <a href="https://gemini.google.com/app" target="_blank" rel="noopener">aplikasi Gemini</a>, salin prompt gambar tiap adegan (tombol <strong>Salin prompt</strong>), unduh gambarnya berurutan, lalu seret semua gambar ke kotak di bagian Adegan. Tidak memakai kredit Flow.`;
+    }
     const sisa = s.settings.kreditBulanan - s.settings.kreditTerpakai;
     return `Buka <a href="https://labs.google/fx/tools/flow" target="_blank" rel="noopener">Google Flow</a>, salin prompt tiap adegan, render (mode ${p.kredit?.mode === "quality" ? "Quality" : "Fast"}), lalu unggah klipnya di bawah. Estimasi <strong>${p.kredit?.total ?? 0}</strong> kredit, sisa ${sisa}.
       <span class="sub">Sudah edit sendiri? <label class="link file-link">Unggah video final<input type="file" accept="video/*" data-upload="video" /></label> dan lewati Nanda.</span>`;
@@ -434,9 +444,9 @@ function sectionAdegan(p: Project) {
         </select></label>`;
   const zonaSemua = bolehUnggahKlip(p)
     ? `<div class="dropzone" data-drop="semua" tabindex="0">
-        <strong>Seret ZIP "download proyek" Flow atau semua klip ke sini</strong>
-        <span>ZIP dibongkar otomatis. Tiap video dipasangkan ke adegan lewat angka di nama file, kemiripan nama dengan prompt, lalu urutan waktu dibuat. Hasilnya bisa dicek dan ditukar di bawah.</span>
-        <label class="btn btn-sm file-btn">atau pilih file<input type="file" accept="video/*,.zip,application/zip" multiple data-upload="semua" /></label>
+        <strong>${p.sumberVisual === "ilustrasi" ? "Seret semua gambar (atau ZIP-nya) ke sini" : 'Seret ZIP "download proyek" Flow atau semua klip ke sini'}</strong>
+        <span>Tiap file dipasangkan ke adegan lewat angka di nama file, kemiripan nama dengan prompt, lalu urutan waktu dibuat/diunduh. Hasilnya bisa dicek dan ditukar di bawah.</span>
+        <label class="btn btn-sm file-btn">atau pilih file<input type="file" accept="video/*,image/*,.zip,application/zip" multiple data-upload="semua" /></label>
       </div>
       <div data-pencocokan></div>`
     : "";
@@ -451,20 +461,25 @@ function sectionAdegan(p: Project) {
         <div class="scene-head"><strong>Adegan ${a.no}</strong><span class="muted">${a.durasi} dtk</span>${a.klip ? `<span class="badge badge-selesai">Klip ada</span>` : ""}</div>
         <p class="muted">${esc(a.visual)}</p>
         <p class="narasi">“${esc(a.narasi)}”</p>
+        ${a.gerak ? `<p class="tags"><span>🎥 ${esc(a.gerak.kamera)}</span>${a.gerak.efek.map((e) => `<span>✨ ${esc(e)}</span>`).join("")}</p>` : ""}
         ${peringatan(a.prompt)}
         <label class="field"><span>Prompt</span><textarea data-f="prompt" rows="4">${esc(a.prompt)}</textarea></label>
         <div class="row">
           <button class="btn btn-sm" data-action="salin" data-no="${a.no}">Salin prompt</button>
           ${
             bolehUnggahKlip(p)
-              ? `<label class="btn btn-sm file-btn">${a.klip ? "Ganti klip" : "Unggah klip"}<input type="file" accept="video/*" data-upload="klip" data-no="${a.no}" /></label><span class="hint">atau seret file ke kartu ini</span>`
+              ? `<label class="btn btn-sm file-btn">${a.klip ? "Ganti" : p.sumberVisual === "ilustrasi" ? "Unggah gambar" : "Unggah klip"}<input type="file" accept="video/*,image/*" data-upload="klip" data-no="${a.no}" /></label><span class="hint">atau seret file ke kartu ini</span>`
               : ""
           }
         </div>
         ${
           a.klip
             ? `<div class="klip-mini">
-                <video src="/media/${p.id}/${encodeURIComponent(a.klip)}#t=1" muted playsinline preload="metadata" controls></video>
+                ${
+                  /\.(png|jpe?g|webp)$/i.test(a.klip)
+                    ? `<img src="/media/${p.id}/${encodeURIComponent(a.klip)}" alt="Gambar adegan ${a.no}" loading="lazy" />`
+                    : `<video src="/media/${p.id}/${encodeURIComponent(a.klip)}#t=1" muted playsinline preload="metadata" controls></video>`
+                }
                 ${
                   bolehUnggahKlip(p) && p.adegan!.length > 1
                     ? `<div class="tukar">
@@ -596,7 +611,7 @@ function renderProject(p: Project, s: UiState): string {
   <div class="crumbs"><button class="link" data-action="kembali">← Semua proyek</button>
     <span class="hapus-box"><button class="link link-bad" data-action="hapus">Hapus proyek</button></span></div>
   <section class="card">
-    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}${p.seri ? ` · Part ${p.seri.part} dari ${p.seri.totalPart}` : ""}${p.naskah?.part?.length ? ` · Cerita utuh ${p.naskah.part.length} part` : p.rencanaPart ? ` · Rencana ${p.rencanaPart} part` : ""}</p>
+    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}${p.seri ? ` · Part ${p.seri.part} dari ${p.seri.totalPart}` : ""}${p.sumberVisual === "ilustrasi" ? " · Ilustrasi" : ""}${p.naskah?.part?.length ? ` · Cerita utuh ${p.naskah.part.length} part` : p.rencanaPart ? ` · Rencana ${p.rencanaPart} part` : ""}</p>
     <h2>${esc(judulProyek(p))}</h2>
     <p class="muted">Dibuat ${waktu(p.dibuat)} ${badge(p)}</p>
     ${stepper(p)}

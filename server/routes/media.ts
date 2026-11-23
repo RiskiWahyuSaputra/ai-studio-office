@@ -24,7 +24,7 @@ const upload = multer({
   }),
   limits: { fileSize: 1024 * 1024 * 1024 },
   fileFilter(_req, file, cb) {
-    cb(null, file.mimetype.startsWith("video/"));
+    cb(null, file.mimetype.startsWith("video/") || file.mimetype.startsWith("image/"));
   },
 });
 
@@ -36,7 +36,7 @@ const hapusFile = (id: string, file?: string) => {
 media.post("/projects/:id/klip/:no", upload.single("file"), async (req, res) => {
   const p = getProject(String(req.params.id));
   const no = Number(req.params.no);
-  if (!req.file) return void res.status(400).json({ error: "File harus berupa video" });
+  if (!req.file) return void res.status(400).json({ error: "File harus berupa video atau gambar" });
   const a = p?.adegan?.find((x) => x.no === no);
   if (!p || !a) {
     hapusFile(String(req.params.id), req.file.filename);
@@ -96,7 +96,7 @@ const uploadMassal = multer({
   }),
   limits: { fileSize: 2 * 1024 * 1024 * 1024, files: 40 },
   fileFilter(_req, file, cb) {
-    cb(null, file.mimetype.startsWith("video/") || /zip/.test(file.mimetype) || /\.zip$/i.test(file.originalname));
+    cb(null, file.mimetype.startsWith("video/") || file.mimetype.startsWith("image/") || /zip/.test(file.mimetype) || /\.zip$/i.test(file.originalname));
   },
 });
 

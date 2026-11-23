@@ -217,13 +217,18 @@ panel.addEventListener("click", async (ev) => {
       const scenes = [...panel.querySelectorAll<HTMLElement>(".scene")];
       const n = scenes.length;
       // Asisten Flow butuh perintah eksplisit, kalau tidak semua prompt dianggap satu video
-      const kepala =
-        `Buat ${n} video TERPISAH: tepat satu video untuk setiap ${n} adegan di bawah (total ${n} video). ` +
+      const gambar = current()?.sumberVisual === "ilustrasi";
+      const kepala = gambar
+        ? `Buat ${n} GAMBAR terpisah, satu gambar untuk setiap adegan di bawah, berurutan dari adegan 1. Rasio vertikal 9:16. Pakai prompt tiap adegan persis seperti tertulis, tokoh harus sama persis di semua gambar.`
+        : `Buat ${n} video TERPISAH: tepat satu video untuk setiap ${n} adegan di bawah (total ${n} video). ` +
         `JANGAN gabungkan adegan menjadi satu video. Pakai prompt tiap adegan persis seperti tertulis, vertikal 9:16, sekitar ${state.settings.durasiKlip} detik per video.`;
       const isi = scenes
         .map((sc) => `=== ADEGAN ${sc.dataset.no} dari ${n} (video ke-${sc.dataset.no}) ===\n${sc.querySelector("textarea")?.value.trim() ?? ""}`)
         .join("\n\n");
-      await run(() => navigator.clipboard.writeText(`${kepala}\n\n${isi}\n\n=== SELESAI: total ${n} video ===`), `${n} prompt disalin. Flow akan membuat ${n} video terpisah.`);
+      await run(
+        () => navigator.clipboard.writeText(`${kepala}\n\n${isi}\n\n=== SELESAI: total ${n} ${gambar ? "gambar" : "video"} ===`),
+        gambar ? `${n} prompt gambar disalin` : `${n} prompt disalin. Flow akan membuat ${n} video terpisah.`,
+      );
       return;
     }
     case "simpan-naskah": {
@@ -349,7 +354,7 @@ panel.addEventListener("submit", async (ev) => {
   const form = ev.target as HTMLFormElement;
   const fd = new FormData(form);
   if (form.id === "form-baru") {
-    const p = await run(() => api.create(String(fd.get("format")), String(fd.get("ide") ?? ""), String(fd.get("gaya") ?? "animasi-2d"), Number(fd.get("rencanaPart") ?? 1)), "Proyek diserahkan ke tim");
+    const p = await run(() => api.create(String(fd.get("format")), String(fd.get("ide") ?? ""), String(fd.get("gaya") ?? "animasi-2d"), Number(fd.get("rencanaPart") ?? 1), String(fd.get("sumberVisual") ?? "ilustrasi")), "Proyek diserahkan ke tim");
     if (p) {
       state.projects.set(p.id, p);
       setView({ kind: "project", id: p.id });
@@ -417,7 +422,7 @@ async function unggahMassal(p: Project, files: File[]) {
 }
 
 const videoSaja = (list: FileList | null | undefined) =>
-  [...(list ?? [])].filter((f) => f.type.startsWith("video/") || /\.(mp4|mov|webm|mkv|m4v|zip)$/i.test(f.name) || /zip/.test(f.type));
+  [...(list ?? [])].filter((f) => f.type.startsWith("video/") || f.type.startsWith("image/") || /\.(mp4|mov|webm|mkv|m4v|zip|png|jpe?g|webp)$/i.test(f.name) || /zip/.test(f.type));
 
 panel.addEventListener("dragover", (ev) => {
   const zona = (ev.target as HTMLElement).closest<HTMLElement>("[data-drop]");
