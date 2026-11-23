@@ -381,6 +381,7 @@ panel.addEventListener("submit", async (ev) => {
           otomatis: fd.get("otomatis") === "on",
           subtitle: fd.get("subtitle") === "on",
           narasiTts: fd.get("narasiTts") === "on",
+          mesinSuara: fd.get("mesinSuara") === "gemini" ? "gemini" : "voxcpm",
           volumeKlip: Math.min(100, Math.max(0, num("volumeKlip"))) / 100,
         }),
       "Pengaturan disimpan",
@@ -463,7 +464,8 @@ panel.addEventListener("change", async (ev) => {
     return;
   }
   if (p && input.dataset.actionChange === "ganti-suara") {
-    await run(() => api.patch(p.id, { suara: input.value }), `Suara narasi: ${input.value}`);
+    const lokal = input.dataset.lokal === "1";
+    await run(() => api.patch(p.id, lokal ? { suaraLokal: input.value } : { suara: input.value }), "Suara narasi diganti");
     return;
   }
   if (p && input.dataset.actionChange === "ganti-gaya") {
@@ -497,7 +499,7 @@ office.onSelect((id) => {
 
 async function boot() {
   const s = await api.state();
-  state = { projects: new Map(s.projects.map((p) => [p.id, p])), settings: s.settings, ai: s.ai, platform: s.platform, suara: s.suara, view: { kind: "list" } };
+  state = { projects: new Map(s.projects.map((p) => [p.id, p])), settings: s.settings, ai: s.ai, platform: s.platform, suara: s.suara, suaraLokal: s.suaraLokal, voxcpm: s.voxcpm, view: { kind: "list" } };
   for (const p of s.projects) {
     if (p.status === "jalan") office.setWorking(memberForStage(p.tahap).id, true, "Lanjut kerja...");
   }

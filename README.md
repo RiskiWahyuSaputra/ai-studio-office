@@ -29,7 +29,8 @@ Klik karyawan di kantor untuk melihat kerjaan dan catatannya. Saat bekerja, kary
 
 1. Buat proyek: pilih format, isi ide (atau kosongkan).
 2. Dimas, Sari, dan Bayu bekerja otomatis sampai prompt Veo siap.
-3. **Giliranmu:** buka [Google Flow](https://labs.google/fx/tools/flow), tempel prompt tiap adegan, render, lalu seret ZIP hasil "download proyek" Flow (atau semua klipnya) ke panel. Klip dicocokkan ke adegan lewat angka di nama file, kemiripan nama dengan prompt, lalu urutan waktu dibuat; hasilnya bisa dicek lewat pratinjau dan ditukar. Kredit Flow tidak punya API, jadi langkah ini manual.
+3. **Giliranmu (mode Ilustrasi, bawaan):** salin prompt gambar tiap adegan ke aplikasi Gemini, unduh gambarnya berurutan, lalu seret semuanya ke panel. Video dirakit dengan React (Remotion): gerak kamera, efek suasana, subtitle karaoke, dan narasi VoxCPM.
+   **Mode Klip Flow:** buka [Google Flow](https://labs.google/fx/tools/flow), tempel prompt tiap adegan, render, lalu seret ZIP hasil "download proyek" Flow (atau semua klipnya) ke panel. Klip dicocokkan ke adegan lewat angka di nama file, kemiripan nama dengan prompt, lalu urutan waktu dibuat; hasilnya bisa dicek lewat pratinjau dan ditukar. Kredit Flow tidak punya API, jadi langkah ini manual.
 4. Klik **Setujui & lanjut**. Hadi mencatat kredit, Nanda merender video final, lalu Putri menulis caption.
 5. Cek caption, lalu unggah ke tiap platform dari panel.
 6. Yoga menarik statistik dan memberi saran.
@@ -79,6 +80,19 @@ Sebelum app lolos audit TikTok, posting langsung hanya bisa ke akun yang disetel
 Butuh akun Instagram Professional (Business/Creator) dan token long-lived dengan izin `instagram_content_publish`. Isi `INSTAGRAM_USER_ID` dan `INSTAGRAM_ACCESS_TOKEN`. Mode bawaan `resumable` mengirim file langsung dari server, jadi tidak butuh URL publik.
 
 Semua unggahan ditandai sebagai konten AI (`containsSyntheticMedia` di YouTube, `is_aigc` di TikTok), dan deskripsinya mencantumkan bahwa video dibuat dengan AI.
+
+### Narasi suara lokal (VoxCPM, tanpa kuota)
+
+Bawaan Kantor PovQ memakai [VoxCPM2](https://github.com/OpenBMB/VoxCPM) (Apache-2.0) yang berjalan di laptop sendiri. Bahasa Indonesia didukung, dan suara dibuat konsisten dengan kloning: kalimat pertama dibuat dari deskripsi suara lalu dipakai sebagai acuan untuk semua kalimat dan part berikutnya. Waktu tiap kata diukur dengan faster-whisper untuk subtitle karaoke.
+
+```bash
+cd tools/voxcpm
+uv venv -p 3.12 .venv
+uv pip install -p .venv/bin/python voxcpm soundfile faster-whisper
+.venv/bin/python uji.py   # unduh model (~5 GB) dan uji satu kalimat
+```
+
+Model 2B (4,6 GB bf16) butuh sekitar 7 GB RAM di CPU; GPU dengan VRAM < 8 GB tidak cukup. Di CPU kecepatannya sekitar 13x durasi audio, jadi narasi mulai dibuat otomatis begitu prompt adegan selesai (selagi kamu membuat gambar). Batas memori proses diatur `VOXCPM_MEMORY_MAX` (bawaan 7G). Pilih Gemini TTS di Pengaturan kalau ingin cepat.
 
 ### Narasi suara
 

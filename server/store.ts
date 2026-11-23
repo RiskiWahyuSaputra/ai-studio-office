@@ -26,6 +26,7 @@ const defaultSettings = (): Settings => ({
   subtitle: true,
   narasiTts: true,
   volumeKlip: 0.3,
+  mesinSuara: "voxcpm",
 });
 
 let db: Db;
@@ -113,6 +114,8 @@ export async function buatProyekPart(
       format: induk.format,
       gaya: induk.gaya,
       sumberVisual: induk.sumberVisual,
+      suaraLokal: induk.suaraLokal,
+      acuanSuara: induk.acuanSuara,
       suara: induk.suara,
       modelSuara: induk.modelSuara,
       ide: induk.ide,
@@ -147,6 +150,8 @@ export async function createLanjutan(asal: Project, totalPart: number): Promise<
     format: asal.format,
     gaya: asal.gaya,
     sumberVisual: asal.sumberVisual,
+    suaraLokal: asal.suaraLokal,
+    acuanSuara: asal.acuanSuara,
     suara: asal.suara,
     modelSuara: asal.modelSuara,
     ide: asal.ide,

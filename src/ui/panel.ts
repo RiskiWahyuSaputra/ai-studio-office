@@ -11,6 +11,8 @@ export interface UiState {
   ai: string;
   platform: Record<string, { siap: boolean; akun?: string; catatan?: string; perluLogin: boolean }>;
   suara: { id: string; ket: string }[];
+  suaraLokal: { id: string; ket: string }[];
+  voxcpm: boolean;
   view: View;
 }
 
@@ -144,6 +146,12 @@ function renderSettings(s: UiState): string {
       <label class="check"><input type="checkbox" name="otomatis" ${st.otomatis ? "checked" : ""} /> Lanjut otomatis antar tahap AI</label>
       <label class="check"><input type="checkbox" name="subtitle" ${st.subtitle ? "checked" : ""} /> Tempel subtitle ke video</label>
       <label class="check"><input type="checkbox" name="narasiTts" ${st.narasiTts ? "checked" : ""} /> Narasi suara dari Gemini TTS (suara konsisten, prompt Veo tanpa dialog)</label>
+      <label class="field"><span>Mesin suara narasi</span>
+        <select name="mesinSuara">
+          <option value="voxcpm" ${st.mesinSuara === "voxcpm" ? "selected" : ""}>VoxCPM lokal (tanpa kuota, lebih lambat)${s.voxcpm ? "" : " — belum terpasang"}</option>
+          <option value="gemini" ${st.mesinSuara === "gemini" ? "selected" : ""}>Gemini TTS (cepat, kuota harian)</option>
+        </select>
+      </label>
       <label class="field"><span>Volume suara asli klip saat ada narasi (%)</span><input type="number" min="0" max="100" name="volumeKlip" value="${Math.round(st.volumeKlip * 100)}" /></label>
       <p class="hint">Cek angka biaya di Google Flow karena bisa berubah. Kalau "lanjut otomatis" mati, tiap tahap menunggu persetujuanmu.</p>
       <button class="btn" type="submit">Simpan pengaturan</button>
@@ -416,14 +424,22 @@ const SUARA_BAWAAN = (p: Project) => p.suara ?? FORMATS[p.format].suara;
 
 function sectionSuara(p: Project, s: UiState) {
   if (!s.settings.narasiTts || !p.adegan?.length) return "";
-  const now = SUARA_BAWAAN(p);
+  const lokal = s.settings.mesinSuara === "voxcpm" && s.voxcpm;
+  const bawaanLokal: Record<Project["format"], string> = { "cerita-horor": "pendongeng-horor", "pov-sejarah": "narator-pria", "vlog-hewan": "vlogger-ceria" };
+  const now = lokal ? (p.suaraLokal ?? bawaanLokal[p.format]) : SUARA_BAWAAN(p);
+  const daftar = lokal ? s.suaraLokal : s.suara;
   return `<section class="card"><h3>Suara narasi · Nanda</h3>
-    <p class="hint">Satu suara dipakai untuk semua adegan. Nanda membacakan seluruh narasi sekaligus dengan Gemini TTS saat mengedit, lalu memotongnya per adegan.</p>
-    <p class="hint">Kuota gratis Gemini TTS sekitar 10 permintaan/hari per model. Satu video memakai 1 permintaan, "Dengar contoh" juga 1.</p>
+    ${
+      lokal
+        ? `<p class="hint">Suara dibuat di laptopmu dengan VoxCPM, tanpa kuota. Kalimat pertama jadi suara acuan, lalu semua kalimat (dan part berikutnya) mengkloning suara itu supaya konsisten.</p>
+           <p class="hint">Lambat di CPU (sekitar 1 menit per kalimat), jadi Nanda mulai membuat narasi begitu prompt selesai, selagi kamu membuat gambar.${p.acuanSuara ? " Suara acuan sudah ada." : ""}</p>`
+        : `<p class="hint">Satu suara dipakai untuk semua adegan. Nanda membacakan seluruh narasi sekaligus dengan Gemini TTS saat mengedit, lalu memotongnya per adegan.</p>
+           <p class="hint">Kuota gratis Gemini TTS sekitar 10 permintaan/hari per model. Satu video memakai 1 permintaan, "Dengar contoh" juga 1.</p>`
+    }
     <div class="row">
       <label class="gaya-ganti">Suara
-        <select data-action-change="ganti-suara" aria-label="Pilih suara narasi">
-          ${s.suara.map((v) => `<option value="${v.id}" ${v.id === now ? "selected" : ""}>${esc(v.id)} · ${esc(v.ket)}</option>`).join("")}
+        <select data-action-change="ganti-suara" data-lokal="${lokal ? "1" : ""}" aria-label="Pilih suara narasi">
+          ${daftar.map((v) => `<option value="${v.id}" ${v.id === now ? "selected" : ""}>${lokal ? esc(v.ket) : `${esc(v.id)} · ${esc(v.ket)}`}</option>`).join("")}
         </select>
       </label>
       <button class="btn btn-sm" data-action="contoh-suara">Dengar contoh</button>

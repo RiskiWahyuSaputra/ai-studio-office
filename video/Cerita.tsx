@@ -264,7 +264,7 @@ const Subtitle = ({ kata, aksen }: { kata: KataWaktu[]; aksen: string }) => {
               key={i}
               style={{
                 display: "inline-block",
-                margin: "0 12px",
+                margin: "0 16px",
                 color: nyala ? aksen : "#fff",
                 scale: nyala ? "1.08" : "1",
               }}

@@ -35,7 +35,20 @@ function waktuKata(teks: string, mulai: number, panjang: number): KataWaktu[] {
   });
 }
 
+/** Pakai waktu kata dari Whisper, tapi teks tampil tetap dari naskah (Whisper menulis "2" untuk "dua"). */
+function selaraskan(teks: string, ukur: KataWaktu[] | undefined, mulai: number, panjang: number): KataWaktu[] {
+  const kata = teks.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
+  if (!ukur?.length) return waktuKata(teks, mulai, panjang);
+  if (ukur.length === kata.length) return kata.map((k, i) => ({ teks: k, mulai: mulai + ukur[i].mulai, akhir: mulai + ukur[i].akhir }));
+  // jumlah kata beda: sebar sebanding huruf di rentang bicara yang sebenarnya
+  const a = ukur[0].mulai;
+  const b = ukur[ukur.length - 1].akhir;
+  return waktuKata(teks, mulai + a, Math.max(0.3, b - a));
+}
+
 export interface OpsiRakit {
+  /** waktu kata per adegan dari Whisper (relatif awal narasi) */
+  kataUkur?: (KataWaktu[] | undefined)[];
   subtitle: boolean;
   /** file narasi per adegan (urut), atau undefined */
   narasi?: string[];
@@ -89,7 +102,7 @@ export async function rakit(p: Project, adegan: Adegan[], o: OpsiRakit): Promise
       mulaiNarasi: JEDA_AWAL,
       durasi: Math.ceil(info[i].detik * FPS),
       gerak: a.gerak ?? rapikanGerak(undefined, p.format, i),
-      kata: info[i].nar ? waktuKata(a.narasi, JEDA_AWAL, info[i].nar) : [],
+      kata: info[i].nar ? selaraskan(a.narasi, o.kataUkur?.[i], JEDA_AWAL, info[i].nar) : [],
     })),
   };
 

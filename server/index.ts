@@ -23,6 +23,11 @@ app.get("/api/health", (_req, res) => {
 app.use("/api", projects);
 app.use("/api", media);
 app.use("/api", social);
+// renderer Remotion berjalan di origin lain dan mengambil gambar/audio/video dari sini
+app.use("/media", (_req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  next();
+});
 app.use("/media", express.static(UPLOADS, { fallthrough: false }));
 
 app.use("/api", (err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -238,6 +238,9 @@ export interface Project {
   seri?: Seri;
   /** lembar karakter tetap; diwariskan ke part berikutnya */
   karakter?: Karakter[];
+  /** suara narasi lokal (VoxCPM) dan suara acuan untuk kloning; diwariskan ke part berikutnya */
+  suaraLokal?: string;
+  acuanSuara?: { proyek: string; file: string; teks: string; suara: string };
   /** gambar diam (ilustrasi) atau klip Flow; proyek lama tanpa field ini = flow */
   sumberVisual?: SumberVisual;
   /** cerita utuh sampai tamat, nanti dipecah jadi sekian video saat edit */
@@ -276,6 +279,8 @@ export interface Settings {
   narasiTts: boolean;
   /** volume suara asli klip saat ditimpa narasi, 0..1 */
   volumeKlip: number;
+  /** mesin narasi: VoxCPM lokal (tanpa kuota) atau Gemini TTS */
+  mesinSuara: "voxcpm" | "gemini";
 }
 
 export type Activity =
