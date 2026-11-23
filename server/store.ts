@@ -27,6 +27,7 @@ const defaultSettings = (): Settings => ({
   narasiTts: true,
   volumeKlip: 0.3,
   mesinSuara: "voxcpm",
+  mesinGambar: "otomatis",
 });
 
 let db: Db;

@@ -4,6 +4,7 @@
 import * as agen from "./agents.ts";
 import * as editor from "./editor.ts";
 import { rakit } from "./rakit.ts";
+import { gambarOtomatis, mulaiGambar } from "./gambar.ts";
 import { narasiLokal, voxcpmTersedia } from "./voxcpm.ts";
 import type { Adegan, Project } from "../src/shared/types.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
@@ -51,10 +52,14 @@ registerStage("render", {
     mulaiNarasiAwal(p);
     if (p.sumberVisual === "ilustrasi") {
       const n = p.adegan?.length ?? 0;
+      const otomatis = gambarOtomatis();
       return {
         apply: () => {},
-        pesan: `Tanpa kredit Flow. Buat ${n} gambar di aplikasi Gemini lalu seret ke panel.`,
+        pesan: otomatis
+          ? `Bayu menggambar ${n} adegan otomatis (sekitar ${Math.ceil((n * 50) / 60)} menit). Gambar bisa diganti manual kapan saja.`
+          : `Buat ${n} gambar di aplikasi Gemini lalu seret ke panel.`,
         tunggu: true,
+        sesudah: otomatis ? async () => mulaiGambar(p.id) : undefined,
       };
     }
     const s = getSettings();

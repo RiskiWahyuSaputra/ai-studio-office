@@ -163,6 +163,8 @@ export interface Adegan {
   part?: number;
   /** gerak kamera & efek untuk gambar diam (mode ilustrasi) */
   gerak?: Gerak;
+  /** prompt gambar bahasa Inggris untuk mesin gambar otomatis */
+  promptEn?: string;
   klip?: string;
 }
 
@@ -281,6 +283,8 @@ export interface Settings {
   volumeKlip: number;
   /** mesin narasi: VoxCPM lokal (tanpa kuota) atau Gemini TTS */
   mesinSuara: "voxcpm" | "gemini";
+  /** gambar adegan dibuat otomatis (Pollinations/Flux) atau manual di aplikasi Gemini */
+  mesinGambar: "otomatis" | "manual";
 }
 
 export type Activity =

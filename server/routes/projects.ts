@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import { projectDir } from "../editor.ts";
 import { SUARA, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
 import { SUARA_LOKAL, narasiLokal, voxcpmTersedia } from "../voxcpm.ts";
+import { mulaiGambar } from "../gambar.ts";
 import { FORMATS, GAYA, type Format, type Gaya, type Karakter } from "../../src/shared/types.ts";
 import { terapkanKarakter } from "../../src/shared/karakter.ts";
 import { ekstrakKarakter, rangkumPart } from "../agents.ts";
@@ -106,6 +107,15 @@ projects.post("/projects/:id/suara/contoh", async (req, res) => {
   } catch (e) {
     res.status(503).json({ error: (e as Error).message });
   }
+});
+
+/** Gambar otomatis: semua adegan yang belum bergambar, atau gambar ulang satu adegan. */
+projects.post("/projects/:id/gambar", (req, res) => {
+  const p = getProject(req.params.id);
+  if (!p?.adegan?.length) return void res.status(400).json({ error: "Proyek ini belum punya adegan" });
+  const no = Number(req.body?.no);
+  mulaiGambar(p.id, no ? [no] : undefined);
+  res.json({ ok: true });
 });
 
 /** Buat lembar karakter dari prompt yang sudah ada (proyek lama). */
@@ -213,6 +223,7 @@ projects.patch("/settings", async (req, res) => {
   if (typeof b.subtitle === "boolean") patch.subtitle = b.subtitle;
   if (typeof b.narasiTts === "boolean") patch.narasiTts = b.narasiTts;
   if (b.mesinSuara === "voxcpm" || b.mesinSuara === "gemini") patch.mesinSuara = b.mesinSuara;
+  if (b.mesinGambar === "otomatis" || b.mesinGambar === "manual") patch.mesinGambar = b.mesinGambar;
   if ("volumeKlip" in b) {
     const v = Number(b.volumeKlip);
     if (!Number.isFinite(v) || v < 0 || v > 1) return void res.status(400).json({ error: "volumeKlip harus 0 sampai 1" });

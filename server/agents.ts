@@ -233,6 +233,33 @@ Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}], "adegan": [{"v
   return { adegan, karakter: karakter.length ? karakter : undefined };
 }
 
+/**
+ * Prompt gambar bahasa Inggris untuk mesin gambar otomatis (model Flux lebih paham bahasa Inggris).
+ * Satu panggilan untuk semua adegan supaya deskripsi tokoh seragam.
+ */
+export async function promptGambarInggris(p: Project): Promise<Record<number, string>> {
+  const adegan = p.adegan ?? [];
+  if (!aiAktif()) return Object.fromEntries(adegan.map((a) => [a.no, a.prompt]));
+  const g = GAYA[p.gaya ?? "sinematik"];
+  const hasil = await generateJson<{ adegan: { no: number; prompt: string }[] }>(`Terjemahkan & ringkas prompt gambar berikut menjadi prompt BAHASA INGGRIS untuk model gambar Flux.
+Aturan (urutan penting, model gambar paling memperhatikan kata-kata awal):
+1. Mulai dengan LATAR dan AKSI adegan, lalu jenis bidikan yang memperlihatkan lingkungan (mis. "wide shot", "medium shot, full room visible"). Tokoh tidak boleh jadi potret close-up di latar polos, kecuali adegannya memang close-up.
+2. Lalu pencahayaan & suasana yang tegas (mis. "dark night, eerie bluish moonlight, deep shadows, horror mood").
+3. Lalu tokoh dengan ciri UTAMA saja (maks 20 kata: jenis kelamin & usia, rambut, pakaian & warna). Ciri ini harus SAMA PERSIS kata per kata di semua prompt tempat tokoh itu muncul.
+4. Tutup dengan gaya singkat: "${g.gambar}" (terjemahkan & ringkas jadi maks 12 kata), "vertical 9:16", "no text, no letters, no watermark".
+- Maksimal 75 kata per prompt, satu paragraf, BAHASA INGGRIS.
+- Tokoh manusia selalu dewasa; tanpa darah, luka, atau kekerasan.
+Lembar karakter: ${JSON.stringify(p.karakter ?? [])}
+Prompt:
+${adegan.map((a) => `${a.no}. ${a.prompt}`).join("\n")}
+
+Balas JSON: {"adegan": [{"no": number, "prompt": string}]}`);
+  const peta: Record<number, string> = {};
+  for (const x of hasil.adegan ?? []) if (x?.prompt && adegan.some((a) => a.no === Number(x.no))) peta[Number(x.no)] = x.prompt;
+  for (const a of adegan) peta[a.no] ??= a.prompt;
+  return peta;
+}
+
 /** Buat lembar karakter dari prompt yang sudah ada (untuk proyek lama tanpa lembar karakter). */
 export async function ekstrakKarakter(p: Project): Promise<Karakter[]> {
   if (!aiAktif()) throw new Error("Butuh GEMINI_API_KEY untuk membuat lembar karakter");

@@ -6,6 +6,7 @@ import { social } from "./routes/social.ts";
 import { loadDb } from "./store.ts";
 import { projects } from "./routes/projects.ts";
 import { kick } from "./pipeline.ts";
+import { lanjutkanGambarTertunda } from "./gambar.ts";
 import { namaModel } from "./ai.ts";
 import "./stages.ts";
 
@@ -47,4 +48,5 @@ if (PROD) {
 app.listen(PORT, () => {
   console.log(`Kantor PovQ buka di http://localhost:${PORT} (otak karyawan: ${namaModel()})`);
   kick();
+  lanjutkanGambarTertunda();
 });

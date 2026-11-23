@@ -146,6 +146,12 @@ function renderSettings(s: UiState): string {
       <label class="check"><input type="checkbox" name="otomatis" ${st.otomatis ? "checked" : ""} /> Lanjut otomatis antar tahap AI</label>
       <label class="check"><input type="checkbox" name="subtitle" ${st.subtitle ? "checked" : ""} /> Tempel subtitle ke video</label>
       <label class="check"><input type="checkbox" name="narasiTts" ${st.narasiTts ? "checked" : ""} /> Narasi suara dari Gemini TTS (suara konsisten, prompt Veo tanpa dialog)</label>
+      <label class="field"><span>Gambar adegan (mode Ilustrasi)</span>
+        <select name="mesinGambar">
+          <option value="otomatis" ${st.mesinGambar === "otomatis" ? "selected" : ""}>Otomatis (Flux via Pollinations, gratis)</option>
+          <option value="manual" ${st.mesinGambar === "manual" ? "selected" : ""}>Manual di aplikasi Gemini (kualitas terbaik)</option>
+        </select>
+      </label>
       <label class="field"><span>Mesin suara narasi</span>
         <select name="mesinSuara">
           <option value="voxcpm" ${st.mesinSuara === "voxcpm" ? "selected" : ""}>VoxCPM lokal (tanpa kuota, lebih lambat)${s.voxcpm ? "" : " — belum terpasang"}</option>
@@ -242,6 +248,11 @@ export const PETUNJUK: Partial<Record<Project["tahap"], (p: Project, s: UiState)
   paket: () => "Cek judul, caption, dan hashtag dari Putri di bawah. Sunting bila perlu, simpan, lalu setujui.",
   unggah: () => "Hubungkan akun lalu unggah ke platform pilihanmu di bagian Unggah. Setelah minimal satu tayang, lanjutkan ke Analisis.",
   render: (p, s) => {
+    if (p.sumberVisual === "ilustrasi" && s.settings.mesinGambar === "otomatis") {
+      const ada = p.adegan?.filter((a) => a.klip).length ?? 0;
+      return `Bayu sedang menggambar otomatis (${ada}/${p.adegan?.length ?? 0} selesai). Setelah semua jadi, video dirakit sendiri. Kalau ada gambar yang kurang pas, klik <strong>Gambar ulang</strong> atau seret gambarmu sendiri ke adegan itu.
+        <div class="row"><button class="btn btn-sm" data-action="gambar-semua">Lanjutkan menggambar</button></div>`;
+    }
     if (p.sumberVisual === "ilustrasi") {
       return `Buka <a href="https://gemini.google.com/app" target="_blank" rel="noopener">aplikasi Gemini</a>, salin prompt gambar tiap adegan (tombol <strong>Salin prompt</strong>), unduh gambarnya berurutan, lalu seret semua gambar ke kotak di bagian Adegan. Tidak memakai kredit Flow.`;
     }
@@ -482,6 +493,7 @@ function sectionAdegan(p: Project) {
         <label class="field"><span>Prompt</span><textarea data-f="prompt" rows="4">${esc(a.prompt)}</textarea></label>
         <div class="row">
           <button class="btn btn-sm" data-action="salin" data-no="${a.no}">Salin prompt</button>
+          ${p.sumberVisual === "ilustrasi" && bolehUnggahKlip(p) ? `<button class="btn btn-sm" data-action="gambar-ulang" data-no="${a.no}">${a.klip ? "Gambar ulang" : "Gambar otomatis"}</button>` : ""}
           ${
             bolehUnggahKlip(p)
               ? `<label class="btn btn-sm file-btn">${a.klip ? "Ganti" : p.sumberVisual === "ilustrasi" ? "Unggah gambar" : "Unggah klip"}<input type="file" accept="video/*,image/*" data-upload="klip" data-no="${a.no}" /></label><span class="hint">atau seret file ke kartu ini</span>`

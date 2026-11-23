@@ -81,6 +81,10 @@ Butuh akun Instagram Professional (Business/Creator) dan token long-lived dengan
 
 Semua unggahan ditandai sebagai konten AI (`containsSyntheticMedia` di YouTube, `is_aigc` di TikTok), dan deskripsinya mencantumkan bahwa video dibuat dengan AI.
 
+### Gambar otomatis
+
+Di mode Ilustrasi, Bayu menggambar setiap adegan otomatis lewat [Pollinations](https://pollinations.ai) (model Flux), gratis tanpa kunci: prompt diterjemahkan ke bahasa Inggris dengan ciri tokoh yang sama persis, seed tetap per proyek, watermark kecil dipotong, lalu gambar diperbesar ke 1080x1920. Batas gratisnya 1 gambar per 45 detik, jadi 8 adegan butuh beberapa menit (berjalan bersamaan dengan narasi). Begitu semua gambar jadi, video dirakit sendiri. Isi `POLLINATIONS_KEY` (gratis di enter.pollinations.ai) untuk tanpa watermark dan lebih cepat. Kualitas terbaik tetap dari aplikasi Gemini: pilih *Manual* di Pengaturan, atau ganti gambar per adegan dengan seret-lepas / tombol **Gambar ulang**.
+
 ### Narasi suara lokal (VoxCPM, tanpa kuota)
 
 Bawaan Kantor PovQ memakai [VoxCPM2](https://github.com/OpenBMB/VoxCPM) (Apache-2.0) yang berjalan di laptop sendiri. Bahasa Indonesia didukung, dan suara dibuat konsisten dengan kloning: kalimat pertama dibuat dari deskripsi suara lalu dipakai sebagai acuan untuk semua kalimat dan part berikutnya. Waktu tiap kata diukur dengan faster-whisper untuk subtitle karaoke.

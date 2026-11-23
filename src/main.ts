@@ -279,6 +279,12 @@ panel.addEventListener("click", async (ev) => {
       }
       return;
     }
+    case "gambar-ulang":
+      if (p) await run(() => api.post(`/api/projects/${p.id}/gambar`, { no: Number(el.dataset.no) }), `Bayu menggambar ulang adegan ${el.dataset.no}`);
+      return;
+    case "gambar-semua":
+      if (p) await run(() => api.post(`/api/projects/${p.id}/gambar`), "Bayu melanjutkan menggambar");
+      return;
     case "tukar-klip": {
       if (!p) return;
       const sel = el.closest(".scene")?.querySelector<HTMLSelectElement>("[data-tukar]");
@@ -382,6 +388,7 @@ panel.addEventListener("submit", async (ev) => {
           subtitle: fd.get("subtitle") === "on",
           narasiTts: fd.get("narasiTts") === "on",
           mesinSuara: fd.get("mesinSuara") === "gemini" ? "gemini" : "voxcpm",
+          mesinGambar: fd.get("mesinGambar") === "manual" ? "manual" : "otomatis",
           volumeKlip: Math.min(100, Math.max(0, num("volumeKlip"))) / 100,
         }),
       "Pengaturan disimpan",
