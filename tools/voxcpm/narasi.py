@@ -84,12 +84,18 @@ def ukur_kata(files):
     from faster_whisper import WhisperModel
     from scipy.signal import resample_poly
 
-    kirim(tahap="ukur-kata")
-    m = WhisperModel("small", device="cpu", compute_type="int8")
+    m = None
     hasil = {}
     for f in files:
         if not os.path.exists(f):
             continue
+        cache = f + ".kata.json"
+        if os.path.exists(cache) and os.path.getmtime(cache) >= os.path.getmtime(f):
+            hasil[f] = json.load(open(cache, encoding="utf-8"))
+            continue
+        if m is None:
+            kirim(tahap="ukur-kata")
+            m = WhisperModel("small", device="cpu", compute_type="int8")
         wav, sr = sf.read(f, dtype="float32")
         if wav.ndim > 1:
             wav = wav.mean(axis=1)
@@ -101,6 +107,7 @@ def ukur_kata(files):
             for w in (s.words or [])
             if w.word.strip()
         ]
+        json.dump(hasil[f], open(cache, "w", encoding="utf-8"), ensure_ascii=False)
     return hasil
 
 

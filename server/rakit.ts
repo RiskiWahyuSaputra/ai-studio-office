@@ -2,6 +2,7 @@
  * Nanda merakit video final dengan Remotion: gambar/klip per adegan + narasi + subtitle karaoke.
  * Kalau Remotion gagal dan semua adegan berupa klip video, jatuh ke editor ffmpeg lama.
  */
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { buatSrt, probe, projectDir, render as renderFfmpeg } from "./editor.ts";
@@ -122,8 +123,20 @@ export async function rakit(p: Project, adegan: Adegan[], o: OpsiRakit): Promise
     })),
   };
 
+  // video yang sudah pernah dirender dengan isi persis sama tidak dirender ulang
+  // (mis. part 1 tetap aman kalau render part 2 terputus di tengah jalan)
+  const sidik = path.join(dir, `${keluaran}.sidik`);
+  const kunciRender = createHash("sha1").update(JSON.stringify(props)).digest("hex");
+  const lamaSidik = await fs.readFile(sidik, "utf8").catch(() => "");
+  if (lamaSidik === kunciRender && (await fs.stat(path.join(dir, keluaran)).catch(() => null))) {
+    o.onProgress?.(100);
+    return { file: keluaran, durasi: (await probe(path.join(dir, keluaran))).durasi, mesin: "remotion" };
+  }
+  await fs.rm(sidik, { force: true });
+
   try {
     await renderCerita(props, path.join(dir, keluaran), o.onProgress);
+    await fs.writeFile(sidik, kunciRender);
     const hasil = await probe(path.join(dir, keluaran));
     return { file: keluaran, durasi: hasil.durasi, mesin: "remotion" };
   } catch (e) {
