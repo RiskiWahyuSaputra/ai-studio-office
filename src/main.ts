@@ -387,6 +387,7 @@ panel.addEventListener("submit", async (ev) => {
           otomatis: fd.get("otomatis") === "on",
           subtitle: fd.get("subtitle") === "on",
           narasiTts: fd.get("narasiTts") === "on",
+          efekSuara: fd.get("efekSuara") === "on",
           mesinSuara: fd.get("mesinSuara") === "gemini" ? "gemini" : "voxcpm",
           mesinGambar: fd.get("mesinGambar") === "manual" ? "manual" : "otomatis",
           volumeKlip: Math.min(100, Math.max(0, num("volumeKlip"))) / 100,

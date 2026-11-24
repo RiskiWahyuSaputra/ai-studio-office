@@ -6,6 +6,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { buatSrt, probe, projectDir, render as renderFfmpeg } from "./editor.ts";
 import { renderCerita } from "./remotion.ts";
+import { buatLatar, efekNarasi } from "./suarafx.ts";
 import { rapikanGerak } from "./agents.ts";
 import type { Adegan, Project } from "../src/shared/types.ts";
 import type { KataWaktu, PropsCerita } from "../src/shared/video.ts";
@@ -47,6 +48,8 @@ function selaraskan(teks: string, ukur: KataWaktu[] | undefined, mulai: number, 
 }
 
 export interface OpsiRakit {
+  /** efek narasi & suasana latar per format (bawaan aktif) */
+  efekSuara?: boolean;
   /** waktu kata per adegan dari Whisper (relatif awal narasi) */
   kataUkur?: (KataWaktu[] | undefined)[];
   subtitle: boolean;
@@ -68,6 +71,15 @@ export async function rakit(p: Project, adegan: Adegan[], o: OpsiRakit): Promise
   const port = process.env.PORT ?? 8787;
   const url = (f: string) => `http://127.0.0.1:${port}/media/${p.id}/${encodeURIComponent(f)}`;
 
+  // sound design: efek narasi per format (mis. horor) + geser waktu kata sesuai narasi yang diregangkan
+  if (o.efekSuara !== false && o.narasi?.some(Boolean)) {
+    const fx = await efekNarasi(dir, o.narasi, p.format);
+    if (fx.regang !== 1 && o.kataUkur) {
+      o.kataUkur = o.kataUkur.map((k) => k?.map((w) => ({ ...w, mulai: w.mulai * fx.regang, akhir: w.akhir * fx.regang })));
+    }
+    o.narasi = fx.files;
+  }
+
   const info = await Promise.all(
     adegan.map(async (a, i) => {
       const gambar = GAMBAR.test(a.klip!);
@@ -87,7 +99,11 @@ export async function rakit(p: Project, adegan: Adegan[], o: OpsiRakit): Promise
     ),
   );
 
+  const totalDetik = info.reduce((n, x) => n + x.detik, 0);
+  const latar = o.efekSuara !== false ? await buatLatar(dir, p.format, totalDetik) : null;
+
   const props: PropsCerita = {
+    latar: latar ? { src: url(latar.file), volume: latar.volume } : null,
     fps: FPS,
     judul: o.judul ?? "",
     // selalu kirim eksplisit: properti yang kosong akan diisi defaultProps contoh oleh Remotion

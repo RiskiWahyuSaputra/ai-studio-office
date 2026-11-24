@@ -8,6 +8,7 @@ const contoh: PropsCerita = {
   label: "Part 1",
   suasana: "horor",
   subtitle: true,
+  latar: null,
   adegan: [
     {
       media: "https://picsum.photos/id/1043/1080/1920",

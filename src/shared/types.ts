@@ -285,6 +285,8 @@ export interface Settings {
   mesinSuara: "voxcpm" | "gemini";
   /** gambar adegan dibuat otomatis (Pollinations/Flux) atau manual di aplikasi Gemini */
   mesinGambar: "otomatis" | "manual";
+  /** efek narasi & suasana latar per format (mis. horor) */
+  efekSuara: boolean;
 }
 
 export type Activity =

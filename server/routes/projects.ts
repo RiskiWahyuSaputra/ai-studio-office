@@ -222,6 +222,7 @@ projects.patch("/settings", async (req, res) => {
   if (typeof b.otomatis === "boolean") patch.otomatis = b.otomatis;
   if (typeof b.subtitle === "boolean") patch.subtitle = b.subtitle;
   if (typeof b.narasiTts === "boolean") patch.narasiTts = b.narasiTts;
+  if (typeof b.efekSuara === "boolean") patch.efekSuara = b.efekSuara;
   if (b.mesinSuara === "voxcpm" || b.mesinSuara === "gemini") patch.mesinSuara = b.mesinSuara;
   if (b.mesinGambar === "otomatis" || b.mesinGambar === "manual") patch.mesinGambar = b.mesinGambar;
   if ("volumeKlip" in b) {

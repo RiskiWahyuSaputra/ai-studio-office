@@ -40,6 +40,8 @@ export interface PropsCerita {
   label?: string;
   suasana: "horor" | "ceria" | "hangat";
   subtitle: boolean;
+  /** suasana latar (drone/angin) sepanjang video */
+  latar: { src: string; volume: number } | null;
   adegan: AdeganVideo[];
 }
 

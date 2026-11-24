@@ -28,6 +28,7 @@ const defaultSettings = (): Settings => ({
   volumeKlip: 0.3,
   mesinSuara: "voxcpm",
   mesinGambar: "otomatis",
+  efekSuara: true,
 });
 
 let db: Db;

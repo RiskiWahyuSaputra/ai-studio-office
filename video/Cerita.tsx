@@ -31,6 +31,7 @@ export const Cerita = (props: PropsCerita) => {
           </Sequence>
         );
       })}
+      {props.latar ? <Audio src={props.latar.src} volume={props.latar.volume} name="Suasana latar" /> : null}
       <Vignette kuat={props.suasana === "horor"} />
       {props.suasana === "horor" ? <Grain /> : null}
       <Watermark />

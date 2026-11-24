@@ -152,6 +152,7 @@ function renderSettings(s: UiState): string {
           <option value="manual" ${st.mesinGambar === "manual" ? "selected" : ""}>Manual di aplikasi Gemini (kualitas terbaik)</option>
         </select>
       </label>
+      <label class="check"><input type="checkbox" name="efekSuara" ${st.efekSuara ? "checked" : ""} /> Efek suara per format (horor: suara lebih berat & bergema + dengung latar mencekam)</label>
       <label class="field"><span>Mesin suara narasi</span>
         <select name="mesinSuara">
           <option value="voxcpm" ${st.mesinSuara === "voxcpm" ? "selected" : ""}>VoxCPM lokal (tanpa kuota, lebih lambat)${s.voxcpm ? "" : " — belum terpasang"}</option>
