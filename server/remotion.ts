@@ -8,6 +8,12 @@ import { antreBerat } from "./berat.ts";
 import { ROOT } from "./paths.ts";
 import type { PropsCerita } from "../src/shared/video.ts";
 
+/**
+ * Port server internal Remotion. Bawaannya 3000, padahal port itu sering "dibersihkan" aplikasi lain
+ * (mis. jembatan WhatsApp Hermes membunuh proses di :3000 tiap restart) sehingga server ikut mati.
+ */
+const PORT_REMOTION = Number(process.env.REMOTION_PORT) || 3797;
+
 let bundleSiap: Promise<string> | null = null;
 
 async function serveUrl(): Promise<string> {
@@ -49,7 +55,7 @@ async function render(
 ): Promise<void> {
   const { renderMedia, selectComposition } = await import("@remotion/renderer");
   const url = await serveUrl();
-  const composition = await selectComposition({ serveUrl: url, id: "PovQCerita", inputProps: props });
+  const composition = await selectComposition({ serveUrl: url, id: "PovQCerita", inputProps: props, port: PORT_REMOTION });
   let terakhir = -1;
   await renderMedia({
     composition,
@@ -58,6 +64,7 @@ async function render(
     outputLocation: keluaran,
     inputProps: props,
     concurrency,
+    port: PORT_REMOTION,
     onProgress: ({ progress }) => {
       const p = Math.floor(progress * 100);
       if (p !== terakhir && p % 10 === 0) {
