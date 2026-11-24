@@ -1,5 +1,5 @@
 /**
- * Sound design per format: efek pada narasi (mis. horor: nada lebih rendah, lebih lambat, gema ruangan)
+ * Sound design per format: efek pada narasi (mis. horor: lebih lambat, gema ruangan; nada asli dipertahankan)
  * dan suasana latar yang dibuat dari derau (drone rendah + angin), tanpa file musik.
  */
 import { spawn } from "node:child_process";
@@ -14,14 +14,12 @@ interface FxNarasi {
   regang: number;
 }
 
-const NADA = 0.92; // turunkan nada ~1,4 semitone (sekaligus memperlambat)
-const TEMPO = 0.97;
+// hanya tempo yang diperlambat; nada suara asli dipertahankan (tidak mengubah suara perempuan jadi laki-laki)
+const TEMPO = 0.9;
 
 const FX: Partial<Record<Format, FxNarasi>> = {
   "cerita-horor": {
     filter: [
-      "aresample=48000",
-      `asetrate=${48000 * NADA}`,
       "aresample=48000",
       `atempo=${TEMPO}`,
       "highpass=f=70",
@@ -31,7 +29,7 @@ const FX: Partial<Record<Format, FxNarasi>> = {
       "aecho=0.85:0.6:55|110|190:0.28|0.17|0.08",
       "volume=1.25",
     ].join(","),
-    regang: 1 / (NADA * TEMPO),
+    regang: 1 / TEMPO,
   },
 };
 
