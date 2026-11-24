@@ -19,8 +19,17 @@ const SKRIP = path.join(DIR, "narasi.py");
 
 export const voxcpmTersedia = () => fs.existsSync(PYTHON) && fs.existsSync(SKRIP);
 
-export const SUARA_LOKAL = [
-  { id: "pendongeng-horor", ket: "Pria, berbisik & mencekam", deskripsi: "pria dewasa, suara berat dan serak, berbicara pelan setengah berbisik, nada mencekam seperti pendongeng cerita horor" },
+export const SUARA_LOKAL: { id: string; ket: string; deskripsi: string; acuan?: { file: string; teks: string } }[] = [
+  {
+    id: "pendongeng-horor",
+    ket: "Pria, bisikan berat (suara PovQ)",
+    deskripsi: "a deep, raspy adult male voice, whispering slowly and menacingly, eerie horror storyteller",
+    // suara pilihan kanal: semua narasi horor mengkloning rekaman ini
+    acuan: {
+      file: "suara/pendongeng-horor.wav",
+      teks: "Malam itu, aku mendengar langkah kaki di loteng. Pelan... lalu berhenti, tepat di atas kamarku.",
+    },
+  },
   { id: "narator-pria", ket: "Pria, narator dokumenter", deskripsi: "pria dewasa, suara hangat dan jelas, tempo sedang, nada tenang seperti narator dokumenter" },
   { id: "vlogger-ceria", ket: "Pria, ceria & kocak", deskripsi: "pria muda dewasa, suara ceria dan ekspresif, tempo agak cepat, gaya vlogger yang lucu" },
   { id: "narator-wanita", ket: "Wanita, narator lembut", deskripsi: "wanita dewasa, suara lembut dan jernih, tempo sedang, nada hangat seperti narator" },
@@ -35,6 +44,10 @@ const BAWAAN: Record<Format, string> = {
 
 export const suaraLokalProyek = (p: Project) =>
   SUARA_LOKAL.find((s) => s.id === p.suaraLokal) ?? SUARA_LOKAL.find((s) => s.id === BAWAAN[p.format])!;
+
+const PRESET = "_kanal";
+const lokasiAcuan = (a: NonNullable<Project["acuanSuara"]>) =>
+  a.proyek === PRESET ? path.join(DIR, a.file) : path.join(projectDir(a.proyek), a.file);
 
 export interface HasilNarasi {
   /** nama file narasi per kalimat (di folder proyek), urut */
@@ -55,8 +68,14 @@ const kunci = (s: string) => createHash("sha1").update(s).digest("hex").slice(0,
  */
 export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: string) => void): Promise<HasilNarasi> {
   const suara = suaraLokalProyek(p);
+  // suara tetap milik kanal (rekaman pilihan) didahulukan daripada acuan per proyek
+  const preset =
+    suara.acuan && fs.existsSync(path.join(DIR, suara.acuan.file))
+      ? { proyek: PRESET, file: suara.acuan.file, teks: suara.acuan.teks, suara: suara.id }
+      : undefined;
   const acuanAda =
-    p.acuanSuara?.suara === suara.id && fs.existsSync(path.join(projectDir(p.acuanSuara.proyek), p.acuanSuara.file)) ? p.acuanSuara : undefined;
+    preset ??
+    (p.acuanSuara?.suara === suara.id && fs.existsSync(lokasiAcuan(p.acuanSuara)) ? p.acuanSuara : undefined);
   const id = `${p.id}:${suara.id}:${acuanAda?.file ?? "-"}:${kunci(kalimat.join("\n"))}`;
   const lama = berjalan.get(id);
   if (lama) return lama;
@@ -84,7 +103,7 @@ async function jalankan(
   const tugas = {
     kalimat: kalimat.map((teks, i) => ({ teks, out: path.join(dir, files[i]) })),
     deskripsi,
-    acuan: acuan ? { wav: path.join(projectDir(acuan.proyek), acuan.file), teks: acuan.teks } : null,
+    acuan: acuan ? { wav: lokasiAcuan(acuan), teks: acuan.teks } : null,
     acuan_out: path.join(dir, acuanBaru),
     timesteps: Number(process.env.VOXCPM_TIMESTEPS) || 10,
     kata: true,
