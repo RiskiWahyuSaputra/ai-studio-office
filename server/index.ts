@@ -3,7 +3,7 @@ import path from "node:path";
 import { ROOT, UPLOADS } from "./paths.ts";
 import { media } from "./routes/media.ts";
 import { social } from "./routes/social.ts";
-import { loadDb } from "./store.ts";
+import { addLog, listProjects, loadDb, updateProject } from "./store.ts";
 import { projects } from "./routes/projects.ts";
 import { kick } from "./pipeline.ts";
 import { lanjutkanGambarTertunda } from "./gambar.ts";
@@ -14,6 +14,14 @@ const PORT = Number(process.env.PORT ?? 8787);
 const PROD = process.env.NODE_ENV === "production";
 
 await loadDb();
+
+// tahap yang terputus karena server mati (mis. kehabisan RAM) dijalankan ulang otomatis
+for (const p of listProjects().filter((x) => x.status === "jalan")) {
+  await updateProject(p.id, (x) => {
+    x.status = "antre";
+    addLog(x, "Sistem", "Server sempat mati, tahap ini dilanjutkan lagi");
+  });
+}
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
