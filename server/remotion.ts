@@ -4,6 +4,7 @@
  */
 import path from "node:path";
 import os from "node:os";
+import { antreBerat } from "./berat.ts";
 import { ROOT } from "./paths.ts";
 import type { PropsCerita } from "../src/shared/video.ts";
 
@@ -20,9 +21,30 @@ async function serveUrl(): Promise<string> {
   return bundleSiap;
 }
 
-export async function renderCerita(
+/** 1 tab Chrome per ~2,5 GB RAM yang masih bebas, maksimal 2. */
+const tabRender = () => Math.max(1, Math.min(2, Math.floor(os.freemem() / 2.5e9)));
+
+export function renderCerita(
   props: PropsCerita,
   keluaran: string,
+  onProgress?: (persen: number) => void,
+): Promise<void> {
+  return antreBerat(async () => {
+    try {
+      await render(props, keluaran, tabRender(), onProgress);
+    } catch (e) {
+      // browser crash karena memori: coba sekali lagi dengan satu tab saja
+      if (!/crash|target.?closed|Target closed/i.test(String((e as Error).message))) throw e;
+      console.warn("[remotion] browser crash, ulang dengan 1 tab");
+      await render(props, keluaran, 1, onProgress);
+    }
+  });
+}
+
+async function render(
+  props: PropsCerita,
+  keluaran: string,
+  concurrency: number,
   onProgress?: (persen: number) => void,
 ): Promise<void> {
   const { renderMedia, selectComposition } = await import("@remotion/renderer");
@@ -35,8 +57,7 @@ export async function renderCerita(
     codec: "h264",
     outputLocation: keluaran,
     inputProps: props,
-    // hemat RAM: laptop dengan memori terbatas
-    concurrency: Math.max(1, Math.min(4, Math.floor(os.cpus().length / 3))),
+    concurrency,
     onProgress: ({ progress }) => {
       const p = Math.floor(progress * 100);
       if (p !== terakhir && p % 10 === 0) {

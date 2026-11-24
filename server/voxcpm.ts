@@ -8,6 +8,7 @@ import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import { antreBerat } from "./berat.ts";
 import { ROOT } from "./paths.ts";
 import { projectDir } from "./editor.ts";
 import type { Format, Project } from "../src/shared/types.ts";
@@ -57,7 +58,6 @@ export interface HasilNarasi {
   acuan: NonNullable<Project["acuanSuara"]>;
 }
 
-let antrean: Promise<unknown> = Promise.resolve();
 const berjalan = new Map<string, Promise<HasilNarasi>>();
 
 const kunci = (s: string) => createHash("sha1").update(s).digest("hex").slice(0, 12);
@@ -80,8 +80,7 @@ export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: s
   const lama = berjalan.get(id);
   if (lama) return lama;
 
-  const kerja = antrean.then(() => jalankan(p, kalimat, suara.id, suara.deskripsi, acuanAda, onProgres));
-  antrean = kerja.catch(() => {});
+  const kerja = antreBerat(() => jalankan(p, kalimat, suara.id, suara.deskripsi, acuanAda, onProgres));
   berjalan.set(id, kerja);
   kerja.catch(() => berjalan.delete(id));
   return kerja;
