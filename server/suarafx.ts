@@ -66,7 +66,7 @@ export async function efekNarasi(dir: string, files: string[], format: Format): 
   if (!fx) return { files, regang: 1 };
   const hasil: string[] = [];
   for (const f of files) {
-    const keluar = f.replace(/\.wav$/i, "") + `.fx-${format}.wav`;
+    const keluar = f.replace(/\.(wav|mp3)$/i, "") + `.fx-${format}.wav`;
     if (!fs.existsSync(path.join(dir, keluar))) {
       await jalankan(["-i", path.join(dir, f), "-af", fx.filter, "-ac", "2", path.join(dir, keluar)]);
     }

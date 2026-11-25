@@ -94,7 +94,7 @@ projects.post("/projects/:id/suara/contoh", async (req, res) => {
     try {
       const pilih = SUARA_LOKAL.find((v) => v.id === req.body?.suara)?.id ?? p.suaraLokal;
       const h = await narasiLokal({ ...p, suaraLokal: pilih }, [teks]);
-      if (!p.acuanSuara || p.acuanSuara.suara !== h.acuan.suara) await updateProject(p.id, (x) => void (x.acuanSuara = h.acuan));
+      if (h.acuan && (!p.acuanSuara || p.acuanSuara.suara !== h.acuan.suara)) await updateProject(p.id, (x) => void (x.acuanSuara = h.acuan));
       return void res.json({ url: `/media/${p.id}/${h.files[0]}` });
     } catch (e) {
       return void res.status(503).json({ error: (e as Error).message });

@@ -17,13 +17,26 @@ import type { KataWaktu } from "../src/shared/video.ts";
 const DIR = path.join(ROOT, "tools", "voxcpm");
 const PYTHON = path.join(DIR, ".venv", "bin", "python");
 const SKRIP = path.join(DIR, "narasi.py");
+const SKRIP_EDGE = path.join(DIR, "edge.py");
 
 export const voxcpmTersedia = () => fs.existsSync(PYTHON) && fs.existsSync(SKRIP);
 
-export const SUARA_LOKAL: { id: string; ket: string; deskripsi: string; acuan?: { file: string; teks: string } }[] = [
+interface SuaraLokal {
+  id: string;
+  ket: string;
+  deskripsi: string;
+  /** rekaman tetap yang dikloning VoxCPM */
+  acuan?: { file: string; teks: string };
+  /** suara Edge TTS (cepat, beberapa detik per kalimat) dan bukan VoxCPM */
+  edge?: { suara: string; pitch: string };
+}
+
+export const SUARA_LOKAL: SuaraLokal[] = [
+  { id: "edge-ardi", ket: "Pria, Ardi (cepat)", deskripsi: "", edge: { suara: "id-ID-ArdiNeural", pitch: "-4Hz" } },
+  { id: "edge-gadis", ket: "Wanita, Gadis (cepat)", deskripsi: "", edge: { suara: "id-ID-GadisNeural", pitch: "-4Hz" } },
   {
     id: "pendongeng-horor",
-    ket: "Pria, bisikan berat (suara PovQ)",
+    ket: "Pria, bisikan berat (VoxCPM, lambat)",
     deskripsi: "a deep, raspy adult male voice, whispering slowly and menacingly, eerie horror storyteller",
     // suara pilihan kanal: semua narasi horor mengkloning rekaman ini
     acuan: {
@@ -31,20 +44,23 @@ export const SUARA_LOKAL: { id: string; ket: string; deskripsi: string; acuan?: 
       teks: "Malam itu, aku mendengar langkah kaki di loteng. Pelan... lalu berhenti, tepat di atas kamarku.",
     },
   },
-  { id: "narator-pria", ket: "Pria, narator dokumenter", deskripsi: "pria dewasa, suara hangat dan jelas, tempo sedang, nada tenang seperti narator dokumenter" },
-  { id: "vlogger-ceria", ket: "Pria, ceria & kocak", deskripsi: "pria muda dewasa, suara ceria dan ekspresif, tempo agak cepat, gaya vlogger yang lucu" },
-  { id: "narator-wanita", ket: "Wanita, narator lembut", deskripsi: "wanita dewasa, suara lembut dan jernih, tempo sedang, nada hangat seperti narator" },
-  { id: "wanita-misterius", ket: "Wanita, misterius", deskripsi: "wanita dewasa, suara rendah dan pelan, setengah berbisik, nada misterius dan dingin" },
+  { id: "narator-pria", ket: "Pria, narator dokumenter (VoxCPM, lambat)", deskripsi: "pria dewasa, suara hangat dan jelas, tempo sedang, nada tenang seperti narator dokumenter" },
+  { id: "vlogger-ceria", ket: "Pria, ceria & kocak (VoxCPM, lambat)", deskripsi: "pria muda dewasa, suara ceria dan ekspresif, tempo agak cepat, gaya vlogger yang lucu" },
+  { id: "narator-wanita", ket: "Wanita, narator lembut (VoxCPM, lambat)", deskripsi: "wanita dewasa, suara lembut dan jernih, tempo sedang, nada hangat seperti narator" },
+  { id: "wanita-misterius", ket: "Wanita, misterius (VoxCPM, lambat)", deskripsi: "wanita dewasa, suara rendah dan pelan, setengah berbisik, nada misterius dan dingin" },
 ];
 
-const BAWAAN: Record<Format, string> = {
-  "cerita-horor": "pendongeng-horor",
-  "pov-sejarah": "narator-pria",
-  "vlog-hewan": "vlogger-ceria",
+export const BAWAAN_LOKAL: Record<Format, string> = {
+  "cerita-horor": "edge-ardi",
+  "pov-sejarah": "edge-ardi",
+  "vlog-hewan": "edge-ardi",
 };
 
+/** Tempo bicara Edge per format: horor lebih pelan, vlog sedikit lebih cepat. */
+const TEMPO_EDGE: Record<Format, string> = { "cerita-horor": "-8%", "pov-sejarah": "+0%", "vlog-hewan": "+6%" };
+
 export const suaraLokalProyek = (p: Project) =>
-  SUARA_LOKAL.find((s) => s.id === p.suaraLokal) ?? SUARA_LOKAL.find((s) => s.id === BAWAAN[p.format])!;
+  SUARA_LOKAL.find((s) => s.id === p.suaraLokal) ?? SUARA_LOKAL.find((s) => s.id === BAWAAN_LOKAL[p.format])!;
 
 const PRESET = "_kanal";
 const lokasiAcuan = (a: NonNullable<Project["acuanSuara"]>) =>
@@ -55,7 +71,8 @@ export interface HasilNarasi {
   files: string[];
   /** waktu kata per kalimat (detik relatif awal file), kalau tersedia */
   kata: (KataWaktu[] | undefined)[];
-  acuan: NonNullable<Project["acuanSuara"]>;
+  /** suara acuan VoxCPM (tidak ada untuk Edge) */
+  acuan?: NonNullable<Project["acuanSuara"]>;
 }
 
 const berjalan = new Map<string, Promise<HasilNarasi>>();
@@ -68,6 +85,15 @@ const kunci = (s: string) => createHash("sha1").update(s).digest("hex").slice(0,
  */
 export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: string) => void): Promise<HasilNarasi> {
   const suara = suaraLokalProyek(p);
+  if (suara.edge) {
+    const id = `${p.id}:${suara.id}:${kunci(kalimat.join("\n"))}`;
+    const lama = berjalan.get(id);
+    if (lama) return lama;
+    const kerja = jalankanEdge(p, kalimat, suara, onProgres);
+    berjalan.set(id, kerja);
+    kerja.finally(() => berjalan.delete(id)).catch(() => {});
+    return kerja;
+  }
   // suara tetap milik kanal (rekaman pilihan) didahulukan daripada acuan per proyek
   const preset =
     suara.acuan && fs.existsSync(path.join(DIR, suara.acuan.file))
@@ -84,6 +110,50 @@ export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: s
   berjalan.set(id, kerja);
   kerja.catch(() => berjalan.delete(id));
   return kerja;
+}
+
+/** Edge TTS: ringan (tanpa model lokal), jadi tidak perlu antre dengan pekerjaan berat. */
+async function jalankanEdge(p: Project, kalimat: string[], suara: SuaraLokal, onProgres?: (pesan: string) => void): Promise<HasilNarasi> {
+  if (!voxcpmTersedia() || !fs.existsSync(SKRIP_EDGE)) throw new Error("Edge TTS belum terpasang di tools/voxcpm (lihat README)");
+  const dir = projectDir(p.id);
+  fs.mkdirSync(dir, { recursive: true });
+  const e = suara.edge!;
+  const rate = TEMPO_EDGE[p.format];
+  const files = kalimat.map((t) => `suara-ed-${kunci(`${e.suara}|${rate}|${e.pitch}|${t}`)}.mp3`);
+  const fileTugas = path.join(dir, `tugas-ed-${Date.now()}.json`);
+  fs.writeFileSync(
+    fileTugas,
+    JSON.stringify({ kalimat: kalimat.map((teks, i) => ({ teks, out: path.join(dir, files[i]) })), suara: e.suara, rate, pitch: e.pitch }),
+  );
+  const akhir = await new Promise<{ kata: Record<string, KataWaktu[]> }>((resolve, reject) => {
+    const ps = spawn(PYTHON, [SKRIP_EDGE, fileTugas], { cwd: DIR, env: { ...process.env, PYTHONUNBUFFERED: "1" } });
+    let sisa = "";
+    let galat = "";
+    let selesai: { kata: Record<string, KataWaktu[]> } | null = null;
+    ps.stdout.on("data", (d) => {
+      sisa += d;
+      const baris = sisa.split("\n");
+      sisa = baris.pop() ?? "";
+      for (const b of baris) {
+        try {
+          const j = JSON.parse(b);
+          if (j.galat) galat = String(j.galat);
+          else if (j.selesai) selesai = j;
+          else if (j.tahap === "kalimat") onProgres?.(`Narasi ${j.ke}/${j.dari}...`);
+        } catch {
+          /* bukan JSON */
+        }
+      }
+    });
+    ps.stderr.on("data", (d) => (galat ||= /Error/.test(String(d)) ? String(d).slice(-300) : ""));
+    ps.on("error", (err) => reject(new Error(`Edge TTS tidak bisa dijalankan: ${err.message}`)));
+    ps.on("close", (code) => {
+      fs.rm(fileTugas, { force: true }, () => {});
+      if (selesai && code === 0) resolve(selesai);
+      else reject(new Error(`Edge TTS gagal (cek koneksi internet): ${galat || `kode ${code}`}`));
+    });
+  });
+  return { files, kata: files.map((f) => akhir.kata[path.join(dir, f)]) };
 }
 
 async function jalankan(

@@ -155,7 +155,7 @@ function renderSettings(s: UiState): string {
       <label class="check"><input type="checkbox" name="efekSuara" ${st.efekSuara ? "checked" : ""} /> Efek suara per format (horor: suara lebih berat & bergema + dengung latar mencekam)</label>
       <label class="field"><span>Mesin suara narasi</span>
         <select name="mesinSuara">
-          <option value="voxcpm" ${st.mesinSuara === "voxcpm" ? "selected" : ""}>VoxCPM lokal (tanpa kuota, lebih lambat)${s.voxcpm ? "" : " — belum terpasang"}</option>
+          <option value="voxcpm" ${st.mesinSuara === "voxcpm" ? "selected" : ""}>Gratis tanpa kuota (Edge TTS cepat / VoxCPM lokal)${s.voxcpm ? "" : " — belum terpasang"}</option>
           <option value="gemini" ${st.mesinSuara === "gemini" ? "selected" : ""}>Gemini TTS (cepat, kuota harian)</option>
         </select>
       </label>
@@ -437,14 +437,14 @@ const SUARA_BAWAAN = (p: Project) => p.suara ?? FORMATS[p.format].suara;
 function sectionSuara(p: Project, s: UiState) {
   if (!s.settings.narasiTts || !p.adegan?.length) return "";
   const lokal = s.settings.mesinSuara === "voxcpm" && s.voxcpm;
-  const bawaanLokal: Record<Project["format"], string> = { "cerita-horor": "pendongeng-horor", "pov-sejarah": "narator-pria", "vlog-hewan": "vlogger-ceria" };
+  const bawaanLokal: Record<Project["format"], string> = { "cerita-horor": "edge-ardi", "pov-sejarah": "edge-ardi", "vlog-hewan": "edge-ardi" };
   const now = lokal ? (p.suaraLokal ?? bawaanLokal[p.format]) : SUARA_BAWAAN(p);
   const daftar = lokal ? s.suaraLokal : s.suara;
   return `<section class="card"><h3>Suara narasi · Nanda</h3>
     ${
       lokal
-        ? `<p class="hint">Suara dibuat di laptopmu dengan VoxCPM, tanpa kuota. Kalimat pertama jadi suara acuan, lalu semua kalimat (dan part berikutnya) mengkloning suara itu supaya konsisten.</p>
-           <p class="hint">Lambat di CPU (sekitar 1 menit per kalimat), jadi Nanda mulai membuat narasi begitu prompt selesai, selagi kamu membuat gambar.${p.acuanSuara ? " Suara acuan sudah ada." : ""}</p>`
+        ? `<p class="hint">Tanpa kuota. Suara "cepat" (Ardi/Gadis, Edge TTS) jadi dalam beberapa detik per kalimat dan butuh internet. Suara "VoxCPM" dibuat di laptopmu, sekitar 1–2 menit per kalimat.</p>
+           <p class="hint">Satu suara dipakai untuk semua adegan dan part supaya konsisten.</p>`
         : `<p class="hint">Satu suara dipakai untuk semua adegan. Nanda membacakan seluruh narasi sekaligus dengan Gemini TTS saat mengedit, lalu memotongnya per adegan.</p>
            <p class="hint">Kuota gratis Gemini TTS sekitar 10 permintaan/hari per model. Satu video memakai 1 permintaan, "Dengar contoh" juga 1.</p>`
     }

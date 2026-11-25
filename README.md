@@ -92,7 +92,7 @@ Bawaan Kantor PovQ memakai [VoxCPM2](https://github.com/OpenBMB/VoxCPM) (Apache-
 ```bash
 cd tools/voxcpm
 uv venv -p 3.12 .venv
-uv pip install -p .venv/bin/python voxcpm soundfile faster-whisper
+uv pip install -p .venv/bin/python voxcpm soundfile faster-whisper edge-tts
 .venv/bin/python uji.py   # unduh model (~5 GB) dan uji satu kalimat
 ```
 
