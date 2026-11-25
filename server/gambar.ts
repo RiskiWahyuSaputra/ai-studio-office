@@ -13,7 +13,7 @@ import { activity } from "./events.ts";
 import { fetchUlang } from "./net.ts";
 import { lanjut } from "./pipeline.ts";
 import { addLog, getProject, getSettings, listProjects, updateProject } from "./store.ts";
-import type { Project } from "../src/shared/types.ts";
+import { GAYA, type Project } from "../src/shared/types.ts";
 
 let antrean: Promise<unknown> = Promise.resolve();
 const berjalan = new Set<string>();
@@ -75,7 +75,8 @@ async function kerjakan(id: string, nos?: number[]) {
     // seed tetap per proyek (gaya konsisten); gambar ulang memakai seed baru
     const seed = nos ? benih(`${id}:${a.no}:${Date.now()}`) : benih(id) + a.no;
     const mentah = path.join(dir, `_gambar-${a.no}-${Date.now()}.jpg`);
-    await unduhGambar(a.promptEn ?? a.prompt, seed, mentah);
+    const awal = GAYA[sekarang.gaya ?? "sinematik"].gambarAwal;
+    await unduhGambar(`${awal ? `${awal} ` : ""}${a.promptEn ?? a.prompt}`, seed, mentah);
     const file = `klip-${a.no}-auto-${Date.now()}.jpg`;
     await rapikan(mentah, path.join(dir, file));
     await fs.rm(mentah, { force: true });

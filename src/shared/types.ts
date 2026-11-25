@@ -4,16 +4,20 @@ import type { StageId } from "./team.ts";
 export type Format = "pov-sejarah" | "vlog-hewan" | "cerita-horor";
 export type Gaya = "animasi-2d" | "animasi" | "pixel" | "sinematik";
 
-export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string; tokoh?: string; gambar: string }> = {
+export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string; tokoh?: string; gambar: string; gambarEn?: string; gambarAwal?: string }> = {
   "animasi-2d": {
     nama: "Animasi 2D",
-    ringkas: "Kartun 2D dengan garis tegas dan warna flat. Ringan, ekspresif, dan karakternya paling mudah dibuat konsisten.",
+    ringkas: "Kartun 2D imut: garis gelap yang bersih, mata besar, pipi merona, palet biru tua & ungu dengan aksen hijau mint yang berpendar.",
     kepala: "Video vertikal 9:16, animasi 2D",
-    tokoh: "karakter kartun 2D",
+    tokoh: "karakter kartun 2D imut",
     gambar:
-      "ilustrasi kartun 2D digital, garis tepi tegas, pewarnaan flat dengan bayangan cel-shading sederhana, karakter berproporsi kartun dengan ekspresi wajah yang jelas, latar ilustrasi yang dilukis dengan detail",
+      "ilustrasi kartun 2D imut, garis tepi gelap yang bersih dan tegas, cel-shading lembut, mata bulat besar yang ekspresif, pipi merona, proporsi agak chibi, palet biru tua dan ungu yang kalem dengan aksen hijau mint yang berpendar",
+    // ditaruh di awal prompt: model gambar gratis paling memperhatikan kata-kata pertama
+    gambarAwal: "Cute 2D cartoon illustration, clean bold dark outlines, soft cel shading, flat colors.",
+    gambarEn:
+      "cute 2D cartoon illustration, clean bold dark outlines, soft cel shading, big round expressive eyes, rosy cheeks, slightly chibi proportions, muted navy and purple palette with glowing mint-green accents",
     prompt:
-      "animasi kartun 2D digital, garis tepi tegas, pewarnaan flat dengan bayangan cel-shading sederhana, karakter berproporsi kartun dengan ekspresi wajah yang jelas, latar ilustrasi 2D yang dilukis, gerakan animasi yang halus, tidak 3D dan tidak fotorealistis",
+      "animasi kartun 2D imut, garis tepi gelap yang bersih dan tegas, cel-shading lembut, mata bulat besar yang ekspresif, pipi merona, proporsi agak chibi, palet biru tua dan ungu dengan aksen hijau mint yang berpendar, gerakan animasi yang halus, tidak 3D dan tidak fotorealistis",
   },
   animasi: {
     nama: "Animasi 3D",

@@ -246,8 +246,8 @@ Aturan (urutan penting, model gambar paling memperhatikan kata-kata awal):
 1. Mulai dengan LATAR dan AKSI adegan, lalu jenis bidikan yang memperlihatkan lingkungan (mis. "wide shot", "medium shot, full room visible"). Tokoh tidak boleh jadi potret close-up di latar polos, kecuali adegannya memang close-up.
 2. Lalu pencahayaan & suasana yang tegas (mis. "dark night, eerie bluish moonlight, deep shadows, horror mood").
 3. Lalu tokoh dengan ciri UTAMA saja (maks 20 kata: jenis kelamin & usia, rambut, pakaian & warna). Ciri ini harus SAMA PERSIS kata per kata di semua prompt tempat tokoh itu muncul.
-4. Tutup dengan gaya singkat: "${g.gambar}" (terjemahkan & ringkas jadi maks 12 kata), "vertical 9:16", "no text, no letters, no watermark".
-- Maksimal 75 kata per prompt, satu paragraf, BAHASA INGGRIS.
+4. ${g.gambarEn ? `Tutup dengan gaya ini PERSIS kata per kata (jangan diubah): "${g.gambarEn}"` : `Tutup dengan gaya singkat: "${g.gambar}" (terjemahkan & ringkas jadi maks 12 kata)`}, "vertical 9:16", "no text, no letters, no watermark".
+- Maksimal ${g.gambarEn ? 95 : 75} kata per prompt, satu paragraf, BAHASA INGGRIS.
 - Tokoh manusia selalu dewasa; tanpa darah, luka, atau kekerasan.
 Lembar karakter: ${JSON.stringify(p.karakter ?? [])}
 Prompt:
