@@ -50,6 +50,9 @@ registerStage("render", {
   status: "Hitung kredit...",
   async run(p) {
     mulaiNarasiAwal(p);
+    if (p.sumberVisual === "antigravity") {
+      return { apply: () => {}, pesan: `${p.adegan?.length ?? 0} adegan diteruskan ke Nanda: seluruh visual dirancang Antigravity, tanpa Flow` };
+    }
     if (p.sumberVisual === "ilustrasi") {
       const n = p.adegan?.length ?? 0;
       const otomatis = gambarOtomatis();
@@ -78,6 +81,7 @@ registerStage("render", {
     };
   },
   siap: (p) => {
+    if (p.sumberVisual === "antigravity") return null;
     const kurang = (p.adegan ?? []).filter((a) => !a.klip).map((a) => a.no);
     return kurang.length ? `${p.sumberVisual === "ilustrasi" ? "Gambar" : "Klip"} adegan ${kurang.join(", ")} belum diunggah` : null;
   },
@@ -156,7 +160,7 @@ registerStage("edit", {
         efekSuara: s.efekSuara,
         label: p.seri ? `Part ${p.seri.part}${p.seri.part >= p.seri.totalPart ? " · Tamat" : ""}` : undefined,
         judul: p.seri ? p.naskah?.judulKerja.replace(/\s*\(Part \d+\)\s*$/i, "") : undefined,
-        mesinVideo: s.mesinVideo,
+        mesinVideo: p.sumberVisual === "antigravity" ? "antigravity" : s.mesinVideo,
         onStatus: (pesan) => activity({ type: "kerja", memberId: "editor", status: pesan }),
         onProgress: (x) => activity({ type: "kerja", memberId: "editor", status: `Render ${x}%...` }),
       });
@@ -187,7 +191,7 @@ registerStage("edit", {
         subtitleFile: `subtitle-part-${k}.srt`,
         label: `Part ${k}${k === nPart ? " · Tamat" : ""}`,
         judul: p.naskah!.judulKerja,
-        mesinVideo: s.mesinVideo,
+        mesinVideo: p.sumberVisual === "antigravity" ? "antigravity" : s.mesinVideo,
         onStatus: (pesan) => activity({ type: "kerja", memberId: "editor", status: `Part ${k}: ${pesan}` }),
         onProgress: (x) => activity({ type: "kerja", memberId: "editor", status: `Part ${k}: render ${x}%...` }),
       });

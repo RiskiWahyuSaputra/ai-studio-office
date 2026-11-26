@@ -146,11 +146,14 @@ export async function storyboard(p: Project, s: Settings): Promise<{ adegan: Ade
     });
     return { adegan: semua };
   }
-  const ilustrasi = p.sumberVisual === "ilustrasi";
+  const kode = p.sumberVisual === "antigravity";
+  const ilustrasi = p.sumberVisual === "ilustrasi" || kode;
   const gayaGambar = GAYA[p.gaya ?? "sinematik"];
   // lembar karakter: milik proyek ini, atau warisan part sebelumnya
   const warisan = p.karakter?.length ? p.karakter : partSebelumnya(p).at(-1)?.karakter;
-  const aturanSuara = ilustrasi
+  const aturanSuara = kode
+    ? `Narasi diisi TERPISAH oleh pengisi suara, jadi jangan tulis ucapan di prompt. Sisakan sepertiga bawah layar untuk subtitle. Tulis arahan yang bisa digambar dengan bentuk vektor (siluet, bangunan, pepohonan, kendaraan, lampu, kabut, partikel), hindari detail wajah yang rumit.`
+    : ilustrasi
     ? `Ini GAMBAR DIAM untuk dibuat di aplikasi Gemini, jadi JANGAN tulis gerakan kamera, suara, atau ucapan di prompt. Sisakan ruang yang tidak terlalu ramai di sepertiga bawah gambar untuk subtitle. Akhiri setiap prompt dengan "Tanpa teks, tanpa tulisan, tanpa watermark."`
     : s.narasiTts
     ? `SUARA: narasi akan diisi TERPISAH oleh pengisi suara (TTS) supaya suaranya konsisten. Jadi JANGAN tulis kalimat ucapan di prompt. ${
@@ -161,7 +164,7 @@ export async function storyboard(p: Project, s: Settings): Promise<{ adegan: Ade
     : `SUARA: ucapan/narasi ditulis dalam bahasa Indonesia di dalam tanda kutip di prompt (Veo membuat suaranya). Akhiri dengan "Tanpa teks, tanpa subtitle, tanpa watermark."`;
   const hasil = await generateJson<{ karakter?: Karakter[]; adegan: Omit<Adegan, "no" | "durasi">[] }>(`${KONTEKS(p)}
 
-${ilustrasi ? "Peranmu: Sutradara & Ilustrator. Videonya dibuat dari satu GAMBAR DIAM per adegan yang nanti digerakkan (zoom/geser kamera, efek kabut, hujan, dll) dan diberi narasi." : "Peranmu: Sutradara & Prompt Engineer untuk Google Veo."}
+${kode ? "Peranmu: Sutradara & Art Director. Videonya dianimasikan SELURUHNYA dengan kode (motion graphics Remotion) oleh motion designer: latar, tokoh bergaya ilustrasi vektor, cahaya, partikel, dan tipografi. Jadi field prompt adalah arahan visual yang jelas untuk motion designer itu (komposisi, elemen yang bergerak, warna, cahaya), bukan prompt untuk AI gambar." : ilustrasi ? "Peranmu: Sutradara & Ilustrator. Videonya dibuat dari satu GAMBAR DIAM per adegan yang nanti digerakkan (zoom/geser kamera, efek kabut, hujan, dll) dan diberi narasi." : "Peranmu: Sutradara & Prompt Engineer untuk Google Veo."}
 Naskah: ${JSON.stringify(n)}
 Riset: ${JSON.stringify(p.riset)}
 

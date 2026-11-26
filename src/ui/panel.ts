@@ -77,8 +77,10 @@ function renderList(s: UiState): string {
       </fieldset>
       <fieldset class="gaya-pilih">
         <legend>Sumber visual</legend>
+        <label class="gaya-opt" title="Seluruh visual dirancang agen Antigravity sebagai kode Remotion. Tanpa Flow, tanpa unggah apa pun.${s.agy ? "" : " (agy belum terpasang)"}">
+          <input type="radio" name="sumberVisual" value="antigravity" ${s.agy ? "checked" : "disabled"} /><span>Full Antigravity</span></label>
         <label class="gaya-opt" title="Satu gambar diam per adegan dari aplikasi Gemini, digerakkan oleh React (Remotion). Tanpa kredit Flow.">
-          <input type="radio" name="sumberVisual" value="ilustrasi" checked /><span>Ilustrasi + gerak</span></label>
+          <input type="radio" name="sumberVisual" value="ilustrasi" ${s.agy ? "" : "checked"} /><span>Ilustrasi + gerak</span></label>
         <label class="gaya-opt" title="Klip video dari Google Flow (Veo). Memakai kredit Flow.">
           <input type="radio" name="sumberVisual" value="flow" /><span>Klip Google Flow</span></label>
       </fieldset>
@@ -338,6 +340,7 @@ export const PETUNJUK: Partial<Record<Project["tahap"], (p: Project, s: UiState)
   paket: () => "Cek judul, caption, dan hashtag dari Putri di bawah. Sunting bila perlu, simpan, lalu setujui.",
   unggah: () => "Hubungkan akun lalu unggah ke platform pilihanmu di bagian Unggah. Setelah minimal satu tayang, lanjutkan ke Analisis.",
   render: (p, s) => {
+    if (p.sumberVisual === "antigravity") return "Visual proyek ini dirancang Antigravity langsung di tahap edit. Tidak perlu Flow atau unggah apa pun, cukup setujui untuk lanjut.";
     if (p.sumberVisual === "ilustrasi" && s.settings.mesinGambar === "otomatis") {
       const ada = p.adegan?.filter((a) => a.klip).length ?? 0;
       return `Bayu sedang menggambar otomatis (${ada}/${p.adegan?.length ?? 0} selesai). Setelah semua jadi, video dirakit sendiri. Kalau ada gambar yang kurang pas, klik <strong>Gambar ulang</strong> atau seret gambarmu sendiri ke adegan itu.
@@ -565,7 +568,7 @@ function sectionAdegan(p: Project) {
         <select data-action-change="ganti-gaya" aria-label="Ganti gaya visual">
           ${Object.entries(GAYA).map(([id, g]) => `<option value="${id}" ${id === gayaNow ? "selected" : ""}>${esc(g.nama)}</option>`).join("")}
         </select></label>`;
-  const zonaSemua = bolehUnggahKlip(p)
+  const zonaSemua = bolehUnggahKlip(p) && p.sumberVisual !== "antigravity"
     ? `<div class="dropzone" data-drop="semua" tabindex="0">
         <strong>${p.sumberVisual === "ilustrasi" ? "Seret semua gambar (atau ZIP-nya) ke sini" : 'Seret ZIP "download proyek" Flow atau semua klip ke sini'}</strong>
         <span>Tiap file dipasangkan ke adegan lewat angka di nama file, kemiripan nama dengan prompt, lalu urutan waktu dibuat/diunduh. Hasilnya bisa dicek dan ditukar di bawah.</span>
@@ -573,7 +576,7 @@ function sectionAdegan(p: Project) {
       </div>
       <div data-pencocokan></div>`
     : "";
-  return `<details class="card" open><summary><h3>Adegan & prompt Veo · Bayu</h3>${ulangBtn("storyboard")}</summary>
+  return `<details class="card" open><summary><h3>${p.sumberVisual === "antigravity" ? "Adegan & arahan visual" : "Adegan & prompt Veo"} · Bayu</h3>${ulangBtn("storyboard")}</summary>
     ${gantiGaya}
     ${zonaSemua}
     <ol class="scenes">${p.adegan
@@ -735,7 +738,7 @@ function renderProject(p: Project, s: UiState): string {
   <div class="crumbs"><button class="link" data-action="kembali">← Semua proyek</button>
     <span class="hapus-box"><button class="link link-bad" data-action="hapus">Hapus proyek</button></span></div>
   <section class="card">
-    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}${p.seri ? ` · Part ${p.seri.part} dari ${p.seri.totalPart}` : ""}${p.sumberVisual === "ilustrasi" ? " · Ilustrasi" : ""}${p.naskah?.part?.length ? ` · Cerita utuh ${p.naskah.part.length} part` : p.rencanaPart ? ` · Rencana ${p.rencanaPart} part` : ""}</p>
+    <p class="eyebrow">${esc(FORMATS[p.format].nama)} · ${esc(GAYA[p.gaya ?? "sinematik"].nama)}${p.seri ? ` · Part ${p.seri.part} dari ${p.seri.totalPart}` : ""}${p.sumberVisual === "ilustrasi" ? " · Ilustrasi" : p.sumberVisual === "antigravity" ? " · Full Antigravity" : ""}${p.naskah?.part?.length ? ` · Cerita utuh ${p.naskah.part.length} part` : p.rencanaPart ? ` · Rencana ${p.rencanaPart} part` : ""}</p>
     <h2>${esc(judulProyek(p))}</h2>
     <p class="muted">Dibuat ${waktu(p.dibuat)} ${badge(p)}</p>
     ${stepper(p)}

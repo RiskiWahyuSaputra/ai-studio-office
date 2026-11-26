@@ -109,8 +109,11 @@ export const FORMATS: Record<Format, PanduanFormat> = {
   },
 };
 
-/** Sumber visual: gambar diam yang digerakkan Remotion, atau klip video dari Google Flow. */
-export type SumberVisual = "ilustrasi" | "flow";
+/**
+ * Sumber visual: "antigravity" = seluruh visual dirancang agen Antigravity sebagai kode Remotion (tanpa Flow/gambar),
+ * "ilustrasi" = gambar diam yang digerakkan Remotion, "flow" = klip video dari Google Flow.
+ */
+export type SumberVisual = "antigravity" | "ilustrasi" | "flow";
 
 export type Platform = "youtube" | "tiktok" | "instagram";
 export type StageStatus = "antre" | "jalan" | "menunggu-kamu" | "selesai" | "gagal";

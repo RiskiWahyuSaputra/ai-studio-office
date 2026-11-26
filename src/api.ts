@@ -25,7 +25,7 @@ async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
 
 export const api = {
   state: () => req<InitState>("GET", "/api/state"),
-  create: (format: string, ide: string, gaya: string, rencanaPart = 1, sumberVisual = "ilustrasi") =>
+  create: (format: string, ide: string, gaya: string, rencanaPart = 1, sumberVisual = "antigravity") =>
     req<Project>("POST", "/api/projects", { format, ide, gaya, rencanaPart, sumberVisual }),
   remove: (id: string) => req<void>("DELETE", `/api/projects/${id}`),
   lanjut: (id: string) => req<Project>("POST", `/api/projects/${id}/lanjut`),

@@ -31,21 +31,24 @@ export function agyTersedia(): boolean {
 
 export interface AdeganAgy {
   no: number;
-  /** path file gambar/klip di folder proyek */
-  media: string;
-  jenis: "gambar" | "video";
+  /** path file gambar/klip di folder proyek; kosong = visual adegan ini digambar agy dengan kode */
+  media?: string;
+  jenis: "gambar" | "video" | "kode";
   narasi?: string;
   /** detik narasi mulai di dalam adegan */
   mulaiNarasi: number;
   durasiFrame: number;
   teks: string;
   visual: string;
+  /** arahan visual rinci dari sutradara (penanda {{Nama}} = tokoh di lembar karakter) */
+  arahan?: string;
   kata: KataWaktu[];
   gerak: unknown;
 }
 
 export interface OpsiAgy {
   p: Project;
+  dirProyek: string;
   /** nama file keluaran di folder proyek, mis. final.mp4 / final-part-2.mp4 */
   keluaran: string;
   fps: number;
@@ -65,9 +68,8 @@ const sha = (s: string) => createHash("sha1").update(s).digest("hex").slice(0, 1
 
 /** Siapkan folder lalu dapatkan video: pakai kode yang ada, atau minta agy merancangnya. */
 export async function videoAntigravity(o: OpsiAgy): Promise<{ file: string; durasi: number; folder: string }> {
-  const dirProyek = path.dirname(o.adegan[0].media);
-  const dir = folderAgy(dirProyek, o.keluaran);
-  const keluar = path.join(dirProyek, o.keluaran);
+  const dir = folderAgy(o.dirProyek, o.keluaran);
+  const keluar = path.join(o.dirProyek, o.keluaran);
   const { berubah } = await siapkanFolder(dir, o);
 
   const videoTsx = path.join(dir, "src", "Video.tsx");
@@ -146,9 +148,11 @@ async function siapkanFolder(dir: string, o: OpsiAgy): Promise<{ berubah: boolea
   let mulai = 0;
   const adegan = [];
   for (const a of o.adegan) {
-    const ext = path.extname(a.media).toLowerCase() || (a.jenis === "video" ? ".mp4" : ".jpg");
-    const media = `adegan-${a.no}${ext}`;
-    await salin(a.media, media);
+    let media: string | null = null;
+    if (a.media) {
+      media = `adegan-${a.no}${path.extname(a.media).toLowerCase() || (a.jenis === "video" ? ".mp4" : ".jpg")}`;
+      await salin(a.media, media);
+    }
     let narasi: string | null = null;
     if (a.narasi) {
       narasi = `narasi-${a.no}${path.extname(a.narasi).toLowerCase() || ".wav"}`;
@@ -163,6 +167,7 @@ async function siapkanFolder(dir: string, o: OpsiAgy): Promise<{ berubah: boolea
       narasi: narasi ? { file: narasi, mulaiDetikDalamAdegan: a.mulaiNarasi } : null,
       teks: a.teks,
       visual: a.visual,
+      arahan: a.arahan ? a.arahan.replace(/\{\{\s*([^}]+?)\s*\}\}/g, "$1") : null,
       kata: a.kata,
       gerakSaran: a.gerak,
     });
@@ -213,6 +218,7 @@ export const RemotionRoot: React.FC = () => (
 
 function brief(o: OpsiAgy, totalFrame: number): string {
   const f = FORMATS[o.p.format];
+  const kode = o.adegan.some((a) => !a.media);
   const n = o.p.naskah;
   return `# Brief video PovQ: ${o.judul}${o.label ? ` (${o.label})` : ""}
 
@@ -222,13 +228,14 @@ Kanal: **PovQ** (TikTok, YouTube Shorts, Instagram Reels). Format: **${f.nama}**
 - Judul: ${o.judul}
 ${n ? `- Hook: ${n.hook}\n- Ajakan akhir: ${n.cta}` : ""}
 
+${o.p.karakter?.length ? `## Tokoh (desain harus SAMA di semua adegan)\n${o.p.karakter.map((k) => `- **${k.nama}**: ${k.deskripsi}`).join("\n")}\n` : ""}
 ## Adegan (lihat src/data.ts untuk angka persisnya)
-${o.adegan.map((a, i) => `${i + 1}. ${a.visual}\n   Narasi: "${a.teks}"`).join("\n")}
+${o.adegan.map((a, i) => `${i + 1}. ${a.visual}${a.media ? "" : " _(tanpa aset: gambar dengan kode)_"}\n   Narasi: "${a.teks}"`).join("\n")}
 
 ## Aturan teknis (wajib)
 - Komposisi sudah dibuat: id \`${ID_KOMPOSISI}\`, 1080x1920, ${o.fps} fps, **${totalFrame} frame**. Tulis komponen \`Video\` di \`src/Video.tsx\` (boleh menambah file lain di \`src/\`).
 - JANGAN ubah \`src/index.ts\`, \`src/Root.tsx\`, \`src/data.ts\`. Ambil semua angka dari \`DATA\` di \`src/data.ts\`.
-- Aset ada di \`public/\`, panggil dengan \`staticFile(...)\`. Gambar pakai \`<Img>\`, klip video pakai \`<Video>\` dari \`@remotion/media\` (suara klip pelan, ~0.3), audio pakai \`<Audio>\` dari \`@remotion/media\`.
+${kode ? `- Adegan dengan \`media: null\` (jenis \`"kode"\`) TIDAK punya gambar/klip: kamu yang membuat seluruh visualnya dengan kode. Ikuti \`arahan\` dan \`visual\` tiap adegan.\n` : ""}- Aset ada di \`public/\`, panggil dengan \`staticFile(...)\`. Gambar pakai \`<Img>\`, klip video pakai \`<Video>\` dari \`@remotion/media\` (suara klip pelan, ~0.3), audio pakai \`<Audio>\` dari \`@remotion/media\`.
 - Narasi tiap adegan HARUS diputar tepat di \`mulaiFrame + mulaiDetikDalamAdegan*fps\`, dengan volume 1. Ini suara narator tetap kanal, jangan diubah/diganti.
 - Suara latar \`latar.wav\` (kalau ada) diputar sepanjang video dengan volume dari DATA.
 - Paket yang tersedia HANYA: \`remotion\`, \`@remotion/media\`, \`@remotion/transitions\`, \`@remotion/google-fonts\`. Jangan menambah paket, jangan memakai gambar/font dari internet selain lewat @remotion/google-fonts.
@@ -236,15 +243,15 @@ ${o.adegan.map((a, i) => `${i + 1}. ${a.visual}\n   Narasi: "${a.teks}"`).join("
 - JANGAN menjalankan npm, npx, atau render. Aplikasi Kantor PovQ yang akan merender.
 
 ## Gaya PovQ
-${o.subtitle ? "- Subtitle karaoke besar di bawah tengah (di atas 300px terbawah, aman dari UI TikTok), font tebal (mis. Montserrat 800), kata yang sedang diucapkan disorot. Waktu kata ada di `kata` (detik relatif awal adegan).\n" : ""}- Watermark kecil \`PovQ\` di pojok kanan atas.
-${o.label ? `- Tampilkan kartu judul singkat di awal: "${o.judul}" + "${o.label}".\n` : ""}- Gerak kamera halus pada gambar diam (zoom/geser, Ken Burns), transisi antar adegan.
+${o.subtitle ? "- Subtitle karaoke besar di bawah tengah (di atas 300px terbawah, aman dari UI TikTok), font tebal (mis. Montserrat 800), kata yang sedang diucapkan disorot. Pastikan ada jarak antar kata (mis. flex dengan `gap`), termasuk di sebelah kata yang disorot, jangan sampai kata menempel. Waktu kata ada di `kata` (detik relatif awal adegan).\n" : ""}- Watermark kecil \`PovQ\` di pojok kanan atas.
+${o.label ? `- Tampilkan kartu judul singkat di awal: "${o.judul}" + "${o.label}".\n` : ""}${kode ? `- **Visual dibuat sepenuhnya dengan kode** (tanpa Google Flow / AI gambar). Bangun tiap adegan sebagai ilustrasi vektor berlapis: SVG/div untuk langit, bangunan, jalan, pepohonan, kendaraan, siluet tokoh, dengan gradien, cahaya (lampu, senter, bulan), bayangan, kabut, dan partikel. Gunakan parallax antar lapisan supaya terasa sinematik. Buat tokoh sebagai komponen SVG yang dipakai ulang supaya desainnya konsisten di semua adegan. Kualitas setara video motion graphics premium, bukan slide statis: setiap adegan harus ada gerak.\n` : ""}- Gerak kamera halus pada gambar diam (zoom/geser, Ken Burns), transisi antar adegan.
 ${o.p.format === "cerita-horor" ? "- Suasana HOROR: vignette gelap, grain, lampu berkedip, kabut, warna dingin kebiruan/hijau, sedikit guncangan kamera di momen kaget, jumpscare ringan di klimaks (tanpa gore). Boleh overlay ala CCTV/VHS bila cocok." : "- Suasana hangat dan hidup sesuai format, teks yang enak dibaca."}
 - Pakai skill Remotion yang tersedia untuk praktik terbaik.
 `;
 }
 
 function promptRancang(o: OpsiAgy): string {
-  return `Kamu sutradara motion graphics untuk kanal PovQ. Baca BRIEF.md dan src/data.ts di folder ini, lalu tulis video Remotion yang sinematik dan memukau di src/Video.tsx (export const Video), mengikuti semua aturan teknis di BRIEF.md. Pakai skill Remotion. Jangan menjalankan npm, npx, atau render; aplikasi yang merender. Setelah selesai, balas ringkas apa saja yang kamu buat.`;
+  return `Kamu sutradara motion graphics untuk kanal PovQ. Baca BRIEF.md dan src/data.ts di folder ini, lalu tulis video Remotion yang sinematik dan memukau di src/Video.tsx (export const Video), mengikuti semua aturan teknis di BRIEF.md. Adegan tanpa media (jenis "kode") harus kamu gambar sendiri seluruhnya dengan kode (ilustrasi vektor berlapis, cahaya, partikel, tokoh SVG yang konsisten). Pakai skill Remotion. Jangan menjalankan npm, npx, atau render; aplikasi yang merender. Setelah selesai, balas ringkas apa saja yang kamu buat.`;
 }
 
 function jalankanAgy(dir: string, prompt: string, onStatus?: (pesan: string) => void): Promise<void> {

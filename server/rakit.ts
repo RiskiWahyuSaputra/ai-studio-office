@@ -74,7 +74,11 @@ export async function rakit(
   o: OpsiRakit,
 ): Promise<{ file: string; durasi: number; mesin: "remotion" | "ffmpeg" | "antigravity"; agy?: string }> {
   const dir = projectDir(p.id);
-  if (!adegan.length || adegan.some((a) => !a.klip)) throw new Error("Masih ada adegan tanpa gambar/klip");
+  if (!adegan.length) throw new Error("Belum ada adegan");
+  // full Antigravity: adegan tanpa gambar/klip digambar sendiri oleh agy lewat kode
+  const tanpaMedia = adegan.some((a) => !a.klip);
+  if (tanpaMedia && o.mesinVideo !== "antigravity") throw new Error("Masih ada adegan tanpa gambar/klip");
+  if (tanpaMedia && !agyTersedia()) throw new Error("Antigravity (agy) belum terpasang, padahal visual proyek ini dirancang Antigravity");
   const keluaran = o.keluaran ?? "final.mp4";
   const srt = o.subtitleFile ?? "subtitle.srt";
   const port = process.env.PORT ?? 8787;
@@ -91,7 +95,7 @@ export async function rakit(
 
   const info = await Promise.all(
     adegan.map(async (a, i) => {
-      const gambar = GAMBAR.test(a.klip!);
+      const gambar = !a.klip || GAMBAR.test(a.klip);
       const media = gambar ? 0 : (await probe(path.join(dir, a.klip!))).durasi;
       const nar = o.narasi?.[i] ? (await probe(path.join(dir, o.narasi[i]))).durasi : 0;
       const detik = Math.max(gambar ? DURASI_MIN_GAMBAR : media, nar ? JEDA_AWAL + nar + JEDA_AKHIR : 0);
@@ -120,7 +124,7 @@ export async function rakit(
     suasana: SUASANA[p.format],
     subtitle: o.subtitle,
     adegan: adegan.map((a, i) => ({
-      media: url(a.klip!),
+      media: a.klip ? url(a.klip) : "",
       jenis: info[i].gambar ? "gambar" : "video",
       volumeMedia: o.narasi?.[i] ? o.volumeKlip : 1,
       narasi: o.narasi?.[i] ? url(o.narasi[i]) : undefined,
@@ -135,6 +139,7 @@ export async function rakit(
     try {
       const v = await videoAntigravity({
         p,
+        dirProyek: dir,
         keluaran,
         fps: FPS,
         judul: props.judul,
@@ -143,13 +148,14 @@ export async function rakit(
         latar: latar ? { file: path.join(dir, latar.file), volume: latar.volume } : null,
         adegan: adegan.map((a, i) => ({
           no: a.no,
-          media: path.join(dir, a.klip!),
-          jenis: props.adegan[i].jenis,
+          media: a.klip ? path.join(dir, a.klip) : undefined,
+          jenis: a.klip ? props.adegan[i].jenis : "kode",
           narasi: o.narasi?.[i] ? path.join(dir, o.narasi[i]) : undefined,
           mulaiNarasi: props.adegan[i].mulaiNarasi,
           durasiFrame: props.adegan[i].durasi,
           teks: a.narasi,
           visual: a.visual,
+          arahan: a.promptMentah ?? a.prompt,
           kata: props.adegan[i].kata,
           gerak: props.adegan[i].gerak,
         })),
@@ -158,6 +164,7 @@ export async function rakit(
       });
       return { file: v.file, durasi: v.durasi, mesin: "antigravity", agy: path.relative(dir, v.folder) };
     } catch (e) {
+      if (tanpaMedia) throw new Error(`Antigravity gagal merancang video: ${(e as Error).message}`);
       console.warn(`[rakit] Antigravity gagal (${(e as Error).message}), pakai template`);
       o.onStatus?.("Antigravity gagal, pakai template bawaan...");
     }

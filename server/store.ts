@@ -67,7 +67,7 @@ export const listProjects = () => [...db.projects].sort((a, b) => b.dibuat.local
 export const getProject = (id: string) => db.projects.find((p) => p.id === id);
 export const getSettings = () => db.settings;
 
-export async function createProject(format: Format, ide: string, gaya: Gaya, rencanaPart = 1, sumberVisual: SumberVisual = "ilustrasi"): Promise<Project> {
+export async function createProject(format: Format, ide: string, gaya: Gaya, rencanaPart = 1, sumberVisual: SumberVisual = "antigravity"): Promise<Project> {
   const now = new Date().toISOString();
   const p: Project = {
     id: randomUUID().slice(0, 8),

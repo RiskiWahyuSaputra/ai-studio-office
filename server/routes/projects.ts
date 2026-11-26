@@ -41,7 +41,7 @@ projects.post("/projects", async (req, res) => {
   const ide = String(req.body?.ide ?? "").slice(0, 500);
   const gaya: Gaya = req.body?.gaya in GAYA ? req.body.gaya : "animasi-2d";
   const rencanaPart = Math.min(5, Math.max(1, Math.floor(Number(req.body?.rencanaPart) || 1)));
-  const sumber = req.body?.sumberVisual === "flow" ? "flow" : "ilustrasi";
+  const sumber = (["antigravity", "ilustrasi", "flow"] as const).find((x) => x === req.body?.sumberVisual) ?? "antigravity";
   const p = await createProject(format, ide, gaya, rencanaPart, sumber);
   activity({ type: "bicara", memberId: "produser", teks: "Proyek baru masuk!" });
   activity({ type: "serah", dari: "produser", ke: "peneliti", label: ide ? ide.slice(0, 26) : "Cari topik ya" });
