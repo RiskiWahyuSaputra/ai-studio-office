@@ -158,7 +158,11 @@ function laporKeOwner(lama: Project | undefined, p: Project) {
   const judul = judulProyek(p);
   const pendek = judul.length > 28 ? `${judul.slice(0, 27)}…` : judul;
   if (p.status === "gagal") office.lapor(pelapor.id, `ada kendala di "${pendek}"`);
-  else if (p.status === "menunggu-kamu") office.lapor(memberForStage(p.tahap).id, `"${pendek}" siap dicek`);
+  else if (p.status === "menunggu-kamu") {
+    office.lapor(memberForStage(p.tahap).id, `"${pendek}" siap dicek`);
+    // Laiza ikut mengingatkan Kiyu dari mejanya
+    setTimeout(() => office.say("sekretaris", "Sayang, ada yang nunggu dicek 📋", 3200), 1200);
+  }
   else if (lama.tahap !== p.tahap) office.lapor(pelapor.id, `tahap ${STAGES.find((x) => x.id === lama.tahap)?.nama ?? lama.tahap} beres`);
 }
 

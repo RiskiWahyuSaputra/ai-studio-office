@@ -1,4 +1,4 @@
-import { OWNER, TEAM, type Member } from "../shared/team.ts";
+import { OWNER, SEKRETARIS, TEAM, type Member } from "../shared/team.ts";
 import {
   drawBookshelf,
   drawBossChair,
@@ -26,7 +26,15 @@ const SOFA = { x: 322, y: 204 };
 const ROOM_X = 390;
 const DOOR = { y1: 150, y2: 186 };
 const OWNER_DESK: Desk = { x: 414, y: 120, seat: { x: 440, y: 118 }, frontY: 168 };
+const LAIZA_DESK: Desk = { x: 424, y: 206, seat: { x: 442, y: 204 }, frontY: 168 };
 const BOARD = { x: 202, y: 66 };
+const OBROLAN_PACARAN = [
+  ["Sayang, udah makan belum?", "Belum, abis approve ini", "Makan dulu, nanti aku bawain ya", "Siap, bu sekretaris 😄"],
+  ["Jadwal kamu hari ini padat lho", "Ada kamu, jadi semangat", "Gombal ih 😳"],
+  ["Video horornya serem banget", "Takut? Sini aku temenin", "Hmm, modus 😆"],
+  ["Laporan tim udah aku rangkum", "Kamu memang paling bisa diandalkan", "Traktir es krim ya 🍦", "Deal ❤️"],
+  ["Jangan begadang lagi ya", "Iya, janji", "Awas kalau bohong 😤", "Hehe, iya sayang"],
+];
 // ?demo di URL: kegiatan santai muncul jauh lebih sering (untuk melihat semua animasi)
 const DEMO = typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
 const JEDA = DEMO ? 0.08 : 1;
@@ -71,6 +79,8 @@ interface Obrolan {
   i: number;
   next: number;
   mulai: number;
+  /** obrolan pasangan: muncul hati kecil */
+  hati?: boolean;
 }
 
 const OBROLAN = [
@@ -163,8 +173,8 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   let selectCb: (id: string | null) => void = () => {};
   let brewing = 0;
 
-  const actors: Actor[] = [...TEAM, OWNER].map((m, i) => {
-    const desk = m.id === OWNER.id ? OWNER_DESK : desks[i];
+  const actors: Actor[] = [...TEAM, OWNER, SEKRETARIS].map((m, i) => {
+    const desk = m.id === OWNER.id ? OWNER_DESK : m.id === SEKRETARIS.id ? LAIZA_DESK : desks[i];
     const tag = document.createElement("button");
     tag.className = "name-tag";
     tag.type = "button";
@@ -295,11 +305,47 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
         const bicara = o.i % 2 === 0 ? o.a : o.b;
         bicara.sayText = o.baris[o.i];
         bicara.sayUntil = now + 2600;
+        if (o.hati && o.i === o.baris.length - 1) semburkan("heart", (o.a.pos.x + o.b.pos.x) / 2, Math.min(o.a.pos.y, o.b.pos.y) - 20, 3);
         o.i++;
         o.next = now + 2800;
       } else {
         lepas();
       }
+    }
+  }
+
+  /** Laiza: bawakan kopi untuk Kiyu, ngobrol berdua, atau catat papan kanban. */
+  function planLaiza(a: Actor) {
+    const kiyu = byId(OWNER.id)!;
+    const dekatKiyu = { x: OWNER_DESK.seat.x + 16, y: OWNER_DESK.seat.y + 2 };
+    const r = Math.random();
+    a.steps = [];
+    const kiyuDiMeja = kiyu.sitting && !kiyu.steps.length;
+    if (r < 0.35 && kiyuDiMeja) {
+      goTo(a, COFFEE, COFFEE.y);
+      a.steps.push({ kind: "brew", on: true }, { kind: "wait", ms: 2400 }, { kind: "brew", on: false }, { kind: "carry", on: true });
+      goTo(a, dekatKiyu, OWNER_DESK.frontY);
+      a.steps.push({ kind: "face", dir: -1 }, { kind: "carry", on: false }, { kind: "say", text: "Kopi buat kamu ☕", ms: 2400 });
+      a.steps.push({ kind: "fx", jenis: "heart", dx: -12, dy: -18 }, { kind: "wait", ms: 2600 });
+      a.steps.push({ kind: "fx", jenis: "heart", dx: -8, dy: -20 });
+      returnToDesk(a, OWNER_DESK.frontY);
+      const jalan = (Math.abs(a.pos.x - COFFEE.x) * 2 + 200) / SPEED;
+      setTimeout(() => {
+        if (kiyu.sitting) api.say(OWNER.id, pick(["Makasih sayang ❤️", "Kamu terbaik 🥰", "Pas banget, ngantuk"]), 2600);
+        else api.say(SEKRETARIS.id, "Kopinya aku taruh di meja ya 💌", 2600);
+      }, (jalan + 6) * 1000);
+    } else if (r < 0.7 && kiyuDiMeja) {
+      goTo(a, dekatKiyu, OWNER_DESK.frontY);
+      a.steps.push({ kind: "face", dir: -1 }, { kind: "hold" });
+      returnToDesk(a, OWNER_DESK.frontY);
+      kiyu.steps = [{ kind: "hold" }, { kind: "sit" }];
+      obrolan.push({ a, b: kiyu, baris: pick(OBROLAN_PACARAN), i: 0, next: 0, mulai: performance.now(), hati: true });
+    } else if (r < 0.85) {
+      goTo(a, BOARD, BOARD.y);
+      a.steps.push({ kind: "say", text: pick(["Aku catat ya 📝", "Agenda Kiyu aman", "Hmm, ini perlu dicek"]), ms: 2400 }, { kind: "wait", ms: 2600 });
+      returnToDesk(a, BOARD.y);
+    } else {
+      planSiram(a);
     }
   }
 
@@ -480,6 +526,7 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   function update(a: Actor, now: number, dt: number) {
     if (!a.working && !a.steps.length && a.sitting && now > a.nextIdle) {
       if (a.m.id === OWNER.id) planOwner(a);
+      else if (a.m.id === SEKRETARIS.id) planLaiza(a);
       else {
         const r = Math.random();
         if (r < 0.3) {
@@ -741,6 +788,9 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     const kiyu = actors.find((a) => a.m.id === OWNER.id)!;
     items.push({ y: OWNER_DESK.y - 2, draw: () => drawBossChair(ctx, OWNER_DESK.seat.x, OWNER_DESK.seat.y) });
     items.push({ y: OWNER_DESK.y + 15, draw: () => drawBossDesk(ctx, OWNER_DESK.x, OWNER_DESK.y, t, kiyu.sitting || kiyu.working) });
+    const laiza = actors.find((a) => a.m.id === SEKRETARIS.id)!;
+    items.push({ y: LAIZA_DESK.y - 2, draw: () => drawChair(ctx, LAIZA_DESK.seat.x, LAIZA_DESK.seat.y) });
+    items.push({ y: LAIZA_DESK.y + 13, draw: () => drawDesk(ctx, LAIZA_DESK.x, LAIZA_DESK.y, laiza.sitting, t + 9, "#ef6b8f") });
     items.push({ y: 98, draw: () => drawBookshelf(ctx, 444, 98) });
     items.push({ y: 100, draw: () => drawLamp(ctx, 474, 100, t) });
     items.push({ y: 236, draw: () => drawPlant(ctx, 470, 236, t) });

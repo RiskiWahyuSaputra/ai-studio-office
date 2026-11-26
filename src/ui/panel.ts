@@ -1,4 +1,4 @@
-import { OWNER, TEAM, memberById, memberForStage } from "../shared/team.ts";
+import { OWNER, SEKRETARIS, TEAM, memberById, memberForStage } from "../shared/team.ts";
 import { cekKebijakan } from "../shared/kebijakan.ts";
 import { promptGambar } from "../shared/karakter.ts";
 import { FORMATS, GAYA, STAGES, type Platform, type Project, type Settings } from "../shared/types.ts";
@@ -175,6 +175,10 @@ function renderTeam(): string {
         <span class="swatch" style="background:${OWNER.look.shirt2}"></span>
         <span><strong>${esc(OWNER.nama)}</strong> · ${esc(OWNER.role)}</span>
       </button></li>
+      <li><button class="team-row" data-action="member" data-id="${SEKRETARIS.id}">
+        <span class="swatch" style="background:${SEKRETARIS.look.shirt}"></span>
+        <span><strong>${esc(SEKRETARIS.nama)}</strong> · ${esc(SEKRETARIS.role)}</span>
+      </button></li>
       ${TEAM.map(
         (m) => `
         <li><button class="team-row" data-action="member" data-id="${m.id}">
@@ -230,8 +234,37 @@ function renderOwner(s: UiState): string {
   </section>`;
 }
 
+/** Laiza: agenda Kiyu hari ini (yang perlu diputuskan, yang sedang jalan, yang baru selesai). */
+function renderSekretaris(s: UiState): string {
+  const semua = [...s.projects.values()];
+  const baris = (p: Project) =>
+    `<li><button class="project-row" data-action="buka" data-id="${p.id}"><span class="project-title">${esc(judulProyek(p))}</span>${badge(p)}</button></li>`;
+  const bagian = (judul: string, list: Project[], kosong: string) =>
+    `<section class="card"><h3>${judul}</h3>${list.length ? `<ul class="project-list">${list.map(baris).join("")}</ul>` : `<p class="empty">${kosong}</p>`}</section>`;
+  const tunggu = semua.filter((p) => p.status === "menunggu-kamu");
+  const gagal = semua.filter((p) => p.status === "gagal");
+  const jalan = semua.filter((p) => p.status === "jalan" || p.status === "antre");
+  const hariIni = new Date().toDateString();
+  const selesaiHariIni = semua.filter((p) => p.video && new Date(p.video.dibuat).toDateString() === hariIni);
+  return `
+  <div class="crumbs"><button class="link" data-action="kembali">← Semua proyek</button></div>
+  <section class="card">
+    <div class="member-head">
+      <span class="swatch swatch-lg" style="background:${SEKRETARIS.look.shirt}"></span>
+      <div><h2>${esc(SEKRETARIS.nama)}</h2><p class="role">${esc(SEKRETARIS.role)}</p></div>
+    </div>
+    <p>${esc(SEKRETARIS.tugas)}</p>
+    <p class="hint">${tunggu.length ? `Sayang, ada ${tunggu.length} proyek yang nunggu keputusanmu.` : "Agenda kamu aman hari ini. Istirahat juga ya."}</p>
+  </section>
+  ${bagian("Perlu keputusan Kiyu", tunggu, "Tidak ada.")}
+  ${gagal.length ? bagian("Ada kendala", gagal, "") : ""}
+  ${bagian("Sedang dikerjakan tim", jalan, "Tim sedang santai.")}
+  ${bagian("Video jadi hari ini", selesaiHariIni, "Belum ada video baru hari ini.")}`;
+}
+
 function renderMember(id: string, s: UiState): string {
   if (id === OWNER.id) return renderOwner(s);
+  if (id === SEKRETARIS.id) return renderSekretaris(s);
   const m = memberById(id);
   if (!m) return renderList(s);
   const kerjaan = [...s.projects.values()].filter((p) => m.stages.includes(p.tahap) && p.status !== "selesai");

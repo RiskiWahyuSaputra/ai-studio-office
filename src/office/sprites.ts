@@ -154,6 +154,10 @@ export function drawPerson(ctx: Ctx, x: number, y: number, look: Look, o: PoseOp
       px(ctx, left + 8, T + 2, 1, 3, "#2b2b33");
       px(ctx, left + 8, T + 5, 2, 1, "#ef6b6b");
       break;
+    case "pita":
+      px(ctx, left + (o.facing === 1 ? 1 : 6), T - 1, 3, 2, "#ef6b8f");
+      px(ctx, left + (o.facing === 1 ? 2 : 7), T - 1, 1, 2, "#ffd1df");
+      break;
     case "goggles":
       px(ctx, left + 1, T, 8, 1, "#3d4a52");
       px(ctx, left + 2, T - 1, 2, 2, "#7ee8b4");

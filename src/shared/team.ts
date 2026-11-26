@@ -14,7 +14,7 @@ export interface Look {
   hairStyle: "pendek" | "panjang" | "jilbab" | "botak" | "keriting" | "acak";
   shirt: string;
   pants: string;
-  accessory?: "kacamata" | "headset" | "topi" | "goggles";
+  accessory?: "kacamata" | "headset" | "topi" | "goggles" | "pita";
   /** helai rambut berwarna (mis. hijau mint milik Kiyu) */
   streak?: string;
   /** warna kedua atasan (mis. hoodie dua warna) */
@@ -107,5 +107,16 @@ export const OWNER: Member = {
   look: { skin: "#e3b48c", hair: "#2a2236", hairStyle: "acak", shirt: "#26264a", shirt2: "#5b3f8f", pants: "#55585f", accessory: "goggles", streak: "#7ee8b4" },
 };
 
-export const memberById = (id: string) => (id === OWNER.id ? OWNER : TEAM.find((m) => m.id === id));
+/** Sekretaris pribadi owner (sekaligus pacar Kiyu). Juga tidak memegang tahap produksi. */
+export const SEKRETARIS: Member = {
+  id: "sekretaris",
+  nama: "Laiza",
+  role: "Sekretaris Pribadi Owner",
+  tugas: "Mengatur agenda Kiyu, merangkum laporan tim, dan mengingatkan proyek yang menunggu keputusan. Pacar Kiyu 💕",
+  stages: [],
+  look: { skin: "#efc19f", hair: "#3a2218", hairStyle: "panjang", shirt: "#e7a6c8", pants: "#4a3a66", accessory: "pita" },
+};
+
+export const memberById = (id: string) =>
+  id === OWNER.id ? OWNER : id === SEKRETARIS.id ? SEKRETARIS : TEAM.find((m) => m.id === id);
 export const memberForStage = (stage: StageId) => TEAM.find((m) => m.stages.includes(stage)) ?? TEAM[TEAM.length - 1];
