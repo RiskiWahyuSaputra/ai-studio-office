@@ -142,10 +142,13 @@ async function kuotaEleven(): Promise<InfoKuota["eleven"]> {
   const lokal = baca().eleven;
   const batasLokal = Number(process.env.ELEVENLABS_BATAS) || 10_000;
   if (!kunci) return { aktif: false, sumber: "lokal", terpakai: lokal.karakter, batas: batasLokal };
-  if (cacheEleven && Date.now() - cacheEleven.waktu < 60_000) return cacheEleven.data;
+  // angka resmi disimpan 60 detik; kalau gagal, coba lagi setelah 15 detik
+  if (cacheEleven && Date.now() - cacheEleven.waktu < (cacheEleven.data.sumber === "api" ? 60_000 : 15_000)) return cacheEleven.data;
   let data: InfoKuota["eleven"];
   try {
-    const r = await fetch("https://api.elevenlabs.io/v1/user/subscription", { headers: { "xi-api-key": kunci }, signal: AbortSignal.timeout(8000) });
+    const ambil = () => fetch("https://api.elevenlabs.io/v1/user/subscription", { headers: { "xi-api-key": kunci }, signal: AbortSignal.timeout(15_000) });
+    // koneksi kadang lambat: coba sekali lagi kalau gagal tersambung
+    const r = await ambil().catch(() => ambil());
     if (!r.ok) throw new Error(r.status === 401 ? "izin" : `HTTP ${r.status}`);
     const j = (await r.json()) as { tier?: string; character_count: number; character_limit: number; next_character_count_reset_unix?: number };
     data = {
