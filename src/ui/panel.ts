@@ -13,6 +13,7 @@ export interface UiState {
   suara: { id: string; ket: string }[];
   suaraLokal: { id: string; ket: string }[];
   voxcpm: boolean;
+  agy: boolean;
   view: View;
 }
 
@@ -153,6 +154,12 @@ function renderSettings(s: UiState): string {
         </select>
       </label>
       <label class="check"><input type="checkbox" name="efekSuara" ${st.efekSuara ? "checked" : ""} /> Efek suara per format (horor: suara lebih berat & bergema + dengung latar mencekam)</label>
+      <label class="field"><span>Mesin video</span>
+        <select name="mesinVideo">
+          <option value="template" ${st.mesinVideo !== "antigravity" ? "selected" : ""}>Template bawaan (cepat)</option>
+          <option value="antigravity" ${st.mesinVideo === "antigravity" ? "selected" : ""}>Antigravity: dirancang khusus per cerita (lebih lama)${s.agy ? "" : " — agy belum terpasang"}</option>
+        </select>
+      </label>
       <label class="field"><span>Mesin suara narasi</span>
         <select name="mesinSuara">
           <option value="voxcpm" ${st.mesinSuara === "voxcpm" ? "selected" : ""}>Gratis tanpa kuota (Edge TTS cepat / VoxCPM lokal)${s.voxcpm ? "" : " — belum terpasang"}</option>
@@ -397,11 +404,17 @@ function sectionVideo(p: Project) {
   const src = `/media/${p.id}/${encodeURIComponent(v.file)}?v=${encodeURIComponent(v.dibuat)}`;
   return `<section class="card"><h3>Video final · Nanda</h3>
     <video class="preview" controls preload="metadata" src="${src}"></video>
-    <p class="muted">${Math.round(v.durasi)} detik · 1080×1920</p>
+    <p class="muted">${Math.round(v.durasi)} detik · 1080×1920${v.mesin === "antigravity" ? " · dirancang Antigravity" : ""}</p>
+    ${
+      v.agy
+        ? `<p class="hint">Mau disempurnakan? Buka folder <code>${esc(v.agy)}</code> di Antigravity, minta perubahan pada <code>src/Video.tsx</code>, lalu klik "Render ulang"${p.seri ? " di proyek induknya" : ""}. "Rancang ulang" meminta Antigravity membuat rancangan baru dari awal.</p>`
+        : ""
+    }
     <div class="row">
       <a class="btn btn-sm" href="${src}" download>Unduh video</a>
       ${v.subtitle ? `<a class="btn btn-sm" href="/media/${p.id}/${v.subtitle}" download>Unduh subtitle (.srt)</a>` : ""}
       ${p.adegan?.every((a) => a.klip) ? ulangBtn("edit").replace("Ulangi", "Render ulang") : ""}
+      ${v.agy ? `<button class="btn btn-sm" data-action="rancang-ulang">Rancang ulang</button>` : ""}
     </div>
   </section>`;
 }

@@ -8,6 +8,7 @@ export interface InitState {
   suara: { id: string; ket: string }[];
   suaraLokal: { id: string; ket: string }[];
   voxcpm: boolean;
+  agy: boolean;
 }
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
@@ -29,6 +30,7 @@ export const api = {
   remove: (id: string) => req<void>("DELETE", `/api/projects/${id}`),
   lanjut: (id: string) => req<Project>("POST", `/api/projects/${id}/lanjut`),
   ulang: (id: string, tahap: string) => req<Project>("POST", `/api/projects/${id}/ulang`, { tahap }),
+  rancangUlang: (id: string) => req<{ ok: true }>("POST", `/api/projects/${id}/antigravity/reset`),
   patch: (id: string, body: unknown) => req<Project>("PATCH", `/api/projects/${id}`, body),
   settings: (body: Partial<Settings>) => req<Settings>("PATCH", "/api/settings", body),
   upload: (url: string, form: FormData) => req<Project>("POST", url, form),

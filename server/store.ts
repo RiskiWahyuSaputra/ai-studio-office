@@ -29,6 +29,7 @@ const defaultSettings = (): Settings => ({
   mesinSuara: "voxcpm",
   mesinGambar: "otomatis",
   efekSuara: true,
+  mesinVideo: "template",
 });
 
 let db: Db;

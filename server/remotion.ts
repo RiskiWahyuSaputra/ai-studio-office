@@ -35,27 +35,51 @@ export function renderCerita(
   keluaran: string,
   onProgress?: (persen: number) => void,
 ): Promise<void> {
+  return renderDenganCadangan(() => serveUrl(), "PovQCerita", props, keluaran, onProgress);
+}
+
+/**
+ * Render proyek Remotion lain (mis. kode yang ditulis Antigravity) dari folder `dir`
+ * dengan entry src/index.ts dan aset di public/. Bundle dibuat baru setiap kali karena kodenya bisa berubah.
+ */
+export function renderFolder(dir: string, compositionId: string, keluaran: string, onProgress?: (persen: number) => void): Promise<void> {
+  const url = async () => {
+    const { bundle } = await import("@remotion/bundler");
+    return bundle({ entryPoint: path.join(dir, "src", "index.ts"), publicDir: path.join(dir, "public"), rootDir: dir });
+  };
+  return renderDenganCadangan(url, compositionId, {}, keluaran, onProgress);
+}
+
+function renderDenganCadangan(
+  url: () => Promise<string>,
+  id: string,
+  props: Record<string, unknown>,
+  keluaran: string,
+  onProgress?: (persen: number) => void,
+): Promise<void> {
   return antreBerat(async () => {
+    const serve = await url();
     try {
-      await render(props, keluaran, tabRender(), onProgress);
+      await render(serve, id, props, keluaran, tabRender(), onProgress);
     } catch (e) {
       // browser crash karena memori: coba sekali lagi dengan satu tab saja
       if (!/crash|target.?closed|Target closed/i.test(String((e as Error).message))) throw e;
       console.warn("[remotion] browser crash, ulang dengan 1 tab");
-      await render(props, keluaran, 1, onProgress);
+      await render(serve, id, props, keluaran, 1, onProgress);
     }
   });
 }
 
 async function render(
-  props: PropsCerita,
+  url: string,
+  id: string,
+  props: Record<string, unknown>,
   keluaran: string,
   concurrency: number,
   onProgress?: (persen: number) => void,
 ): Promise<void> {
   const { renderMedia, selectComposition } = await import("@remotion/renderer");
-  const url = await serveUrl();
-  const composition = await selectComposition({ serveUrl: url, id: "PovQCerita", inputProps: props, port: PORT_REMOTION });
+  const composition = await selectComposition({ serveUrl: url, id, inputProps: props, port: PORT_REMOTION });
   let terakhir = -1;
   await renderMedia({
     composition,

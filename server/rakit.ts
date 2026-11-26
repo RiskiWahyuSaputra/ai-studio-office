@@ -7,6 +7,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { buatSrt, probe, projectDir, render as renderFfmpeg } from "./editor.ts";
 import { renderCerita } from "./remotion.ts";
+import { agyTersedia, videoAntigravity } from "./antigravity.ts";
 import { buatLatar, efekNarasi } from "./suarafx.ts";
 import { rapikanGerak } from "./agents.ts";
 import type { Adegan, Project } from "../src/shared/types.ts";
@@ -61,10 +62,17 @@ export interface OpsiRakit {
   subtitleFile?: string;
   label?: string;
   judul?: string;
+  /** "antigravity": kode video dirancang khusus oleh agen Antigravity (agy) */
+  mesinVideo?: "template" | "antigravity";
   onProgress?: (persen: number) => void;
+  onStatus?: (pesan: string) => void;
 }
 
-export async function rakit(p: Project, adegan: Adegan[], o: OpsiRakit): Promise<{ file: string; durasi: number; mesin: "remotion" | "ffmpeg" }> {
+export async function rakit(
+  p: Project,
+  adegan: Adegan[],
+  o: OpsiRakit,
+): Promise<{ file: string; durasi: number; mesin: "remotion" | "ffmpeg" | "antigravity"; agy?: string }> {
   const dir = projectDir(p.id);
   if (!adegan.length || adegan.some((a) => !a.klip)) throw new Error("Masih ada adegan tanpa gambar/klip");
   const keluaran = o.keluaran ?? "final.mp4";
@@ -122,6 +130,38 @@ export async function rakit(p: Project, adegan: Adegan[], o: OpsiRakit): Promise
       kata: info[i].nar ? selaraskan(a.narasi, o.kataUkur?.[i], JEDA_AWAL, info[i].nar) : [],
     })),
   };
+
+  if (o.mesinVideo === "antigravity" && agyTersedia()) {
+    try {
+      const v = await videoAntigravity({
+        p,
+        keluaran,
+        fps: FPS,
+        judul: props.judul,
+        label: props.label ?? "",
+        subtitle: o.subtitle,
+        latar: latar ? { file: path.join(dir, latar.file), volume: latar.volume } : null,
+        adegan: adegan.map((a, i) => ({
+          no: a.no,
+          media: path.join(dir, a.klip!),
+          jenis: props.adegan[i].jenis,
+          narasi: o.narasi?.[i] ? path.join(dir, o.narasi[i]) : undefined,
+          mulaiNarasi: props.adegan[i].mulaiNarasi,
+          durasiFrame: props.adegan[i].durasi,
+          teks: a.narasi,
+          visual: a.visual,
+          kata: props.adegan[i].kata,
+          gerak: props.adegan[i].gerak,
+        })),
+        onStatus: o.onStatus,
+        onProgress: o.onProgress,
+      });
+      return { file: v.file, durasi: v.durasi, mesin: "antigravity", agy: path.relative(dir, v.folder) };
+    } catch (e) {
+      console.warn(`[rakit] Antigravity gagal (${(e as Error).message}), pakai template`);
+      o.onStatus?.("Antigravity gagal, pakai template bawaan...");
+    }
+  }
 
   // video yang sudah pernah dirender dengan isi persis sama tidak dirender ulang
   // (mis. part 1 tetap aman kalau render part 2 terputus di tengah jalan)

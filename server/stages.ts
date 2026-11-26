@@ -156,15 +156,17 @@ registerStage("edit", {
         efekSuara: s.efekSuara,
         label: p.seri ? `Part ${p.seri.part}${p.seri.part >= p.seri.totalPart ? " · Tamat" : ""}` : undefined,
         judul: p.seri ? p.naskah?.judulKerja.replace(/\s*\(Part \d+\)\s*$/i, "") : undefined,
+        mesinVideo: s.mesinVideo,
+        onStatus: (pesan) => activity({ type: "kerja", memberId: "editor", status: pesan }),
         onProgress: (x) => activity({ type: "kerja", memberId: "editor", status: `Render ${x}%...` }),
       });
       return {
         apply: (x) => {
-          x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString() };
+          x.video = { file: v.file, durasi: v.durasi, subtitle: "subtitle.srt", dibuat: new Date().toISOString(), mesin: v.mesin, agy: v.agy && path.join("uploads", p.id, v.agy) };
           if (modelSuara) x.modelSuara = modelSuara;
           if (n.acuan) x.acuanSuara ??= n.acuan;
         },
-        pesan: `Video final ${Math.round(v.durasi)} detik siap (${v.mesin === "remotion" ? "React/Remotion" : "ffmpeg"})`,
+        pesan: `Video final ${Math.round(v.durasi)} detik siap (${v.mesin === "antigravity" ? "dirancang Antigravity" : v.mesin === "remotion" ? "React/Remotion" : "ffmpeg"})`,
       };
     }
 
@@ -185,6 +187,8 @@ registerStage("edit", {
         subtitleFile: `subtitle-part-${k}.srt`,
         label: `Part ${k}${k === nPart ? " · Tamat" : ""}`,
         judul: p.naskah!.judulKerja,
+        mesinVideo: s.mesinVideo,
+        onStatus: (pesan) => activity({ type: "kerja", memberId: "editor", status: `Part ${k}: ${pesan}` }),
         onProgress: (x) => activity({ type: "kerja", memberId: "editor", status: `Part ${k}: render ${x}%...` }),
       });
       const b = p.naskah!.part![k - 1];
@@ -192,7 +196,7 @@ registerStage("edit", {
         part: k,
         naskah: { judulKerja: `${p.naskah!.judulKerja} (Part ${k})`, hook: b.hook, narasi: b.narasi, cta: b.cta },
         adegan: adeganPart.map((a, i) => ({ ...a, no: i + 1, klip: undefined })),
-        video: { file: v.file, durasi: v.durasi, subtitle: `subtitle-part-${k}.srt`, dibuat: new Date().toISOString() },
+        video: { file: v.file, durasi: v.durasi, subtitle: `subtitle-part-${k}.srt`, dibuat: new Date().toISOString(), mesin: v.mesin, agy: v.agy && path.join("uploads", p.id, v.agy) },
       });
     }
     let idPart: string[] = [];

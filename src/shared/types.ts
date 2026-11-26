@@ -191,6 +191,10 @@ export interface Video {
   durasi: number;
   subtitle: string;
   dibuat: string;
+  /** mesin yang membuat video */
+  mesin?: "remotion" | "ffmpeg" | "antigravity";
+  /** folder kerja Antigravity (relatif folder proyek), bisa dibuka di Antigravity untuk disempurnakan */
+  agy?: string;
 }
 
 export interface PaketUnggah {
@@ -291,6 +295,8 @@ export interface Settings {
   mesinGambar: "otomatis" | "manual";
   /** efek narasi & suasana latar per format (mis. horor) */
   efekSuara: boolean;
+  /** template bawaan, atau dirancang khusus oleh agen Antigravity (agy) */
+  mesinVideo: "template" | "antigravity";
 }
 
 export type Activity =

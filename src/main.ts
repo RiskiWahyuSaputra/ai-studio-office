@@ -250,6 +250,9 @@ panel.addEventListener("click", async (ev) => {
     case "ulang":
       if (p) await run(() => api.ulang(p.id, el.dataset.tahap!), "Diminta ulang");
       return;
+    case "rancang-ulang":
+      if (p) await run(() => api.rancangUlang(p.id), "Rancangan dikosongkan. Klik Render ulang untuk meminta Antigravity merancang lagi");
+      return;
     case "salin": {
       const a = p?.adegan?.find((x) => x.no === Number(el.dataset.no));
       const ta = el.closest(".scene")?.querySelector("textarea");
@@ -432,6 +435,7 @@ panel.addEventListener("submit", async (ev) => {
           narasiTts: fd.get("narasiTts") === "on",
           efekSuara: fd.get("efekSuara") === "on",
           mesinSuara: fd.get("mesinSuara") === "gemini" ? "gemini" : "voxcpm",
+          mesinVideo: fd.get("mesinVideo") === "antigravity" ? "antigravity" : "template",
           mesinGambar: fd.get("mesinGambar") === "manual" ? "manual" : "otomatis",
           volumeKlip: Math.min(100, Math.max(0, num("volumeKlip"))) / 100,
         }),
@@ -550,7 +554,7 @@ office.onSelect((id) => {
 
 async function boot() {
   const s = await api.state();
-  state = { projects: new Map(s.projects.map((p) => [p.id, p])), settings: s.settings, ai: s.ai, platform: s.platform, suara: s.suara, suaraLokal: s.suaraLokal, voxcpm: s.voxcpm, view: { kind: "list" } };
+  state = { projects: new Map(s.projects.map((p) => [p.id, p])), settings: s.settings, ai: s.ai, platform: s.platform, suara: s.suara, suaraLokal: s.suaraLokal, voxcpm: s.voxcpm, agy: s.agy, view: { kind: "list" } };
   for (const p of s.projects) {
     if (p.status === "jalan") office.setWorking(memberForStage(p.tahap).id, true, "Lanjut kerja...");
   }

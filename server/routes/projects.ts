@@ -1,8 +1,11 @@
 import { Router } from "express";
 import fs from "node:fs/promises";
+import path from "node:path";
 import { projectDir } from "../editor.ts";
+import { ROOT } from "../paths.ts";
 import { SUARA, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
 import { SUARA_LOKAL, narasiLokal, voxcpmTersedia } from "../voxcpm.ts";
+import { agyTersedia, resetRancangan } from "../antigravity.ts";
 import { mulaiGambar } from "../gambar.ts";
 import { FORMATS, GAYA, type Format, type Gaya, type Karakter } from "../../src/shared/types.ts";
 import { terapkanKarakter } from "../../src/shared/karakter.ts";
@@ -29,7 +32,7 @@ export const projects = Router();
 projects.get("/events", (_req, res) => subscribe(res));
 
 projects.get("/state", async (_req, res) => {
-  res.json({ projects: listProjects(), settings: getSettings(), ai: namaModel(), platform: await platformStatus(), suara: SUARA, suaraLokal: SUARA_LOKAL, voxcpm: voxcpmTersedia() });
+  res.json({ projects: listProjects(), settings: getSettings(), ai: namaModel(), platform: await platformStatus(), suara: SUARA, suaraLokal: SUARA_LOKAL, voxcpm: voxcpmTersedia(), agy: agyTersedia() });
 });
 
 projects.post("/projects", async (req, res) => {
@@ -85,6 +88,15 @@ projects.post("/projects/:id/ulang", async (req, res) => {
 });
 
 /** Contoh suara narasi: bacakan adegan pertama dengan suara pilihan. */
+/** Kosongkan rancangan Antigravity (video ini saja, atau semua part di proyek induk). */
+projects.post("/projects/:id/antigravity/reset", async (req, res) => {
+  const p = getProject(req.params.id);
+  if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
+  const target = p.video?.agy ? [path.join(ROOT, p.video.agy)] : undefined;
+  await resetRancangan(projectDir(p.id), target);
+  res.json({ ok: true });
+});
+
 projects.post("/projects/:id/suara/contoh", async (req, res) => {
   const p = getProject(req.params.id);
   if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
@@ -223,6 +235,7 @@ projects.patch("/settings", async (req, res) => {
   if (typeof b.subtitle === "boolean") patch.subtitle = b.subtitle;
   if (typeof b.narasiTts === "boolean") patch.narasiTts = b.narasiTts;
   if (typeof b.efekSuara === "boolean") patch.efekSuara = b.efekSuara;
+  if (b.mesinVideo === "template" || b.mesinVideo === "antigravity") patch.mesinVideo = b.mesinVideo;
   if (b.mesinSuara === "voxcpm" || b.mesinSuara === "gemini") patch.mesinSuara = b.mesinSuara;
   if (b.mesinGambar === "otomatis" || b.mesinGambar === "manual") patch.mesinGambar = b.mesinGambar;
   if ("volumeKlip" in b) {
