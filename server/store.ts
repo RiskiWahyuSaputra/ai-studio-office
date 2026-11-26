@@ -67,7 +67,7 @@ export const listProjects = () => [...db.projects].sort((a, b) => b.dibuat.local
 export const getProject = (id: string) => db.projects.find((p) => p.id === id);
 export const getSettings = () => db.settings;
 
-export async function createProject(format: Format, ide: string, gaya: Gaya, rencanaPart = 1, sumberVisual: SumberVisual = "antigravity"): Promise<Project> {
+export async function createProject(format: Format, ide: string, gaya: Gaya, rencanaPart = 1, sumberVisual: SumberVisual = "antigravity", durasiTarget?: number): Promise<Project> {
   const now = new Date().toISOString();
   const p: Project = {
     id: randomUUID().slice(0, 8),
@@ -75,6 +75,7 @@ export async function createProject(format: Format, ide: string, gaya: Gaya, ren
     gaya,
     rencanaPart: rencanaPart > 1 ? rencanaPart : undefined,
     sumberVisual,
+    durasiTarget,
     ide: ide.trim(),
     dibuat: now,
     diubah: now,
@@ -117,6 +118,7 @@ export async function buatProyekPart(
       format: induk.format,
       gaya: induk.gaya,
       sumberVisual: induk.sumberVisual,
+      durasiTarget: induk.durasiTarget,
       suaraLokal: induk.suaraLokal,
       acuanSuara: induk.acuanSuara,
       suara: induk.suara,
@@ -153,6 +155,7 @@ export async function createLanjutan(asal: Project, totalPart: number): Promise<
     format: asal.format,
     gaya: asal.gaya,
     sumberVisual: asal.sumberVisual,
+    durasiTarget: asal.durasiTarget,
     suaraLokal: asal.suaraLokal,
     acuanSuara: asal.acuanSuara,
     suara: asal.suara,

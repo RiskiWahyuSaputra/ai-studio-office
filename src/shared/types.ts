@@ -258,6 +258,8 @@ export interface Project {
   sumberVisual?: SumberVisual;
   /** cerita utuh sampai tamat, nanti dipecah jadi sekian video saat edit */
   rencanaPart?: number;
+  /** target panjang tiap video/part dalam detik (kosong = 40–60 detik) */
+  durasiTarget?: number;
   /** proyek produksi yang sudah dipecah: id proyek tiap part */
   dipecahMenjadi?: string[];
   ide: string;

@@ -9,10 +9,20 @@ import { ATURAN_AMAN } from "../src/shared/kebijakan.ts";
 import { kembangkan } from "../src/shared/karakter.ts";
 import { GAYA, FORMATS, type BagianNaskah, type Karakter, type Adegan, type Naskah, type PaketUnggah, type Project, type Riset, type Settings } from "../src/shared/types.ts";
 
+/** Target panjang per video: teks untuk prompt, jumlah baris narasi, dan jumlah adegan. */
+export function ukuranDurasi(p: Project) {
+  const T = p.durasiTarget;
+  if (!T) return { teks: "40–60 detik", baris: "4–6", adegan: [6, 8] as const, maks: 10 };
+  const menit = T / 60;
+  const teks = `sekitar ${String(menit).replace(".", ",")} menit (${T} detik)`;
+  // narasi horor dibaca pelan: ±9 detik per baris (maks 20 kata), ±8 detik per adegan
+  return { teks, baris: `${Math.round(T / 10)}–${Math.round(T / 8.5)}`, adegan: [Math.round(T / 9), Math.round(T / 7)] as const, maks: Math.round(T / 6) };
+}
+
 const KONTEKS = (p: Project) =>
   `Kamu bagian dari tim kreator konten video AI berbahasa Indonesia untuk YouTube Shorts, TikTok, dan Instagram Reels.
 Format kanal: ${FORMATS[p.format].nama} — ${FORMATS[p.format].ringkas}
-Video dibuat dari klip Google Veo (lewat Google Flow), tiap klip sekitar 8 detik, vertikal 9:16, total 40–60 detik.`;
+${p.sumberVisual === "flow" ? "Video dibuat dari klip Google Veo (lewat Google Flow), tiap klip sekitar 8 detik" : "Video dianimasikan per adegan"}, vertikal 9:16, panjang tiap video ${ukuranDurasi(p).teks}.`;
 
 export async function riset(p: Project): Promise<Riset> {
   if (!aiAktif()) return risetTemplat(p.format, p.ide);
@@ -81,10 +91,10 @@ export async function naskah(p: Project): Promise<Naskah> {
 Peranmu: Penulis Naskah.
 Riset: ${JSON.stringify(r)}
 
-Tulis SATU cerita utuh dari awal sampai TAMAT dalam bahasa Indonesia, dibagi menjadi ${N} part. Tiap part adalah video terpisah 40–60 detik yang diunggah berurutan.
+Tulis SATU cerita utuh dari awal sampai TAMAT dalam bahasa Indonesia, dibagi menjadi ${N} part. Tiap part adalah video terpisah ${ukuranDurasi(p).teks} yang diunggah berurutan.
 Untuk tiap part:
 - hook: 1 kalimat pembuka yang bikin berhenti scroll. Part 2 dst diawali "Part N." lalu pengingat singkat yang bikin penasaran.
-- narasi: 4–6 baris, dipisah "\\n", tiap baris maks 20 kata, melanjutkan langsung dari part sebelumnya tanpa mengulang.
+- narasi: ${ukuranDurasi(p).baris} baris, dipisah "\\n", tiap baris maks 20 kata, melanjutkan langsung dari part sebelumnya tanpa mengulang.
 - cta: part 1 sampai ${N - 1} diakhiri cliffhanger + ajakan follow untuk part berikutnya; part ${N} menuntaskan cerita (ungkap misteri / twist penutup yang memuaskan) dan bilang ceritanya tamat.
 ${FORMATS[p.format].naskah}
 
@@ -103,9 +113,9 @@ Balas JSON: {"judulKerja": string, "part": [{"hook": string, "narasi": string, "
 Peranmu: Penulis Naskah.
 Riset: ${JSON.stringify(r)}
 
-Tulis naskah video 40–60 detik dalam bahasa Indonesia yang santai dan mudah dipahami.
+Tulis naskah video ${ukuranDurasi(p).teks} dalam bahasa Indonesia yang santai dan mudah dipahami.
 - hook: 1 kalimat, harus membuat orang berhenti scroll dalam 2 detik pertama.
-- narasi: 4–6 baris, dipisah "\\n". Tiap baris dibacakan sekitar 8 detik (maks 20 kata). Masukkan fakta riset secara alami.
+- narasi: ${ukuranDurasi(p).baris} baris, dipisah "\\n". Tiap baris dibacakan sekitar 8 detik (maks 20 kata). Masukkan fakta riset secara alami.
 - cta: 1 kalimat ajakan komentar/follow.
 ${FORMATS[p.format].naskah}
 
@@ -149,6 +159,12 @@ export async function storyboard(p: Project, s: Settings): Promise<{ adegan: Ade
   const kode = p.sumberVisual === "antigravity";
   const ilustrasi = p.sumberVisual === "ilustrasi" || kode;
   const gayaGambar = GAYA[p.gaya ?? "sinematik"];
+  const u = ukuranDurasi(p);
+  const jumlahAdegan = ilustrasi
+    ? `${u.adegan[0]}–${u.adegan[1]}`
+    : p.durasiTarget
+    ? `${Math.round(p.durasiTarget / (s.durasiKlip + 1))}–${Math.round(p.durasiTarget / s.durasiKlip)}`
+    : s.durasiKlip <= 5 ? "8–10" : "5–7";
   // lembar karakter: milik proyek ini, atau warisan part sebelumnya
   const warisan = p.karakter?.length ? p.karakter : partSebelumnya(p).at(-1)?.karakter;
   const aturanSuara = kode
@@ -177,8 +193,8 @@ ${(() => {
   })()}
 ${
   N > 1
-    ? `Naskah ini satu cerita utuh yang terdiri dari ${N} part (lihat field "part"). Untuk SETIAP part, pecah menjadi ${ilustrasi ? "6–8" : s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan: adegan pertama part = hook part itu, adegan terakhir part = cta part itu. Urutkan adegan dari part 1 sampai part ${N}, dan isi field "part" (angka) di tiap adegan.`
-    : `Pecah naskah menjadi ${ilustrasi ? "6–8" : s.durasiKlip <= 5 ? "8–10" : "5–7"} adegan (hook = adegan 1, cta = adegan terakhir).`
+    ? `Naskah ini satu cerita utuh yang terdiri dari ${N} part (lihat field "part"). Untuk SETIAP part, pecah menjadi ${jumlahAdegan} adegan: adegan pertama part = hook part itu, adegan terakhir part = cta part itu. Urutkan adegan dari part 1 sampai part ${N}, dan isi field "part" (angka) di tiap adegan.`
+    : `Pecah naskah menjadi ${jumlahAdegan} adegan (hook = adegan 1, cta = adegan terakhir).`
 } Untuk tiap adegan tulis:
 - visual: deskripsi singkat bahasa Indonesia.
 - narasi: kalimat yang diucapkan di adegan itu (ambil dari naskah).
@@ -188,7 +204,7 @@ ${
 - gerak: {"kamera": salah satu dari ${KAMERA.map((k) => `"${k}"`).join(", ")}, "efek": daftar 0–3 dari ${EFEK.map((e) => `"${e}"`).join(", ")}}. Pilih yang memperkuat suasana (mis. horor: zoom-masuk pelan + kabut/kedip/gelap; hujan hanya kalau adegannya memang hujan; getar untuk momen kaget). Variasikan kamera antar adegan.
 - narasi tiap adegan 1–2 kalimat, maksimal 22 kata.`
     : `- prompt: prompt Veo dalam BAHASA INDONESIA (jangan pakai bahasa Inggris), satu paragraf, diawali "${gayaGambar.kepala}", lalu subjek, aksi, latar, gaya kamera, pencahayaan, suara ambient. Jaga karakter dan latar tetap konsisten antar adegan dengan mengulang deskripsi fisik yang sama persis.
-- narasi tiap adegan maksimal ${Math.max(6, Math.floor(s.durasiKlip * 2.2))} kata supaya muat dibacakan dalam satu klip ${s.durasiKlip} detik. Kalau naskah lebih panjang, pecah jadi lebih banyak adegan (maksimal 10) atau ringkas kalimatnya.`
+- narasi tiap adegan maksimal ${Math.max(6, Math.floor(s.durasiKlip * 2.2))} kata supaya muat dibacakan dalam satu klip ${s.durasiKlip} detik. Kalau naskah lebih panjang, pecah jadi lebih banyak adegan (maksimal ${Math.max(10, u.maks)}) atau ringkas kalimatnya.`
 }
 ${aturanSuara}
 ${FORMATS[p.format].sutradara}
@@ -214,7 +230,7 @@ Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}], "adegan": [{"v
   for (const k of hasil.karakter ?? []) {
     if (k?.nama && k?.deskripsi && !karakter.some((x) => x.nama.toLowerCase() === k.nama.toLowerCase())) karakter.push({ nama: k.nama.trim(), deskripsi: k.deskripsi.trim() });
   }
-  const adegan = hasil.adegan.slice(0, 10 * N).map((a, i) => ({
+  const adegan = hasil.adegan.slice(0, Math.max(10, u.maks) * N).map((a, i) => ({
     ...a,
     gerak: ilustrasi ? rapikanGerak(a.gerak, p.format, i) : undefined,
     part: N > 1 ? Math.min(N, Math.max(1, Math.round(Number(a.part) || 1))) : undefined,

@@ -21,7 +21,7 @@ import type { KataWaktu } from "../src/shared/video.ts";
 const AGY = process.env.AGY_BIN || path.join(os.homedir(), ".local", "bin", "agy");
 const ID_KOMPOSISI = "PovQAgy";
 const PENANDA_KOSONG = "// POVQ-BELUM-DIRANCANG";
-const BATAS_MENIT = Number(process.env.AGY_TIMEOUT_MENIT) || 25;
+const BATAS_MENIT = Number(process.env.AGY_TIMEOUT_MENIT) || 45;
 
 let cekAgy: boolean | null = null;
 export function agyTersedia(): boolean {

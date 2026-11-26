@@ -406,7 +406,7 @@ panel.addEventListener("submit", async (ev) => {
   const form = ev.target as HTMLFormElement;
   const fd = new FormData(form);
   if (form.id === "form-baru") {
-    const p = await run(() => api.create(String(fd.get("format")), String(fd.get("ide") ?? ""), String(fd.get("gaya") ?? "animasi-2d"), Number(fd.get("rencanaPart") ?? 1), String(fd.get("sumberVisual") ?? "antigravity")), "Proyek diserahkan ke tim");
+    const p = await run(() => api.create(String(fd.get("format")), String(fd.get("ide") ?? ""), String(fd.get("gaya") ?? "animasi-2d"), Number(fd.get("rencanaPart") ?? 1), String(fd.get("sumberVisual") ?? "antigravity"), Number(fd.get("durasiTarget") ?? 60)), "Proyek diserahkan ke tim");
     if (p) {
       state.projects.set(p.id, p);
       setView({ kind: "project", id: p.id });

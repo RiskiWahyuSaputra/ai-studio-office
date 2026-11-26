@@ -87,6 +87,15 @@ function renderList(s: UiState): string {
           <input type="radio" name="sumberVisual" value="flow" /><span>Klip Google Flow</span></label>
       </fieldset>
       <label class="field">
+        <span>Durasi per video (panjang narasi; tiap part kalau cerita dipecah)</span>
+        <select name="durasiTarget">
+          <option value="60">± 1 menit</option>
+          <option value="90">± 1,5 menit</option>
+          <option value="120">± 2 menit</option>
+          <option value="180">± 3 menit (batas Shorts & Reels)</option>
+        </select>
+      </label>
+      <label class="field">
         <span>Jumlah part (cerita utuh, nanti dipecah jadi beberapa video)</span>
         <select name="rencanaPart">
           <option value="1">1 video</option>
