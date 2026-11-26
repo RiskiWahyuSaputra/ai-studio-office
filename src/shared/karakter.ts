@@ -8,9 +8,15 @@ import { GAYA, type Adegan, type Gaya, type Karakter } from "./types.ts";
 const PENANDA = /\{\{\s*([^}]+?)\s*\}\}/g;
 
 export function kembangkan(promptMentah: string, karakter: Karakter[]): string {
+  // deskripsi lengkap hanya di sebutan pertama, dalam kurung, supaya kalimat prompt tetap utuh dan terbaca;
+  // sebutan berikutnya cukup namanya
+  const sudah = new Set<string>();
   return promptMentah.replace(PENANDA, (_, nama: string) => {
     const k = karakter.find((x) => x.nama.toLowerCase() === nama.toLowerCase());
-    return k ? k.deskripsi : nama;
+    if (!k) return nama;
+    if (sudah.has(k.nama)) return k.nama;
+    sudah.add(k.nama);
+    return `${k.nama} (${k.deskripsi.trim().replace(/[.\s]+$/, "")})`;
   });
 }
 
