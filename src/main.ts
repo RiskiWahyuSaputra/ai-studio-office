@@ -4,7 +4,7 @@ import { api, listen } from "./api.ts";
 import { createOffice } from "./office/office.ts";
 import { memberForStage } from "./shared/team.ts";
 import { STAGES, type Project, type ServerEvent } from "./shared/types.ts";
-import { esc, renderPanel, type UiState, type View } from "./ui/panel.ts";
+import { esc, judulProyek, renderPanel, type UiState, type View } from "./ui/panel.ts";
 
 const office = createOffice(document.querySelector<HTMLCanvasElement>("#office")!);
 const panel = document.querySelector<HTMLElement>("#panel")!;
@@ -123,6 +123,7 @@ function onEvent(e: ServerEvent) {
         toast(`Giliranmu: ${STAGES.find((s) => s.id === e.project.tahap)?.nama}`);
       }
       if (lama && lama.status !== "gagal" && e.project.status === "gagal") toast(`Gagal: ${e.project.galat}`, true);
+      laporKeOwner(lama, e.project);
       render();
       break;
     }
@@ -144,6 +145,17 @@ function onEvent(e: ServerEvent) {
       break;
     }
   }
+}
+
+/** Setiap kejadian penting (tahap beres, menunggu persetujuan, gagal) dilaporkan ke Kiyu oleh yang mengerjakan. */
+function laporKeOwner(lama: Project | undefined, p: Project) {
+  if (!lama || (lama.status === p.status && lama.tahap === p.tahap)) return;
+  const pelapor = memberForStage(lama.tahap);
+  const judul = judulProyek(p);
+  const pendek = judul.length > 28 ? `${judul.slice(0, 27)}…` : judul;
+  if (p.status === "gagal") office.lapor(pelapor.id, `ada kendala di "${pendek}"`);
+  else if (p.status === "menunggu-kamu") office.lapor(memberForStage(p.tahap).id, `"${pendek}" siap dicek`);
+  else if (lama.tahap !== p.tahap) office.lapor(pelapor.id, `tahap ${STAGES.find((x) => x.id === lama.tahap)?.nama ?? lama.tahap} beres`);
 }
 
 const current = (): Project | undefined => (state.view.kind === "project" ? state.projects.get(state.view.id) : undefined);

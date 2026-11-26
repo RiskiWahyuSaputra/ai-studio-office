@@ -50,8 +50,14 @@ export function drawPerson(ctx: Ctx, x: number, y: number, look: Look, o: PoseOp
 
   // badan
   px(ctx, left + 1, T + 7, 8, 6, look.shirt);
+  if (look.shirt2) {
+    // hoodie dua warna + ritsleting
+    px(ctx, left + 1, T + 7, 8, 2, look.shirt2);
+    px(ctx, left + 2, T + 9, 6, 1, look.shirt2);
+    px(ctx, left + 5, T + 8, 1, 4, look.streak ?? shade(look.shirt, 40));
+  }
   px(ctx, left + 1, T + 12, 8, 1, shade(look.shirt, -40));
-  px(ctx, left + 4, T + 7, 2, 1, shade(look.shirt, 30));
+  if (!look.shirt2) px(ctx, left + 4, T + 7, 2, 1, shade(look.shirt, 30));
 
   // tangan
   const armY = o.typing ? T + 8 + (Math.floor(o.t * 8) % 2) : T + 8;
@@ -96,6 +102,18 @@ export function drawPerson(ctx: Ctx, x: number, y: number, look: Look, o: PoseOp
       px(ctx, left + 2, T + 6, 6, 2, h);
       px(ctx, left + 4, T + 6, 2, 1, look.skin);
       break;
+    case "acak":
+      px(ctx, left + 1, T - 1, 8, 3, h);
+      px(ctx, left + 2, T - 2, 2, 1, h);
+      px(ctx, left + 6, T - 2, 1, 1, h);
+      px(ctx, left + 1, T + 2, 1, 3, h);
+      px(ctx, left + 8, T + 2, 1, 2, h);
+      px(ctx, left + 2, T + 2, 1, 1, h);
+      if (look.streak) {
+        px(ctx, left + (o.facing === 1 ? 5 : 3), T, 2, 1, look.streak);
+        px(ctx, left + (o.facing === 1 ? 6 : 3), T + 1, 1, 2, look.streak);
+      }
+      break;
     case "botak":
       px(ctx, left + 2, T + 2, 1, 2, h);
       px(ctx, left + 7, T + 2, 1, 2, h);
@@ -119,6 +137,13 @@ export function drawPerson(ctx: Ctx, x: number, y: number, look: Look, o: PoseOp
       px(ctx, left + 1, T + 2, 1, 3, "#2b2b33");
       px(ctx, left + 8, T + 2, 1, 3, "#2b2b33");
       px(ctx, left + 8, T + 5, 2, 1, "#ef6b6b");
+      break;
+    case "goggles":
+      px(ctx, left + 1, T, 8, 1, "#3d4a52");
+      px(ctx, left + 2, T - 1, 2, 2, "#7ee8b4");
+      px(ctx, left + 6, T - 1, 2, 2, "#7ee8b4");
+      px(ctx, left + 2, T - 1, 1, 1, "#d6fff0");
+      px(ctx, left + 6, T - 1, 1, 1, "#d6fff0");
       break;
     case "topi":
       px(ctx, left + 1, T - 1, 8, 2, "#c94b4b");
@@ -205,4 +230,83 @@ export function drawServerRack(ctx: Ctx, x: number, y: number, t: number) {
     px(ctx, x + 12, y - 39 + i * 8, 2, 2, on ? "#6fcf7f" : "#2f5e37");
     px(ctx, x + 4, y - 39 + i * 8, 5, 1, "#4a4558");
   }
+}
+
+/** Font piksel 3x5 untuk papan nama. */
+const FONT: Record<string, string[]> = {
+  K: ["101", "110", "100", "110", "101"],
+  I: ["111", "010", "010", "010", "111"],
+  Y: ["101", "101", "010", "010", "010"],
+  U: ["101", "101", "101", "101", "111"],
+  O: ["111", "101", "101", "101", "111"],
+  W: ["101", "101", "101", "111", "101"],
+  N: ["101", "111", "111", "111", "101"],
+  E: ["111", "100", "110", "100", "111"],
+  R: ["110", "101", "110", "101", "101"],
+  P: ["110", "101", "110", "100", "100"],
+  V: ["101", "101", "101", "101", "010"],
+  Q: ["111", "101", "101", "111", "001"],
+};
+
+export function drawText(ctx: Ctx, text: string, x: number, y: number, c: string) {
+  ctx.fillStyle = c;
+  let cx = Math.round(x);
+  for (const ch of text.toUpperCase()) {
+    const g = FONT[ch];
+    if (g) g.forEach((row, ry) => [...row].forEach((b, rx) => b === "1" && ctx.fillRect(cx + rx, Math.round(y) + ry, 1, 1)));
+    cx += 4;
+  }
+}
+
+/** Meja eksekutif owner (52x16) dengan monitor besar berlogo PovQ. */
+export function drawBossDesk(ctx: Ctx, x: number, y: number, t: number, on: boolean) {
+  px(ctx, x, y, 52, 11, "#4a2f2a");
+  px(ctx, x, y, 52, 2, "#6b4439");
+  px(ctx, x, y + 11, 52, 4, "#36211d");
+  px(ctx, x + 2, y + 15, 4, 5, "#2a1916");
+  px(ctx, x + 46, y + 15, 4, 5, "#2a1916");
+  // monitor (dari belakang) dengan cahaya mint
+  // monitor rendah supaya wajah Kiyu tetap terlihat
+  px(ctx, x + 16, y - 6, 20, 6, "#23212e");
+  px(ctx, x + 17, y - 5, 18, 4, "#2f2c3d");
+  px(ctx, x + 25, y, 2, 1, "#23212e");
+  if (on) {
+    ctx.fillStyle = `rgba(126, 232, 180, ${0.12 + 0.06 * Math.sin(t * 2.4)})`;
+    ctx.fillRect(x + 15, y - 9, 22, 3);
+  }
+  // hantu mini (maskot PovQ) & cangkir
+  px(ctx, x + 4, y - 4, 5, 5, "#c9f7e2");
+  px(ctx, x + 4, y - 4, 5, 1, "#e9fff5");
+  px(ctx, x + 5, y - 2, 1, 1, "#2a2236");
+  px(ctx, x + 7, y - 2, 1, 1, "#2a2236");
+  px(ctx, x + 4, y + 1, 1, 1, "#c9f7e2");
+  px(ctx, x + 8, y + 1, 1, 1, "#c9f7e2");
+  px(ctx, x + 42, y + 2, 3, 4, "#f1ecdf");
+  px(ctx, x + 45, y + 3, 1, 2, "#f1ecdf");
+}
+
+export function drawBossChair(ctx: Ctx, x: number, y: number) {
+  px(ctx, x - 7, y - 16, 14, 13, "#1f1a2b");
+  px(ctx, x - 6, y - 15, 12, 11, "#3a2a55");
+  px(ctx, x - 6, y - 15, 12, 2, "#4a3770");
+  px(ctx, x - 1, y - 3, 2, 3, "#1f1a2b");
+  px(ctx, x - 6, y, 12, 1, "#1f1a2b");
+}
+
+export function drawBookshelf(ctx: Ctx, x: number, y: number) {
+  // x,y = sudut kiri bawah (24x40)
+  px(ctx, x, y - 40, 24, 40, "#4a2f2a");
+  const warna = ["#7ee8b4", "#5b3f8f", "#e0a43c", "#4f8fd6", "#d65f8a", "#e8e2cf"];
+  for (let r = 0; r < 3; r++) {
+    px(ctx, x + 2, y - 38 + r * 13, 20, 11, "#2a1916");
+    for (let b = 0; b < 5; b++) px(ctx, x + 3 + b * 4, y - 36 + r * 13 + (b % 2), 3, 9 - (b % 2), warna[(r * 5 + b) % warna.length]);
+  }
+}
+
+export function drawLamp(ctx: Ctx, x: number, y: number, t: number) {
+  px(ctx, x - 1, y - 30, 2, 30, "#3d3a48");
+  px(ctx, x - 4, y, 8, 1, "#3d3a48");
+  px(ctx, x - 5, y - 36, 10, 6, "#e9d9a8");
+  ctx.fillStyle = `rgba(255, 228, 160, ${0.1 + 0.03 * Math.sin(t)})`;
+  ctx.fillRect(x - 9, y - 30, 18, 14);
 }

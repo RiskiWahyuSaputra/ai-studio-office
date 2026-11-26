@@ -1,4 +1,4 @@
-import { TEAM, memberById, memberForStage } from "../shared/team.ts";
+import { OWNER, TEAM, memberById, memberForStage } from "../shared/team.ts";
 import { cekKebijakan } from "../shared/kebijakan.ts";
 import { promptGambar } from "../shared/karakter.ts";
 import { FORMATS, GAYA, STAGES, type Platform, type Project, type Settings } from "../shared/types.ts";
@@ -171,6 +171,10 @@ function renderTeam(): string {
   <section class="card">
     <h2>Tim</h2>
     <ul class="team-list">
+      <li><button class="team-row" data-action="member" data-id="${OWNER.id}">
+        <span class="swatch" style="background:${OWNER.look.shirt2}"></span>
+        <span><strong>${esc(OWNER.nama)}</strong> · ${esc(OWNER.role)}</span>
+      </button></li>
       ${TEAM.map(
         (m) => `
         <li><button class="team-row" data-action="member" data-id="${m.id}">
@@ -182,7 +186,52 @@ function renderTeam(): string {
   </section>`;
 }
 
+function renderOwner(s: UiState): string {
+  const semua = [...s.projects.values()];
+  const tunggu = semua.filter((p) => p.status === "menunggu-kamu").sort((a, b) => b.dibuat.localeCompare(a.dibuat));
+  const jalan = semua.filter((p) => p.status === "jalan" || p.status === "antre").length;
+  const tayang = semua.filter((p) => p.unggahan.some((u) => u.status === "berhasil")).length;
+  const video = semua.filter((p) => p.video).length;
+  // semua catatan kerja tim (bukan tindakanmu sendiri), terbaru dulu
+  const laporan = semua
+    .flatMap((p) => p.log.filter((l) => l.oleh !== "Kamu").map((l) => ({ ...l, p })))
+    .sort((a, b) => b.waktu.localeCompare(a.waktu))
+    .slice(0, 25);
+  const baris = (p: Project) =>
+    `<li><button class="project-row" data-action="buka" data-id="${p.id}"><span class="project-title">${esc(judulProyek(p))}</span>${badge(p)}</button></li>`;
+  return `
+  <div class="crumbs"><button class="link" data-action="kembali">← Semua proyek</button></div>
+  <section class="card">
+    <div class="member-head">
+      <span class="swatch swatch-lg" style="background:${OWNER.look.shirt2}"></span>
+      <div><h2>Ruang ${esc(OWNER.nama)}</h2><p class="role">${esc(OWNER.role)} PovQ</p></div>
+    </div>
+    <p>${esc(OWNER.tugas)}</p>
+    <dl class="owner-stat">
+      <div><dt>Proyek</dt><dd>${semua.length}</dd></div>
+      <div><dt>Sedang jalan</dt><dd>${jalan}</dd></div>
+      <div><dt>Video jadi</dt><dd>${video}</dd></div>
+      <div><dt>Sudah tayang</dt><dd>${tayang}</dd></div>
+    </dl>
+  </section>
+  <section class="card">
+    <h3>Menunggu keputusanmu</h3>
+    ${tunggu.length ? `<ul class="project-list">${tunggu.map(baris).join("")}</ul>` : `<p class="empty">Tidak ada yang perlu dicek. Tim sedang aman.</p>`}
+  </section>
+  <section class="card">
+    <h3>Laporan tim</h3>
+    ${
+      laporan.length
+        ? `<ul class="log">${laporan
+            .map((l) => `<li><time>${waktu(l.waktu)}</time> <strong>${esc(l.oleh)}</strong> · ${esc(l.pesan)} <button class="link" data-action="buka" data-id="${l.p.id}">${esc(judulProyek(l.p))}</button></li>`)
+            .join("")}</ul>`
+        : `<p class="empty">Belum ada laporan.</p>`
+    }
+  </section>`;
+}
+
 function renderMember(id: string, s: UiState): string {
+  if (id === OWNER.id) return renderOwner(s);
   const m = memberById(id);
   if (!m) return renderList(s);
   const kerjaan = [...s.projects.values()].filter((p) => m.stages.includes(p.tahap) && p.status !== "selesai");

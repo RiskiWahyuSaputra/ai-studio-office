@@ -1,6 +1,11 @@
-import { TEAM, type Member } from "../shared/team.ts";
+import { OWNER, TEAM, type Member } from "../shared/team.ts";
 import {
+  drawBookshelf,
+  drawBossChair,
+  drawBossDesk,
   drawChair,
+  drawLamp,
+  drawText,
   drawCoffeeMachine,
   drawDesk,
   drawPerson,
@@ -9,13 +14,18 @@ import {
   drawSofa,
 } from "./sprites.ts";
 
-const W = 384;
+const W = 480;
 const H = 240;
 const WALL = 58;
 const SPEED = 42;
 const LANE_X = 264;
 const COFFEE = { x: 313, y: 100 };
 const SOFA = { x: 322, y: 204 };
+// ruang owner (Kiyu) di sisi kanan, dipisah dinding dengan pintu
+const ROOM_X = 390;
+const DOOR = { y1: 150, y2: 186 };
+const OWNER_DESK: Desk = { x: 414, y: 120, seat: { x: 440, y: 118 }, frontY: 168 };
+const BOARD = { x: 202, y: 66 };
 
 interface Pt { x: number; y: number }
 
@@ -57,6 +67,8 @@ export interface Office {
   setWorking(id: string, working: boolean, status?: string): void;
   say(id: string, text: string, ms?: number): void;
   handoff(fromId: string, toId: string, label: string): void;
+  /** anggota tim berjalan ke ruang Kiyu dan melapor */
+  lapor(fromId: string, text: string): void;
   select(id: string | null): void;
   onSelect(cb: (id: string | null) => void): void;
   setBoard(columns: { label: string; count: number; color: string }[]): void;
@@ -99,8 +111,8 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   let selectCb: (id: string | null) => void = () => {};
   let brewing = 0;
 
-  const actors: Actor[] = TEAM.map((m, i) => {
-    const desk = desks[i];
+  const actors: Actor[] = [...TEAM, OWNER].map((m, i) => {
+    const desk = m.id === OWNER.id ? OWNER_DESK : desks[i];
     const tag = document.createElement("button");
     tag.className = "name-tag";
     tag.type = "button";
@@ -151,6 +163,25 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     returnToDesk(a, SOFA.y);
   }
 
+  /** Kiyu keliling: cek papan kanban, menyapa satu anggota tim, atau ngopi. */
+  function planOwner(a: Actor) {
+    a.steps = [];
+    const r = Math.random();
+    if (r < 0.4) {
+      goTo(a, BOARD, BOARD.y);
+      a.steps.push({ kind: "say", text: pick(["Cek progres dulu 👀", "Antrean aman?", "Mantap, jalan terus"]), ms: 2600 }, { kind: "wait", ms: 3000 });
+      returnToDesk(a, BOARD.y);
+    } else if (r < 0.8) {
+      const b = actors[Math.floor(Math.random() * TEAM.length)];
+      const stand = { x: b.desk.seat.x + 14, y: b.desk.frontY - 8 };
+      goTo(a, stand, b.desk.frontY);
+      a.steps.push({ kind: "say", text: pick([`Gimana, ${b.m.nama}?`, "Kerja bagus!", "Semangat ya", "Yang ini serem, mantap"]), ms: 2600 }, { kind: "wait", ms: 2800 });
+      returnToDesk(a, b.desk.frontY);
+    } else {
+      planCoffee(a);
+    }
+  }
+
   function returnToDesk(a: Actor, fromFrontY: number) {
     a.steps.push({ kind: "walk", to: { x: LANE_X, y: fromFrontY } });
     a.steps.push({ kind: "walk", to: { x: LANE_X, y: a.desk.frontY } });
@@ -186,6 +217,21 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
       goTo(a, stand, b.desk.frontY);
       a.steps.push({ kind: "say", text: label, ms: 2400 }, { kind: "wait", ms: 2400 }, { kind: "carry", on: false });
       returnToDesk(a, b.desk.frontY);
+    },
+    lapor(fromId, text) {
+      const a = byId(fromId);
+      const kiyu = byId(OWNER.id);
+      if (!a || !kiyu || a === kiyu) return;
+      // sedang melapor/mengantar: cukup tampilkan gelembung
+      if (a.steps.some((s) => s.kind === "carry" || s.kind === "say")) return api.say(fromId, text);
+      a.steps = [];
+      const stand = { x: OWNER_DESK.seat.x - 10, y: OWNER_DESK.frontY - 6 };
+      goTo(a, stand, OWNER_DESK.frontY);
+      a.steps.push({ kind: "say", text: `Bos, ${text}`, ms: 3200 }, { kind: "wait", ms: 3300 });
+      returnToDesk(a, OWNER_DESK.frontY);
+      // Kiyu menjawab saat pelapor kira-kira sudah sampai
+      const jarak = Math.abs(a.pos.x - stand.x) + Math.abs(a.pos.y - stand.y);
+      setTimeout(() => api.say(OWNER.id, pick(["Oke, makasih!", "Siap, aku cek", "Mantap 👍", "Noted!"]), 2600), (jarak / SPEED) * 1000 + 3400);
     },
     select(id) {
       selected = id;
@@ -235,8 +281,9 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   // --- update ---
   function update(a: Actor, now: number, dt: number) {
     if (!a.working && !a.steps.length && a.sitting && now > a.nextIdle) {
-      Math.random() < 0.65 ? planCoffee(a) : planSofa(a);
-      a.nextIdle = now + 30000 + Math.random() * 40000;
+      if (a.m.id === OWNER.id) planOwner(a);
+      else Math.random() < 0.65 ? planCoffee(a) : planSofa(a);
+      a.nextIdle = now + (a.m.id === OWNER.id ? 45000 : 30000) + Math.random() * 40000;
     }
     const s = a.steps[0];
     if (!s) return;
@@ -305,9 +352,24 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     ctx.fillStyle = "#4b6b5c";
     ctx.fillRect(290, 154, 84, 58);
 
+    // lantai ruang owner: karpet ungu tua dengan pinggiran mint
+    ctx.fillStyle = "#2b2340";
+    ctx.fillRect(ROOM_X, WALL, W - ROOM_X, H - WALL);
+    ctx.fillStyle = "#33294d";
+    for (let y = WALL; y < H; y += 6) ctx.fillRect(ROOM_X, y, W - ROOM_X, 1);
+    ctx.fillStyle = "#5b3f8f";
+    ctx.fillRect(402, 112, 72, 72);
+    ctx.fillStyle = "#3e2d63";
+    ctx.fillRect(404, 114, 68, 68);
+    ctx.fillStyle = "#7ee8b4";
+    ctx.fillRect(404, 114, 68, 1);
+    ctx.fillRect(404, 181, 68, 1);
+
     // dinding
     ctx.fillStyle = "#3b3756";
     ctx.fillRect(0, 0, W, WALL);
+    ctx.fillStyle = "#2f2a48";
+    ctx.fillRect(ROOM_X, 0, W - ROOM_X, WALL);
     ctx.fillStyle = "#33304b";
     for (let x = 0; x < W; x += 12) ctx.fillRect(x, 0, 1, WALL);
     ctx.fillStyle = "#2a2740";
@@ -384,6 +446,46 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     ];
     for (const [rx, ry, rw, rh] of rec) ctx.fillRect(321 + rx, 18 + ry, rw, rh);
     ctx.fillRect(314, 19, 3, 3);
+
+    drawOwnerWall(t);
+  }
+
+  function drawOwnerWall(t: number) {
+    // papan nama
+    ctx.fillStyle = "#1b1726";
+    ctx.fillRect(408, 8, 56, 22);
+    ctx.fillStyle = "#3a2f55";
+    ctx.fillRect(409, 9, 54, 20);
+    const nyala = 0.75 + 0.25 * Math.sin(t * 1.8);
+    drawText(ctx, "KIYU", 421, 12, `rgba(126, 232, 180, ${nyala})`);
+    drawText(ctx, "OWNER", 418, 21, "#c8bfe0");
+    // plakat tombol putar perak
+    ctx.fillStyle = "#1b1726";
+    ctx.fillRect(470, 12, 8, 12);
+    ctx.fillStyle = "#cfd3dc";
+    ctx.fillRect(471, 13, 6, 10);
+    ctx.fillStyle = "#ef6b6b";
+    ctx.fillRect(472, 16, 4, 4);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(473, 17, 1, 2);
+    ctx.fillRect(474, 18, 1, 1);
+    // jendela kecil
+    ctx.fillStyle = "#1b1726";
+    ctx.fillRect(394, 34, 12, 18);
+    ctx.fillStyle = new Date().getHours() >= 6 && new Date().getHours() < 18 ? "#8fd0f5" : "#1d2547";
+    ctx.fillRect(395, 35, 10, 16);
+
+    // dinding pemisah dengan pintu
+    ctx.fillStyle = "#24213a";
+    ctx.fillRect(ROOM_X - 4, 0, 4, DOOR.y1);
+    ctx.fillRect(ROOM_X - 4, DOOR.y2, 4, H - DOOR.y2);
+    ctx.fillStyle = "#4a4568";
+    ctx.fillRect(ROOM_X - 3, WALL, 1, DOOR.y1 - WALL);
+    ctx.fillRect(ROOM_X - 3, DOOR.y2, 1, H - DOOR.y2);
+    // kusen pintu
+    ctx.fillStyle = "#7ee8b4";
+    ctx.fillRect(ROOM_X - 5, DOOR.y1 - 2, 6, 2);
+    ctx.fillRect(ROOM_X - 5, DOOR.y2, 6, 2);
   }
 
   type Drawable = { y: number; draw: () => void };
@@ -411,6 +513,14 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     items.push({ y: SOFA.y - 4, draw: () => drawSofa(ctx, 300, SOFA.y - 4) });
     items.push({ y: 236, draw: () => drawServerRack(ctx, 2, 236, t) });
     items.push({ y: 236, draw: () => drawPlant(ctx, 276, 236, t) });
+    // ruang owner
+    const kiyu = actors.find((a) => a.m.id === OWNER.id)!;
+    items.push({ y: OWNER_DESK.y - 2, draw: () => drawBossChair(ctx, OWNER_DESK.seat.x, OWNER_DESK.seat.y) });
+    items.push({ y: OWNER_DESK.y + 15, draw: () => drawBossDesk(ctx, OWNER_DESK.x, OWNER_DESK.y, t, kiyu.sitting || kiyu.working) });
+    items.push({ y: 98, draw: () => drawBookshelf(ctx, 444, 98) });
+    items.push({ y: 100, draw: () => drawLamp(ctx, 474, 100, t) });
+    items.push({ y: 236, draw: () => drawPlant(ctx, 470, 236, t) });
+    items.push({ y: 236, draw: () => drawPlant(ctx, 402, 236, t) });
 
     for (const a of actors) {
       items.push({

@@ -11,10 +11,14 @@ export type StageId =
 export interface Look {
   skin: string;
   hair: string;
-  hairStyle: "pendek" | "panjang" | "jilbab" | "botak" | "keriting";
+  hairStyle: "pendek" | "panjang" | "jilbab" | "botak" | "keriting" | "acak";
   shirt: string;
   pants: string;
-  accessory?: "kacamata" | "headset" | "topi";
+  accessory?: "kacamata" | "headset" | "topi" | "goggles";
+  /** helai rambut berwarna (mis. hijau mint milik Kiyu) */
+  streak?: string;
+  /** warna kedua atasan (mis. hoodie dua warna) */
+  shirt2?: string;
 }
 
 export interface Member {
@@ -93,5 +97,15 @@ export const TEAM: Member[] = [
   },
 ];
 
-export const memberById = (id: string) => TEAM.find((m) => m.id === id);
+/** Pemilik kantor. Bukan bagian dari tim produksi (tidak memegang tahap). */
+export const OWNER: Member = {
+  id: "owner",
+  nama: "Kiyu",
+  role: "Owner",
+  tugas: "Pemilik PovQ. Menentukan ide, menyetujui hasil kerja tim, dan memutuskan video mana yang tayang.",
+  stages: [],
+  look: { skin: "#e3b48c", hair: "#2a2236", hairStyle: "acak", shirt: "#26264a", shirt2: "#5b3f8f", pants: "#55585f", accessory: "goggles", streak: "#7ee8b4" },
+};
+
+export const memberById = (id: string) => (id === OWNER.id ? OWNER : TEAM.find((m) => m.id === id));
 export const memberForStage = (stage: StageId) => TEAM.find((m) => m.stages.includes(stage)) ?? TEAM[TEAM.length - 1];
