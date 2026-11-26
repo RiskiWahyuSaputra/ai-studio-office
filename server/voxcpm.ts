@@ -11,6 +11,7 @@ import path from "node:path";
 import { antreBerat } from "./berat.ts";
 import { ROOT } from "./paths.ts";
 import { projectDir } from "./editor.ts";
+import { elevenTersedia, narasiEleven } from "./elevenlabs.ts";
 import type { Format, Project } from "../src/shared/types.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
 
@@ -29,9 +30,18 @@ interface SuaraLokal {
   acuan?: { file: string; teks: string };
   /** suara Edge TTS (cepat, beberapa detik per kalimat) dan bukan VoxCPM */
   edge?: { suara: string; pitch: string; pitchHoror: string };
+  /** suara ElevenLabs (butuh ELEVENLABS_API_KEY, memakai kredit akun) */
+  eleven?: { voiceId: string };
 }
 
+/** Suara pilihanmu sendiri dari ElevenLabs (Voice Library / klon), lewat ELEVENLABS_VOICE_ID di .env. */
+const SUARA_KANAL = process.env.ELEVENLABS_VOICE_ID?.trim();
+
 export const SUARA_LOKAL: SuaraLokal[] = [
+  ...(SUARA_KANAL ? [{ id: "eleven-kanal", ket: "Suara kanal (ElevenLabs, ELEVENLABS_VOICE_ID)", deskripsi: "", eleven: { voiceId: SUARA_KANAL } }] : []),
+  { id: "eleven-brian", ket: "Pria, narator dalam (ElevenLabs)", deskripsi: "", eleven: { voiceId: "nPczCjzI2devNBz1zQrb" } },
+  { id: "eleven-bill", ket: "Pria, tua & tenang (ElevenLabs)", deskripsi: "", eleven: { voiceId: "pqHfZKP75CvOlQylNhV4" } },
+  { id: "eleven-lily", ket: "Wanita, lembut (ElevenLabs)", deskripsi: "", eleven: { voiceId: "pFZP5JQG7iQjIQuC4Bku" } },
   { id: "edge-ardi", ket: "Pria, Ardi (cepat)", deskripsi: "", edge: { suara: "id-ID-ArdiNeural", pitch: "-4Hz", pitchHoror: "-12Hz" } },
   { id: "edge-gadis", ket: "Wanita, Gadis (cepat)", deskripsi: "", edge: { suara: "id-ID-GadisNeural", pitch: "-4Hz", pitchHoror: "-8Hz" } },
   {
@@ -50,18 +60,20 @@ export const SUARA_LOKAL: SuaraLokal[] = [
   { id: "wanita-misterius", ket: "Wanita, misterius (VoxCPM, lambat)", deskripsi: "wanita dewasa, suara rendah dan pelan, setengah berbisik, nada misterius dan dingin" },
 ];
 
-export const BAWAAN_LOKAL: Record<Format, string> = {
-  "cerita-horor": "edge-ardi",
-  "pov-sejarah": "edge-ardi",
-  "vlog-hewan": "edge-ardi",
-};
+/** Suara bawaan per format: ElevenLabs kalau kuncinya ada, kalau tidak Edge (Ardi). */
+export function bawaanLokal(_format: Format): string {
+  if (!elevenTersedia()) return "edge-ardi";
+  return SUARA_KANAL ? "eleven-kanal" : "eleven-brian";
+}
 
 /** Tempo bicara Edge per format: horor lebih pelan, vlog sedikit lebih cepat. */
 // horor: lebih lambat & nada lebih rendah (pilihan kanal, contoh: povq-uji-suara/seram/1-ardi-pelan-dalam.wav)
 const TEMPO_EDGE: Record<Format, string> = { "cerita-horor": "-18%", "pov-sejarah": "+0%", "vlog-hewan": "+6%" };
 
 export const suaraLokalProyek = (p: Project) =>
-  SUARA_LOKAL.find((s) => s.id === p.suaraLokal) ?? SUARA_LOKAL.find((s) => s.id === BAWAAN_LOKAL[p.format])!;
+  SUARA_LOKAL.find((s) => s.id === p.suaraLokal && (!s.eleven || elevenTersedia())) ?? SUARA_LOKAL.find((s) => s.id === bawaanLokal(p.format))!;
+
+const EDGE_CADANGAN = () => SUARA_LOKAL.find((s) => s.id === "edge-ardi")!;
 
 const PRESET = "_kanal";
 const lokasiAcuan = (a: NonNullable<Project["acuanSuara"]>) =>
@@ -86,6 +98,20 @@ const kunci = (s: string) => createHash("sha1").update(s).digest("hex").slice(0,
  */
 export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: string) => void): Promise<HasilNarasi> {
   const suara = suaraLokalProyek(p);
+  if (suara.eleven) {
+    const id = `${p.id}:${suara.id}:${kunci(kalimat.join("\n"))}`;
+    const lama = berjalan.get(id);
+    if (lama) return lama;
+    const kerja = narasiEleven(projectDir(p.id), kalimat, suara.eleven.voiceId, p.format, onProgres).catch((e: Error) => {
+      // kuota habis / kunci salah: seluruh narasi pakai Edge supaya suaranya tetap satu
+      console.warn(`[narasi] ElevenLabs gagal (${e.message}), pakai Edge`);
+      onProgres?.(`ElevenLabs gagal (${e.message.slice(0, 80)}), pakai suara Edge...`);
+      return jalankanEdge(p, kalimat, EDGE_CADANGAN(), onProgres);
+    });
+    berjalan.set(id, kerja);
+    kerja.finally(() => berjalan.delete(id)).catch(() => {});
+    return kerja;
+  }
   if (suara.edge) {
     const id = `${p.id}:${suara.id}:${kunci(kalimat.join("\n"))}`;
     const lama = berjalan.get(id);

@@ -554,7 +554,7 @@ office.onSelect((id) => {
 
 async function boot() {
   const s = await api.state();
-  state = { projects: new Map(s.projects.map((p) => [p.id, p])), settings: s.settings, ai: s.ai, platform: s.platform, suara: s.suara, suaraLokal: s.suaraLokal, voxcpm: s.voxcpm, agy: s.agy, view: { kind: "list" } };
+  state = { projects: new Map(s.projects.map((p) => [p.id, p])), settings: s.settings, ai: s.ai, platform: s.platform, suara: s.suara, suaraLokal: s.suaraLokal, voxcpm: s.voxcpm, agy: s.agy, eleven: s.eleven, bawaanLokal: s.bawaanLokal, view: { kind: "list" } };
   for (const p of s.projects) {
     if (p.status === "jalan") office.setWorking(memberForStage(p.tahap).id, true, "Lanjut kerja...");
   }

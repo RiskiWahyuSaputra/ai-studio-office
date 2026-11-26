@@ -9,6 +9,8 @@ export interface InitState {
   suaraLokal: { id: string; ket: string }[];
   voxcpm: boolean;
   agy: boolean;
+  eleven?: boolean;
+  bawaanLokal?: Record<string, string>;
 }
 
 async function req<T>(method: string, url: string, body?: unknown): Promise<T> {

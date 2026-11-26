@@ -4,7 +4,8 @@ import path from "node:path";
 import { projectDir } from "../editor.ts";
 import { ROOT } from "../paths.ts";
 import { SUARA, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
-import { SUARA_LOKAL, narasiLokal, voxcpmTersedia } from "../voxcpm.ts";
+import { SUARA_LOKAL, bawaanLokal, narasiLokal, voxcpmTersedia } from "../voxcpm.ts";
+import { elevenTersedia } from "../elevenlabs.ts";
 import { agyTersedia, resetRancangan } from "../antigravity.ts";
 import { mulaiGambar } from "../gambar.ts";
 import { FORMATS, GAYA, type Format, type Gaya, type Karakter } from "../../src/shared/types.ts";
@@ -32,7 +33,7 @@ export const projects = Router();
 projects.get("/events", (_req, res) => subscribe(res));
 
 projects.get("/state", async (_req, res) => {
-  res.json({ projects: listProjects(), settings: getSettings(), ai: namaModel(), platform: await platformStatus(), suara: SUARA, suaraLokal: SUARA_LOKAL, voxcpm: voxcpmTersedia(), agy: agyTersedia() });
+  res.json({ projects: listProjects(), settings: getSettings(), ai: namaModel(), platform: await platformStatus(), suara: SUARA, suaraLokal: SUARA_LOKAL.filter((v) => !v.eleven || elevenTersedia()), voxcpm: voxcpmTersedia(), agy: agyTersedia(), eleven: elevenTersedia(), bawaanLokal: Object.fromEntries(Object.keys(FORMATS).map((f) => [f, bawaanLokal(f as Format)])) });
 });
 
 projects.post("/projects", async (req, res) => {
