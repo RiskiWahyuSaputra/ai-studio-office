@@ -20,6 +20,10 @@ export interface PoseOpts {
   typing: boolean;
   t: number;
   carrying: boolean;
+  /** tangan terangkat (peregangan / sorak) */
+  armsUp?: boolean;
+  /** memegang penyiram tanaman */
+  watering?: boolean;
 }
 
 /**
@@ -65,10 +69,22 @@ export function drawPerson(ctx: Ctx, x: number, y: number, look: Look, o: PoseOp
     px(ctx, left + (o.facing === 1 ? 8 : -2), T + 8, 4, 3, "#f4f0e2");
     px(ctx, left + (o.facing === 1 ? 9 : -1), T + 9, 2, 1, "#9a93ab");
   }
-  px(ctx, left, armY, 1, 4, look.shirt);
-  px(ctx, left + 9, armY, 1, 4, look.shirt);
-  px(ctx, left, armY + 4, 1, 1, look.skin);
-  px(ctx, left + 9, armY + 4, 1, 1, look.skin);
+  if (o.armsUp) {
+    px(ctx, left, T + 3, 1, 5, look.shirt);
+    px(ctx, left + 9, T + 3, 1, 5, look.shirt);
+    px(ctx, left, T + 2, 1, 1, look.skin);
+    px(ctx, left + 9, T + 2, 1, 1, look.skin);
+  } else {
+    px(ctx, left, armY, 1, 4, look.shirt);
+    px(ctx, left + 9, armY, 1, 4, look.shirt);
+    px(ctx, left, armY + 4, 1, 1, look.skin);
+    px(ctx, left + 9, armY + 4, 1, 1, look.skin);
+  }
+  if (o.watering) {
+    const wx = o.facing === 1 ? left + 9 : left - 4;
+    px(ctx, wx, T + 10, 4, 3, "#4f8fd6");
+    px(ctx, o.facing === 1 ? wx + 4 : wx - 2, T + 9, 2, 1, "#4f8fd6");
+  }
 
   // kepala
   px(ctx, left + 2, T + 1, 6, 6, look.skin);
@@ -309,4 +325,36 @@ export function drawLamp(ctx: Ctx, x: number, y: number, t: number) {
   px(ctx, x - 5, y - 36, 10, 6, "#e9d9a8");
   ctx.fillStyle = `rgba(255, 228, 160, ${0.1 + 0.03 * Math.sin(t)})`;
   ctx.fillRect(x - 9, y - 30, 18, 14);
+}
+
+/** Kucing kantor 10x7. (x, y) = titik kaki tengah. */
+export function drawCat(ctx: Ctx, x: number, y: number, facing: 1 | -1, frame: number, tidur: boolean, t: number) {
+  const l = Math.round(x) - 5;
+  const b = Math.round(y);
+  const bulu = "#e59b4a";
+  const gelap = "#b8722e";
+  ctx.fillStyle = "rgba(0,0,0,0.25)";
+  ctx.fillRect(l + 1, b - 1, 8, 2);
+  if (tidur) {
+    px(ctx, l + 1, b - 4, 8, 4, bulu);
+    px(ctx, l + 2, b - 4, 2, 1, gelap);
+    px(ctx, l + 6, b - 4, 2, 1, gelap);
+    px(ctx, l + (facing === 1 ? 7 : 0), b - 5, 3, 3, bulu);
+    px(ctx, l + (facing === 1 ? 8 : 1), b - 6, 1, 1, bulu);
+    px(ctx, l + (facing === 1 ? 0 : 8), b - 2, 2, 1, gelap);
+    return;
+  }
+  const kaki = frame % 2;
+  px(ctx, l + 2, b - 5, 6, 3, bulu);
+  px(ctx, l + 3, b - 5, 1, 3, gelap);
+  px(ctx, l + 5, b - 5, 1, 3, gelap);
+  px(ctx, l + 2 + kaki, b - 2, 1, 2, bulu);
+  px(ctx, l + 6 - kaki, b - 2, 1, 2, bulu);
+  const kx = facing === 1 ? l + 7 : l;
+  px(ctx, kx, b - 7, 3, 3, bulu);
+  px(ctx, kx, b - 8, 1, 1, bulu);
+  px(ctx, kx + 2, b - 8, 1, 1, bulu);
+  px(ctx, kx + (facing === 1 ? 2 : 0), b - 6, 1, 1, "#1a1520");
+  const ekor = Math.round(Math.sin(t * 4) * 1);
+  px(ctx, facing === 1 ? l + 1 : l + 8, b - 7 + ekor, 1, 3, gelap);
 }

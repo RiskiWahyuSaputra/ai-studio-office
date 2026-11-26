@@ -149,6 +149,10 @@ function onEvent(e: ServerEvent) {
 
 /** Setiap kejadian penting (tahap beres, menunggu persetujuan, gagal) dilaporkan ke Kiyu oleh yang mengerjakan. */
 function laporKeOwner(lama: Project | undefined, p: Project) {
+  // momen besar: video jadi atau berhasil tayang → satu kantor merayakan
+  const tayang = (x: Project) => x.unggahan.filter((u) => u.status === "berhasil").length;
+  if (lama && !lama.video && p.video) office.rayakan("Video baru jadi! 🎬");
+  else if (lama && tayang(p) > tayang(lama)) office.rayakan("Tayang! 🚀");
   if (!lama || (lama.status === p.status && lama.tahap === p.tahap)) return;
   const pelapor = memberForStage(lama.tahap);
   const judul = judulProyek(p);

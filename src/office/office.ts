@@ -3,6 +3,7 @@ import {
   drawBookshelf,
   drawBossChair,
   drawBossDesk,
+  drawCat,
   drawChair,
   drawLamp,
   drawText,
@@ -26,6 +27,9 @@ const ROOM_X = 390;
 const DOOR = { y1: 150, y2: 186 };
 const OWNER_DESK: Desk = { x: 414, y: 120, seat: { x: 440, y: 118 }, frontY: 168 };
 const BOARD = { x: 202, y: 66 };
+// ?demo di URL: kegiatan santai muncul jauh lebih sering (untuk melihat semua animasi)
+const DEMO = typeof location !== "undefined" && new URLSearchParams(location.search).has("demo");
+const JEDA = DEMO ? 0.08 : 1;
 
 interface Pt { x: number; y: number }
 
@@ -42,7 +46,51 @@ type Step =
   | { kind: "sit" }
   | { kind: "say"; text: string; ms: number }
   | { kind: "carry"; on: boolean }
-  | { kind: "brew"; on: boolean };
+  | { kind: "brew"; on: boolean }
+  /** menunggu lawan bicara (diatur oleh percakapan) */
+  | { kind: "hold" }
+  | { kind: "face"; dir: 1 | -1 }
+  | { kind: "pose"; armsUp?: boolean; watering?: boolean }
+  | { kind: "fx"; jenis: Partikel["jenis"]; dx?: number; dy?: number };
+
+interface Partikel {
+  jenis: "spark" | "heart" | "drop" | "confetti" | "z";
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  hidup: number;
+  umur: number;
+  warna: string;
+}
+
+interface Obrolan {
+  a: Actor;
+  b: Actor;
+  baris: string[];
+  i: number;
+  next: number;
+  mulai: number;
+}
+
+const OBROLAN = [
+  ["Udah lihat views video kemarin?", "Naik terus! Hook-nya kena", "Gas, bikin yang lebih serem"],
+  ["Kopi atau teh?", "Kopi dong, lagi dikejar deadline", "Sama, hehe"],
+  ["Aku punya ide horor baru", "Apa tuh?", "Hantu penunggu kantor ini 👻", "Hiii, jangan dong!"],
+  ["Render-nya lama ya", "Sabar, lagi antre", "Ya udah, ngopi dulu"],
+  ["Semalam nonton apa?", "Film horor, gak bisa tidur", "Bisa jadi konten tuh!"],
+  ["Caption-nya pakai emoji?", "Boleh, biar rame", "Siap 👍"],
+  ["Kucingnya tidur di sofa lagi", "Biarin, dia maskot kita", "Haha, iya"],
+  ["Kiyu lagi cek proyek", "Semoga di-approve", "Pasti, naskahnya bagus"],
+];
+const TITIK_OBROL: Pt[] = [{ x: 300, y: 132 }, { x: 240, y: 148 }, { x: 130, y: 148 }, { x: 330, y: 228 }];
+const TITIK_KUCING: Pt[] = [{ x: 240, y: 148 }, { x: 300, y: 132 }, { x: 150, y: 222 }, { x: 60, y: 148 }, { x: 330, y: 228 }, { x: 200, y: 222 }];
+const SOFA_KUCING = { x: 312, y: 196 };
+const TANAMAN: { berdiri: Pt; arah: 1 | -1 }[] = [
+  { berdiri: { x: 356, y: 96 }, arah: 1 },
+  { berdiri: { x: 262, y: 232 }, arah: 1 },
+  { berdiri: { x: 22, y: 96 }, arah: -1 },
+];
 
 interface Actor {
   m: Member;
@@ -52,6 +100,8 @@ interface Actor {
   sitting: boolean;
   working: boolean;
   carrying: boolean;
+  armsUp: boolean;
+  watering: boolean;
   walkT: number;
   steps: Step[];
   waitUntil: number;
@@ -67,6 +117,8 @@ export interface Office {
   setWorking(id: string, working: boolean, status?: string): void;
   say(id: string, text: string, ms?: number): void;
   handoff(fromId: string, toId: string, label: string): void;
+  /** semua yang senggang bersorak + konfeti */
+  rayakan(teks?: string): void;
   /** anggota tim berjalan ke ruang Kiyu dan melapor */
   lapor(fromId: string, text: string): void;
   select(id: string | null): void;
@@ -129,10 +181,12 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
       sitting: true,
       working: false,
       carrying: false,
+      armsUp: false,
+      watering: false,
       walkT: 0,
       steps: [],
       waitUntil: 0,
-      nextIdle: performance.now() + 8000 + Math.random() * 25000,
+      nextIdle: performance.now() + (8000 + Math.random() * 25000) * JEDA,
       status: "",
       sayText: "",
       sayUntil: 0,
@@ -142,6 +196,139 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   });
 
   const byId = (id: string) => actors.find((a) => a.m.id === id);
+
+  // --- partikel ---
+  const partikel: Partikel[] = [];
+  function semburkan(jenis: Partikel["jenis"], x: number, y: number, n = 6) {
+    const warnaKonfeti = ["#7ee8b4", "#f2b33d", "#ef6b6b", "#6ab8f0", "#c58bf2", "#f4f0e2"];
+    for (let i = 0; i < n; i++) {
+      const p: Partikel = { jenis, x, y, vx: 0, vy: 0, hidup: 0, umur: 1.2, warna: "#fff" };
+      if (jenis === "spark") Object.assign(p, { vx: (Math.random() - 0.5) * 50, vy: -20 - Math.random() * 30, umur: 0.7, warna: Math.random() < 0.5 ? "#f7d774" : "#fff7c2" });
+      if (jenis === "heart") Object.assign(p, { x: x + (Math.random() - 0.5) * 8, vx: (Math.random() - 0.5) * 6, vy: -14 - Math.random() * 6, umur: 1.6, warna: "#ef6b8f" });
+      if (jenis === "drop") Object.assign(p, { x: x + Math.random() * 4, vx: 6 + Math.random() * 6, vy: 4, umur: 0.6, warna: "#8fd0f5" });
+      if (jenis === "z") Object.assign(p, { vx: 4, vy: -8, umur: 2.2, warna: "#c8bfe0" });
+      if (jenis === "confetti") Object.assign(p, { x: Math.random() * W, y: -4 - Math.random() * 30, vx: (Math.random() - 0.5) * 20, vy: 20 + Math.random() * 30, umur: 4, warna: warnaKonfeti[i % warnaKonfeti.length] });
+      partikel.push(p);
+    }
+  }
+
+  // --- kucing kantor ---
+  const kucing = { pos: { x: 312, y: 196 }, tujuan: [] as Pt[], facing: 1 as 1 | -1, walkT: 0, tidur: true, diamSampai: performance.now() + 15000, zBerikut: 0 };
+  function kucingJalanKe(t: Pt) {
+    const diRuangOwner = (p: Pt) => p.x > ROOM_X;
+    const pintu = { x: ROOM_X - 2, y: (DOOR.y1 + DOOR.y2) / 2 };
+    kucing.tujuan = diRuangOwner(t) !== diRuangOwner(kucing.pos) ? [pintu, t] : [t];
+    kucing.tidur = false;
+  }
+  function updateKucing(now: number, dt: number) {
+    const t = kucing.tujuan[0];
+    if (t) {
+      const dx = t.x - kucing.pos.x;
+      const dy = t.y - kucing.pos.y;
+      const d = Math.hypot(dx, dy);
+      const langkah = 18 * dt;
+      if (d <= langkah) {
+        kucing.pos = { ...t };
+        kucing.tujuan.shift();
+        if (!kucing.tujuan.length) {
+          const diSofa = Math.abs(kucing.pos.x - SOFA_KUCING.x) < 2 && Math.abs(kucing.pos.y - SOFA_KUCING.y) < 2;
+          kucing.tidur = diSofa;
+          kucing.diamSampai = now + (diSofa ? 25000 : 6000) + Math.random() * 8000;
+        }
+      } else {
+        kucing.pos.x += (dx / d) * langkah;
+        kucing.pos.y += (dy / d) * langkah;
+        if (Math.abs(dx) > 0.3) kucing.facing = dx > 0 ? 1 : -1;
+        kucing.walkT += dt;
+      }
+      return;
+    }
+    if (kucing.tidur && now > kucing.zBerikut) {
+      semburkan("z", kucing.pos.x + 3, kucing.pos.y - 8, 1);
+      kucing.zBerikut = now + 1400;
+    }
+    if (now > kucing.diamSampai) {
+      const r = Math.random();
+      kucingJalanKe(r < 0.3 ? SOFA_KUCING : r < 0.4 ? { x: 430, y: 196 } : pick(TITIK_KUCING));
+    }
+  }
+
+  // --- percakapan dua karyawan ---
+  const obrolan: Obrolan[] = [];
+  const senggang = (a: Actor) => !a.working && !a.steps.length && a.sitting && a.m.id !== OWNER.id;
+  function planObrol(a: Actor): boolean {
+    const calon = actors.filter((x) => x !== a && senggang(x));
+    if (!calon.length) return false;
+    const b = pick(calon);
+    const titik = pick(TITIK_OBROL);
+    a.steps = [];
+    b.steps = [];
+    goTo(a, { x: titik.x - 7, y: titik.y }, titik.y);
+    goTo(b, { x: titik.x + 7, y: titik.y }, titik.y);
+    a.steps.push({ kind: "face", dir: 1 }, { kind: "hold" });
+    b.steps.push({ kind: "face", dir: -1 }, { kind: "hold" });
+    returnToDesk(a, titik.y);
+    returnToDesk(b, titik.y);
+    obrolan.push({ a, b, baris: pick(OBROLAN), i: 0, next: 0, mulai: performance.now() });
+    return true;
+  }
+  function updateObrolan(now: number) {
+    for (let k = obrolan.length - 1; k >= 0; k--) {
+      const o = obrolan[k];
+      const lepas = () => {
+        for (const x of [o.a, o.b]) if (x.steps[0]?.kind === "hold") x.steps.shift();
+        obrolan.splice(k, 1);
+      };
+      // salah satu dipanggil kerja (langkahnya diganti) atau terlalu lama: bubarkan
+      const batal = [o.a, o.b].some((x) => !x.steps.some((s) => s.kind === "hold")) || now - o.mulai > 40000;
+      if (batal) {
+        for (const x of [o.a, o.b]) {
+          const i = x.steps.findIndex((s) => s.kind === "hold");
+          if (i >= 0) x.steps.splice(i, 1);
+        }
+        obrolan.splice(k, 1);
+        continue;
+      }
+      if (o.a.steps[0]?.kind !== "hold" || o.b.steps[0]?.kind !== "hold") continue;
+      if (now < o.next) continue;
+      if (o.i < o.baris.length) {
+        const bicara = o.i % 2 === 0 ? o.a : o.b;
+        bicara.sayText = o.baris[o.i];
+        bicara.sayUntil = now + 2600;
+        o.i++;
+        o.next = now + 2800;
+      } else {
+        lepas();
+      }
+    }
+  }
+
+  function planStretch(a: Actor) {
+    a.steps = [];
+    a.steps.push({ kind: "pose", armsUp: true }, { kind: "say", text: pick(["Hoaaam 🥱", "Pegel...", "Stretching dulu"]), ms: 2200 }, { kind: "wait", ms: 2200 }, { kind: "pose", armsUp: false }, { kind: "sit" });
+  }
+
+  function planSiram(a: Actor) {
+    const tn = pick(TANAMAN);
+    a.steps = [];
+    goTo(a, tn.berdiri, tn.berdiri.y);
+    a.steps.push({ kind: "face", dir: tn.arah }, { kind: "pose", watering: true });
+    for (let i = 0; i < 4; i++) a.steps.push({ kind: "fx", jenis: "drop", dx: tn.arah * 9, dy: -6 }, { kind: "wait", ms: 600 });
+    a.steps.push({ kind: "pose", watering: false }, { kind: "say", text: pick(["Segar 🌱", "Biar subur", "Minum dulu ya"]), ms: 2000 });
+    returnToDesk(a, tn.berdiri.y);
+  }
+
+  function planElusKucing(a: Actor) {
+    if (kucing.tujuan.length) return false;
+    a.steps = [];
+    const p = { x: Math.round(kucing.pos.x) + (kucing.pos.x > 200 ? -10 : 10), y: Math.round(kucing.pos.y) };
+    kucing.diamSampai = Math.max(kucing.diamSampai, performance.now() + 30000);
+    goTo(a, p, p.y);
+    a.steps.push({ kind: "face", dir: kucing.pos.x > p.x ? 1 : -1 }, { kind: "say", text: pick(["Pus pus~", "Gemes banget", "Meong!"]), ms: 2400 });
+    for (let i = 0; i < 3; i++) a.steps.push({ kind: "fx", jenis: "heart", dx: kucing.pos.x > p.x ? 10 : -10, dy: -8 }, { kind: "wait", ms: 700 });
+    returnToDesk(a, p.y);
+    return true;
+  }
 
   function goTo(a: Actor, target: Pt, targetFrontY: number) {
     const fromFrontY = a.sitting ? a.desk.frontY : a.pos.y;
@@ -215,7 +402,9 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
       const stand = { x: b.desk.seat.x + (b.desk.seat.x > a.desk.seat.x ? -14 : 14), y: b.desk.frontY - 8 };
       a.steps.push({ kind: "carry", on: true });
       goTo(a, stand, b.desk.frontY);
-      a.steps.push({ kind: "say", text: label, ms: 2400 }, { kind: "wait", ms: 2400 }, { kind: "carry", on: false });
+      a.steps.push({ kind: "say", text: label, ms: 2400 }, { kind: "fx", jenis: "spark", dx: a.desk.seat.x < b.desk.seat.x ? 7 : -7, dy: -10 }, { kind: "wait", ms: 2400 }, { kind: "carry", on: false });
+      // tos dari penerima
+      setTimeout(() => api.say(toId, pick(["Siap, tos! ✋", "Makasih!", "Oke, lanjut aku"]), 2000), 1500 + (Math.abs(a.pos.x - stand.x) + Math.abs(a.pos.y - stand.y)) / SPEED * 1000);
       returnToDesk(a, b.desk.frontY);
     },
     lapor(fromId, text) {
@@ -232,6 +421,15 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
       // Kiyu menjawab saat pelapor kira-kira sudah sampai
       const jarak = Math.abs(a.pos.x - stand.x) + Math.abs(a.pos.y - stand.y);
       setTimeout(() => api.say(OWNER.id, pick(["Oke, makasih!", "Siap, aku cek", "Mantap 👍", "Noted!"]), 2600), (jarak / SPEED) * 1000 + 3400);
+    },
+    rayakan(teks) {
+      semburkan("confetti", 0, 0, 90);
+      for (const a of actors) {
+        if (a.working) continue;
+        a.sayText = teks && a.m.id === OWNER.id ? teks : pick(["Yeay! 🎉", "Mantap!", "Gas terus!", "Keren!"]);
+        a.sayUntil = performance.now() + 3000;
+        if (!a.steps.length) a.steps.push({ kind: "pose", armsUp: true }, { kind: "wait", ms: 1800 }, { kind: "pose", armsUp: false });
+      }
     },
     select(id) {
       selected = id;
@@ -282,8 +480,17 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   function update(a: Actor, now: number, dt: number) {
     if (!a.working && !a.steps.length && a.sitting && now > a.nextIdle) {
       if (a.m.id === OWNER.id) planOwner(a);
-      else Math.random() < 0.65 ? planCoffee(a) : planSofa(a);
-      a.nextIdle = now + (a.m.id === OWNER.id ? 45000 : 30000) + Math.random() * 40000;
+      else {
+        const r = Math.random();
+        if (r < 0.3) {
+          if (!planObrol(a)) planCoffee(a);
+        } else if (r < 0.5) planCoffee(a);
+        else if (r < 0.62) planSofa(a);
+        else if (r < 0.77) planStretch(a);
+        else if (r < 0.88) planSiram(a);
+        else if (!planElusKucing(a)) planStretch(a);
+      }
+      a.nextIdle = now + ((a.m.id === OWNER.id ? 45000 : 30000) + Math.random() * 40000) * JEDA;
     }
     const s = a.steps[0];
     if (!s) return;
@@ -328,6 +535,21 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
         break;
       case "brew":
         brewing += s.on ? 1 : -1;
+        a.steps.shift();
+        break;
+      case "hold":
+        break;
+      case "face":
+        a.facing = s.dir;
+        a.steps.shift();
+        break;
+      case "pose":
+        if (s.armsUp !== undefined) a.armsUp = s.armsUp;
+        if (s.watering !== undefined) a.watering = s.watering;
+        a.steps.shift();
+        break;
+      case "fx":
+        semburkan(s.jenis, a.pos.x + (s.dx ?? 0), a.pos.y + (s.dy ?? -12), s.jenis === "drop" ? 3 : s.jenis === "spark" ? 8 : 1);
         a.steps.shift();
         break;
     }
@@ -496,6 +718,8 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     last = now;
     const t = now / 1000;
     for (const a of actors) update(a, now, dt);
+    updateObrolan(now);
+    updateKucing(now, dt);
 
     ctx.clearRect(0, 0, W, H);
     drawRoom(t);
@@ -537,11 +761,48 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
             typing: a.sitting && a.working,
             t: t + a.desk.x,
             carrying: a.carrying,
+            armsUp: a.armsUp,
+            watering: a.watering,
           });
         },
       });
     }
+    // kucing yang tidur di sofa digambar di atas bantalnya
+    items.push({ y: kucing.tidur && Math.abs(kucing.pos.x - SOFA_KUCING.x) < 3 ? SOFA.y + 1 : kucing.pos.y, draw: () => drawCat(ctx, kucing.pos.x, kucing.pos.y, kucing.facing, Math.floor(kucing.walkT * 6), kucing.tidur, t) });
     items.sort((p, q) => p.y - q.y).forEach((it) => it.draw());
+
+    // partikel di atas semua benda
+    for (let i = partikel.length - 1; i >= 0; i--) {
+      const p = partikel[i];
+      p.hidup += dt;
+      if (p.hidup >= p.umur) {
+        partikel.splice(i, 1);
+        continue;
+      }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.jenis === "spark" || p.jenis === "drop") p.vy += 90 * dt;
+      if (p.jenis === "confetti") p.vx += Math.sin(t * 3 + i) * 10 * dt;
+      ctx.globalAlpha = Math.min(1, (p.umur - p.hidup) * 2);
+      ctx.fillStyle = p.warna;
+      const x = Math.round(p.x);
+      const y = Math.round(p.y);
+      if (p.jenis === "heart") {
+        ctx.fillRect(x - 1, y, 1, 1);
+        ctx.fillRect(x + 1, y, 1, 1);
+        ctx.fillRect(x - 1, y + 1, 3, 1);
+        ctx.fillRect(x, y + 2, 1, 1);
+      } else if (p.jenis === "z") {
+        ctx.fillRect(x, y, 3, 1);
+        ctx.fillRect(x + 1, y + 1, 1, 1);
+        ctx.fillRect(x, y + 2, 3, 1);
+      } else if (p.jenis === "confetti") {
+        ctx.fillRect(x, y, 2, Math.sin(t * 8 + i) > 0 ? 2 : 1);
+      } else {
+        ctx.fillRect(x, y, 1, 1);
+      }
+      ctx.globalAlpha = 1;
+    }
 
     // overlay HTML
     for (const a of actors) {
