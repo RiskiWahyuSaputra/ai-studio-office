@@ -11,7 +11,7 @@ import type { Format } from "../src/shared/types.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
 
 const API = "https://api.elevenlabs.io/v1";
-const MODEL = process.env.ELEVENLABS_MODEL || "eleven_multilingual_v2";
+const MODEL = process.env.ELEVENLABS_MODEL?.trim() || "eleven_v3";
 
 export const elevenTersedia = () => Boolean(process.env.ELEVENLABS_API_KEY?.trim());
 

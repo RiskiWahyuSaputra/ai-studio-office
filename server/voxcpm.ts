@@ -39,6 +39,7 @@ const SUARA_KANAL = process.env.ELEVENLABS_VOICE_ID?.trim();
 
 export const SUARA_LOKAL: SuaraLokal[] = [
   ...(SUARA_KANAL ? [{ id: "eleven-kanal", ket: "Suara kanal (ElevenLabs, ELEVENLABS_VOICE_ID)", deskripsi: "", eleven: { voiceId: SUARA_KANAL } }] : []),
+  { id: "eleven-liam", ket: "Pria muda, Liam (ElevenLabs)", deskripsi: "", eleven: { voiceId: "TX3LPaxmHKxFdv7VOQHJ" } },
   { id: "eleven-brian", ket: "Pria, narator dalam (ElevenLabs)", deskripsi: "", eleven: { voiceId: "nPczCjzI2devNBz1zQrb" } },
   { id: "eleven-bill", ket: "Pria, tua & tenang (ElevenLabs)", deskripsi: "", eleven: { voiceId: "pqHfZKP75CvOlQylNhV4" } },
   { id: "eleven-lily", ket: "Wanita, lembut (ElevenLabs)", deskripsi: "", eleven: { voiceId: "pFZP5JQG7iQjIQuC4Bku" } },
@@ -63,7 +64,7 @@ export const SUARA_LOKAL: SuaraLokal[] = [
 /** Suara bawaan per format: ElevenLabs kalau kuncinya ada, kalau tidak Edge (Ardi). */
 export function bawaanLokal(_format: Format): string {
   if (!elevenTersedia()) return "edge-ardi";
-  return SUARA_KANAL ? "eleven-kanal" : "eleven-brian";
+  return SUARA_KANAL ? "eleven-kanal" : "eleven-liam";
 }
 
 /** Tempo bicara Edge per format: horor lebih pelan, vlog sedikit lebih cepat. */
