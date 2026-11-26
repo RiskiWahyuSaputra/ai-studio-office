@@ -1,19 +1,12 @@
 import { OWNER, SEKRETARIS, TEAM, type Member } from "../shared/team.ts";
-import {
-  drawBookshelf,
-  drawBossChair,
-  drawBossDesk,
-  drawCat,
-  drawChair,
-  drawLamp,
-  drawText,
-  drawCoffeeMachine,
-  drawDesk,
-  drawPerson,
-  drawPlant,
-  drawServerRack,
-  drawSofa,
-} from "./sprites.ts";
+import * as Piksel from "./sprites.ts";
+import * as Halus from "./sprites2d.ts";
+
+const { drawText } = Piksel;
+
+export type ModeTampilan = "pixel" | "2d";
+/** resolusi kanvas mode 2D (kelipatan ukuran dunia) supaya garis & lengkungan tetap halus */
+const RES_2D = 4;
 
 const W = 480;
 const H = 240;
@@ -140,6 +133,7 @@ export interface Office {
   select(id: string | null): void;
   onSelect(cb: (id: string | null) => void): void;
   setBoard(columns: { label: string; count: number; color: string }[]): void;
+  setMode(mode: ModeTampilan): void;
 }
 
 function buildDesks(): Desk[] {
@@ -165,8 +159,20 @@ function pathBetween(from: Pt, fromFrontY: number, to: Pt, toFrontY: number): Pt
 
 export function createOffice(canvas: HTMLCanvasElement): Office {
   const ctx = canvas.getContext("2d")!;
-  canvas.width = W;
-  canvas.height = H;
+  let mode: ModeTampilan = "pixel";
+  /** set gambar sesuai mode aktif */
+  let G: typeof Piksel = Piksel;
+  function terapkanMode() {
+    const R = mode === "2d" ? RES_2D : 1;
+    canvas.width = W * R;
+    canvas.height = H * R;
+    ctx.setTransform(R, 0, 0, R, 0, 0);
+    ctx.imageSmoothingEnabled = mode === "2d";
+    canvas.style.imageRendering = mode === "2d" ? "auto" : "pixelated";
+    G = mode === "2d" ? (Halus as unknown as typeof Piksel) : Piksel;
+    canvas.dataset.mode = mode;
+  }
+  terapkanMode();
   const host = canvas.parentElement!;
   const overlay = document.createElement("div");
   overlay.className = "office-overlay";
@@ -553,6 +559,12 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     setBoard(columns) {
       board = columns;
     },
+    setMode(m) {
+      if (m === mode) return;
+      mode = m;
+      terapkanMode();
+      resize();
+    },
   };
 
   // --- input ---
@@ -588,7 +600,8 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   function resize() {
     const r = host.getBoundingClientRect();
     const s = Math.min(r.width / W, r.height / H);
-    scale = s >= 1 ? Math.max(1, Math.floor(s * 2) / 2) : s;
+    // piksel: kelipatan 0,5 supaya piksel tetap tajam; 2D: isi ruang sepenuhnya
+    scale = mode === "2d" ? s : s >= 1 ? Math.max(1, Math.floor(s * 2) / 2) : s;
     canvas.style.width = `${W * scale}px`;
     canvas.style.height = `${H * scale}px`;
     overlay.style.width = canvas.style.width;
@@ -844,32 +857,33 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     for (const k of kucingSemua) updateKucing(k, now, dt);
 
     ctx.clearRect(0, 0, W, H);
-    drawRoom(t);
+    if (mode === "2d") Halus.drawRuang(ctx, { t, W, H, WALL, ROOM_X, DOOR, board });
+    else drawRoom(t);
 
     const items: Drawable[] = [];
     desks.forEach((d, i) => {
       const owner = actors[i];
       const on = owner.working || (owner.sitting && Math.sin(t * 0.7 + i) > 0);
-      items.push({ y: d.y - 2, draw: () => drawChair(ctx, d.seat.x, d.seat.y) });
-      items.push({ y: d.y + 13, draw: () => drawDesk(ctx, d.x, d.y, on, t + i, owner.working ? "#6fcf7f" : "#6ab8f0") });
+      items.push({ y: d.y - 2, draw: () => G.drawChair(ctx, d.seat.x, d.seat.y) });
+      items.push({ y: d.y + 13, draw: () => G.drawDesk(ctx, d.x, d.y, on, t + i, owner.working ? "#6fcf7f" : "#6ab8f0") });
     });
-    items.push({ y: 84, draw: () => drawCoffeeMachine(ctx, 300, 84, t, brewing > 0) });
-    items.push({ y: 82, draw: () => drawPlant(ctx, 8, 82, t) });
-    items.push({ y: 82, draw: () => drawPlant(ctx, 370, 82, t) });
-    items.push({ y: SOFA.y - 4, draw: () => drawSofa(ctx, 300, SOFA.y - 4) });
-    items.push({ y: 236, draw: () => drawServerRack(ctx, 2, 236, t) });
-    items.push({ y: 236, draw: () => drawPlant(ctx, 276, 236, t) });
+    items.push({ y: 84, draw: () => G.drawCoffeeMachine(ctx, 300, 84, t, brewing > 0) });
+    items.push({ y: 82, draw: () => G.drawPlant(ctx, 8, 82, t) });
+    items.push({ y: 82, draw: () => G.drawPlant(ctx, 370, 82, t) });
+    items.push({ y: SOFA.y - 4, draw: () => G.drawSofa(ctx, 300, SOFA.y - 4) });
+    items.push({ y: 236, draw: () => G.drawServerRack(ctx, 2, 236, t) });
+    items.push({ y: 236, draw: () => G.drawPlant(ctx, 276, 236, t) });
     // ruang owner
     const kiyu = actors.find((a) => a.m.id === OWNER.id)!;
-    items.push({ y: OWNER_DESK.y - 2, draw: () => drawBossChair(ctx, OWNER_DESK.seat.x, OWNER_DESK.seat.y) });
-    items.push({ y: OWNER_DESK.y + 15, draw: () => drawBossDesk(ctx, OWNER_DESK.x, OWNER_DESK.y, t, kiyu.sitting || kiyu.working) });
+    items.push({ y: OWNER_DESK.y - 2, draw: () => G.drawBossChair(ctx, OWNER_DESK.seat.x, OWNER_DESK.seat.y) });
+    items.push({ y: OWNER_DESK.y + 15, draw: () => G.drawBossDesk(ctx, OWNER_DESK.x, OWNER_DESK.y, t, kiyu.sitting || kiyu.working) });
     const laiza = actors.find((a) => a.m.id === SEKRETARIS.id)!;
-    items.push({ y: LAIZA_DESK.y - 2, draw: () => drawChair(ctx, LAIZA_DESK.seat.x, LAIZA_DESK.seat.y) });
-    items.push({ y: LAIZA_DESK.y + 13, draw: () => drawDesk(ctx, LAIZA_DESK.x, LAIZA_DESK.y, laiza.sitting, t + 9, "#ef6b8f") });
-    items.push({ y: 98, draw: () => drawBookshelf(ctx, 444, 98) });
-    items.push({ y: 100, draw: () => drawLamp(ctx, 474, 100, t) });
-    items.push({ y: 236, draw: () => drawPlant(ctx, 470, 236, t) });
-    items.push({ y: 236, draw: () => drawPlant(ctx, 402, 236, t) });
+    items.push({ y: LAIZA_DESK.y - 2, draw: () => G.drawChair(ctx, LAIZA_DESK.seat.x, LAIZA_DESK.seat.y) });
+    items.push({ y: LAIZA_DESK.y + 13, draw: () => G.drawDesk(ctx, LAIZA_DESK.x, LAIZA_DESK.y, laiza.sitting, t + 9, "#ef6b8f") });
+    items.push({ y: 98, draw: () => G.drawBookshelf(ctx, 444, 98) });
+    items.push({ y: 100, draw: () => G.drawLamp(ctx, 474, 100, t) });
+    items.push({ y: 236, draw: () => G.drawPlant(ctx, 470, 236, t) });
+    items.push({ y: 236, draw: () => G.drawPlant(ctx, 402, 236, t) });
 
     for (const a of actors) {
       items.push({
@@ -877,9 +891,13 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
         draw: () => {
           if (a.m.id === selected || a.m.id === hovered) {
             ctx.fillStyle = a.m.id === selected ? "rgba(242,179,61,0.55)" : "rgba(255,255,255,0.25)";
-            ctx.fillRect(Math.round(a.pos.x) - 7, Math.round(a.pos.y) - 1, 14, 3);
+            if (mode === "2d") {
+              ctx.beginPath();
+              ctx.ellipse(a.pos.x, a.pos.y, 7, 2.2, 0, 0, Math.PI * 2);
+              ctx.fill();
+            } else ctx.fillRect(Math.round(a.pos.x) - 7, Math.round(a.pos.y) - 1, 14, 3);
           }
-          drawPerson(ctx, a.pos.x, a.pos.y, a.m.look, {
+          G.drawPerson(ctx, a.pos.x, a.pos.y, a.m.look, {
             facing: a.facing,
             walkFrame: a.sitting || !a.steps.length || a.steps[0].kind !== "walk" ? 0 : Math.floor(a.walkT * 8) % 4,
             sitting: a.sitting,
@@ -896,7 +914,7 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     for (const k of kucingSemua) {
       items.push({
         y: k.tidur && diTempatTidur(k) ? SOFA.y + 1 : k.pos.y,
-        draw: () => drawCat(ctx, k.pos.x, k.pos.y, k.facing, Math.floor(k.walkT * 6), k.tidur, t, k.warna),
+        draw: () => G.drawCat(ctx, k.pos.x, k.pos.y, k.facing, Math.floor(k.walkT * 6), k.tidur, t, k.warna),
       });
     }
     items.sort((p, q) => p.y - q.y).forEach((it) => it.draw());
@@ -917,7 +935,8 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
       ctx.fillStyle = p.warna;
       const x = Math.round(p.x);
       const y = Math.round(p.y);
-      if (p.jenis === "heart") {
+      if (mode === "2d") Halus.drawPartikel(ctx, p.jenis, p.x, p.y, p.warna, t, i);
+      else if (p.jenis === "heart") {
         ctx.fillRect(x - 1, y, 1, 1);
         ctx.fillRect(x + 1, y, 1, 1);
         ctx.fillRect(x - 1, y + 1, 3, 1);

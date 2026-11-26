@@ -1,12 +1,35 @@
 import "./style.css";
 import "./ui/panel.css";
 import { api, listen } from "./api.ts";
-import { createOffice } from "./office/office.ts";
+import { createOffice, type ModeTampilan } from "./office/office.ts";
 import { memberForStage } from "./shared/team.ts";
 import { STAGES, type Project, type ServerEvent } from "./shared/types.ts";
 import { esc, judulProyek, renderPanel, type UiState, type View } from "./ui/panel.ts";
 
 const office = createOffice(document.querySelector<HTMLCanvasElement>("#office")!);
+
+// mode tampilan kantor (Pixel / 2D), diingat per browser
+const KUNCI_MODE = "kantor-mode";
+function pilihMode(m: ModeTampilan) {
+  office.setMode(m);
+  for (const b of document.querySelectorAll<HTMLButtonElement>(".mode-toggle [data-mode]")) b.setAttribute("aria-pressed", String(b.dataset.mode === m));
+  try {
+    localStorage.setItem(KUNCI_MODE, m);
+  } catch {
+    // penyimpanan diblokir: tidak apa-apa, hanya tidak diingat
+  }
+}
+let modeAwal: ModeTampilan = "pixel";
+try {
+  if (localStorage.getItem(KUNCI_MODE) === "2d") modeAwal = "2d";
+} catch {
+  // abaikan
+}
+pilihMode(modeAwal);
+document.querySelector(".mode-toggle")?.addEventListener("click", (ev) => {
+  const b = (ev.target as HTMLElement).closest<HTMLButtonElement>("[data-mode]");
+  if (b) pilihMode(b.dataset.mode as ModeTampilan);
+});
 const panel = document.querySelector<HTMLElement>("#panel")!;
 const info = document.querySelector<HTMLElement>("#topbar-info")!;
 const toastBox = document.createElement("div");
