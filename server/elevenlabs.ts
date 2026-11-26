@@ -70,7 +70,8 @@ async function satu(teks: string, voiceId: string, format: Format, out: string):
       fs.writeFileSync(`${out}.part`, Buffer.from(j.audio_base64, "base64"));
       fs.renameSync(`${out}.part`, out);
       fs.writeFileSync(`${out}.kata.json`, JSON.stringify(kata));
-      catatEleven(teks.length);
+      // biaya pasti dari ElevenLabs (header character-cost); kalau tidak ada, pakai panjang teks
+      catatEleven(Number(r.headers.get("character-cost")) || teks.length);
       segarkanKuotaEleven();
       return kata;
     }

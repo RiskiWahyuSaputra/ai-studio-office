@@ -12,6 +12,8 @@ import type { InfoKuota } from "../src/shared/types.ts";
 const FILE = path.join(ROOT, "data", "pemakaian.json");
 
 interface Catatan {
+  /** bulan yang sudah diisi dari file lama di uploads/ (pemakaian sebelum fitur kuota ada) */
+  diisi?: string;
   eleven: { bulan: string; karakter: number; permintaan: number };
   agy: {
     hari: string;
@@ -45,7 +47,60 @@ function baca(): Catatan {
     tokenBulan: a?.bulan === bulanIni() ? a.tokenBulan : 0,
     galatKuota: a?.galatKuota,
   };
-  return { eleven, agy };
+  const hasil: Catatan = { diisi: c.diisi, eleven, agy };
+  if (hasil.diisi !== bulanIni()) isiDariBerkas(hasil);
+  return hasil;
+}
+
+/**
+ * Pemakaian yang terjadi sebelum dicatat: narasi ElevenLabs (suara-el-*.mp3, tiap file = satu permintaan)
+ * dan rancangan Antigravity (src/Video.tsx yang sudah dirancang) bulan ini.
+ */
+function isiDariBerkas(c: Catatan) {
+  const awalBulan = new Date(`${bulanIni()}-01T00:00:00+07:00`).getTime();
+  let karakter = 0;
+  let permintaan = 0;
+  let rancangan = 0;
+  let rancanganHari = 0;
+  const uploads = path.join(ROOT, "uploads");
+  for (const proyek of fs.existsSync(uploads) ? fs.readdirSync(uploads) : []) {
+    const dir = path.join(uploads, proyek);
+    let isi: string[];
+    try {
+      isi = fs.readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const f of isi) {
+      if (/^suara-el-.*\.mp3\.kata\.json$/.test(f)) {
+        const p = path.join(dir, f);
+        if (fs.statSync(p).mtimeMs < awalBulan) continue;
+        try {
+          const kata = JSON.parse(fs.readFileSync(p, "utf8")) as { teks: string }[];
+          karakter += kata.map((k) => k.teks).join(" ").length;
+          permintaan += 1;
+        } catch {
+          /* rusak, lewati */
+        }
+      } else if (f.startsWith("agy-")) {
+        const v = path.join(dir, f, "src", "Video.tsx");
+        try {
+          const st = fs.statSync(v);
+          if (st.mtimeMs < awalBulan || fs.readFileSync(v, "utf8").includes("POVQ-BELUM-DIRANCANG")) continue;
+          rancangan += 1;
+          if (new Date(st.mtimeMs).toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" }) === hariIni()) rancanganHari += 1;
+        } catch {
+          /* belum ada rancangan */
+        }
+      }
+    }
+  }
+  c.eleven.karakter = Math.max(c.eleven.karakter, karakter);
+  c.eleven.permintaan = Math.max(c.eleven.permintaan, permintaan);
+  c.agy.rancanganBulan = Math.max(c.agy.rancanganBulan, rancangan);
+  c.agy.rancanganHari = Math.max(c.agy.rancanganHari, rancanganHari);
+  c.diisi = bulanIni();
+  simpan(c);
 }
 
 function simpan(c: Catatan) {
@@ -109,7 +164,7 @@ async function kuotaEleven(): Promise<InfoKuota["eleven"]> {
       batas: batasLokal,
       catatan:
         (e as Error).message === "izin"
-          ? 'Angka dari hitungan Kantor PovQ bulan ini. Untuk angka resmi, aktifkan izin "User → Read" di kunci API ElevenLabs.'
+          ? 'Perkiraan dari narasi yang dibuat Kantor PovQ bulan ini (contoh suara yang dibuat di luar aplikasi tidak ikut terhitung). Untuk angka resmi, aktifkan izin "User → Read" di kunci API ElevenLabs.'
           : "ElevenLabs tidak bisa dihubungi, pakai hitungan Kantor PovQ bulan ini.",
     };
   }
