@@ -28,12 +28,12 @@ interface SuaraLokal {
   /** rekaman tetap yang dikloning VoxCPM */
   acuan?: { file: string; teks: string };
   /** suara Edge TTS (cepat, beberapa detik per kalimat) dan bukan VoxCPM */
-  edge?: { suara: string; pitch: string };
+  edge?: { suara: string; pitch: string; pitchHoror: string };
 }
 
 export const SUARA_LOKAL: SuaraLokal[] = [
-  { id: "edge-ardi", ket: "Pria, Ardi (cepat)", deskripsi: "", edge: { suara: "id-ID-ArdiNeural", pitch: "-4Hz" } },
-  { id: "edge-gadis", ket: "Wanita, Gadis (cepat)", deskripsi: "", edge: { suara: "id-ID-GadisNeural", pitch: "-4Hz" } },
+  { id: "edge-ardi", ket: "Pria, Ardi (cepat)", deskripsi: "", edge: { suara: "id-ID-ArdiNeural", pitch: "-4Hz", pitchHoror: "-12Hz" } },
+  { id: "edge-gadis", ket: "Wanita, Gadis (cepat)", deskripsi: "", edge: { suara: "id-ID-GadisNeural", pitch: "-4Hz", pitchHoror: "-8Hz" } },
   {
     id: "pendongeng-horor",
     ket: "Pria, bisikan berat (VoxCPM, lambat)",
@@ -57,7 +57,8 @@ export const BAWAAN_LOKAL: Record<Format, string> = {
 };
 
 /** Tempo bicara Edge per format: horor lebih pelan, vlog sedikit lebih cepat. */
-const TEMPO_EDGE: Record<Format, string> = { "cerita-horor": "-8%", "pov-sejarah": "+0%", "vlog-hewan": "+6%" };
+// horor: lebih lambat & nada lebih rendah (pilihan kanal, contoh: povq-uji-suara/seram/1-ardi-pelan-dalam.wav)
+const TEMPO_EDGE: Record<Format, string> = { "cerita-horor": "-18%", "pov-sejarah": "+0%", "vlog-hewan": "+6%" };
 
 export const suaraLokalProyek = (p: Project) =>
   SUARA_LOKAL.find((s) => s.id === p.suaraLokal) ?? SUARA_LOKAL.find((s) => s.id === BAWAAN_LOKAL[p.format])!;
@@ -119,11 +120,12 @@ async function jalankanEdge(p: Project, kalimat: string[], suara: SuaraLokal, on
   fs.mkdirSync(dir, { recursive: true });
   const e = suara.edge!;
   const rate = TEMPO_EDGE[p.format];
-  const files = kalimat.map((t) => `suara-ed-${kunci(`${e.suara}|${rate}|${e.pitch}|${t}`)}.mp3`);
+  const pitch = p.format === "cerita-horor" ? e.pitchHoror : e.pitch;
+  const files = kalimat.map((t) => `suara-ed-${kunci(`${e.suara}|${rate}|${pitch}|${t}`)}.mp3`);
   const fileTugas = path.join(dir, `tugas-ed-${Date.now()}.json`);
   fs.writeFileSync(
     fileTugas,
-    JSON.stringify({ kalimat: kalimat.map((teks, i) => ({ teks, out: path.join(dir, files[i]) })), suara: e.suara, rate, pitch: e.pitch }),
+    JSON.stringify({ kalimat: kalimat.map((teks, i) => ({ teks, out: path.join(dir, files[i]) })), suara: e.suara, rate, pitch }),
   );
   const akhir = await new Promise<{ kata: Record<string, KataWaktu[]> }>((resolve, reject) => {
     const ps = spawn(PYTHON, [SKRIP_EDGE, fileTugas], { cwd: DIR, env: { ...process.env, PYTHONUNBUFFERED: "1" } });
