@@ -332,11 +332,19 @@ export function drawLamp(ctx: Ctx, x: number, y: number, t: number) {
 }
 
 /** Kucing kantor 10x7. (x, y) = titik kaki tengah. */
-export function drawCat(ctx: Ctx, x: number, y: number, facing: 1 | -1, frame: number, tidur: boolean, t: number) {
+export function drawCat(
+  ctx: Ctx,
+  x: number,
+  y: number,
+  facing: 1 | -1,
+  frame: number,
+  tidur: boolean,
+  t: number,
+  warna: { bulu: string; gelap: string; mata: string } = { bulu: "#e59b4a", gelap: "#b8722e", mata: "#1a1520" },
+) {
   const l = Math.round(x) - 5;
   const b = Math.round(y);
-  const bulu = "#e59b4a";
-  const gelap = "#b8722e";
+  const { bulu, gelap } = warna;
   ctx.fillStyle = "rgba(0,0,0,0.25)";
   ctx.fillRect(l + 1, b - 1, 8, 2);
   if (tidur) {
@@ -358,7 +366,7 @@ export function drawCat(ctx: Ctx, x: number, y: number, facing: 1 | -1, frame: n
   px(ctx, kx, b - 7, 3, 3, bulu);
   px(ctx, kx, b - 8, 1, 1, bulu);
   px(ctx, kx + 2, b - 8, 1, 1, bulu);
-  px(ctx, kx + (facing === 1 ? 2 : 0), b - 6, 1, 1, "#1a1520");
+  px(ctx, kx + (facing === 1 ? 2 : 0), b - 6, 1, 1, warna.mata);
   const ekor = Math.round(Math.sin(t * 4) * 1);
   px(ctx, facing === 1 ? l + 1 : l + 8, b - 7 + ekor, 1, 3, gelap);
 }

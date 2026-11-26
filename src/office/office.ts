@@ -90,12 +90,18 @@ const OBROLAN = [
   ["Render-nya lama ya", "Sabar, lagi antre", "Ya udah, ngopi dulu"],
   ["Semalam nonton apa?", "Film horor, gak bisa tidur", "Bisa jadi konten tuh!"],
   ["Caption-nya pakai emoji?", "Boleh, biar rame", "Siap 👍"],
-  ["Kucingnya tidur di sofa lagi", "Biarin, dia maskot kita", "Haha, iya"],
+  ["Ciko tidur di sofa lagi", "Biarin, dia maskot kita", "Haha, iya"],
+  ["Bubbie tadi nyelonong ke ruang Kiyu", "Hitam-hitam gitu, kayak hantu", "Cocok buat konten horor 😹"],
+  ["Ochi bulunya rontok di kursiku", "Namanya juga kucing putih", "Untung lucu"],
   ["Kiyu lagi cek proyek", "Semoga di-approve", "Pasti, naskahnya bagus"],
 ];
 const TITIK_OBROL: Pt[] = [{ x: 300, y: 132 }, { x: 240, y: 148 }, { x: 130, y: 148 }, { x: 330, y: 228 }];
 const TITIK_KUCING: Pt[] = [{ x: 240, y: 148 }, { x: 300, y: 132 }, { x: 150, y: 222 }, { x: 60, y: 148 }, { x: 330, y: 228 }, { x: 200, y: 222 }];
-const SOFA_KUCING = { x: 312, y: 196 };
+const KUCING: { nama: string; bulu: string; gelap: string; mata: string; tidurDi: Pt }[] = [
+  { nama: "Ciko", bulu: "#e59b4a", gelap: "#b8722e", mata: "#1a1520", tidurDi: { x: 310, y: 196 } },
+  { nama: "Bubbie", bulu: "#2b2833", gelap: "#17151c", mata: "#f2d74a", tidurDi: { x: 324, y: 196 } },
+  { nama: "Ochi", bulu: "#f3f0ea", gelap: "#cfc8bd", mata: "#1a1520", tidurDi: { x: 337, y: 196 } },
+];
 const TANAMAN: { berdiri: Pt; arah: 1 | -1 }[] = [
   { berdiri: { x: 356, y: 96 }, arah: 1 },
   { berdiri: { x: 262, y: 232 }, arah: 1 },
@@ -222,45 +228,100 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     }
   }
 
-  // --- kucing kantor ---
-  const kucing = { pos: { x: 312, y: 196 }, tujuan: [] as Pt[], facing: 1 as 1 | -1, walkT: 0, tidur: true, diamSampai: performance.now() + 15000, zBerikut: 0 };
-  function kucingJalanKe(t: Pt) {
+  // --- kucing kantor: Ciko, Bubbie, Ochi ---
+  interface Kucing {
+    nama: string;
+    warna: { bulu: string; gelap: string; mata: string };
+    tidurDi: Pt;
+    pos: Pt;
+    tujuan: Pt[];
+    facing: 1 | -1;
+    walkT: number;
+    tidur: boolean;
+    diamSampai: number;
+    zBerikut: number;
+    tag: HTMLElement;
+    bubble: HTMLElement;
+    sayText: string;
+    sayUntil: number;
+  }
+  const kucingSemua: Kucing[] = KUCING.map((k, i) => {
+    const tag = document.createElement("button");
+    tag.className = "name-tag";
+    tag.type = "button";
+    tag.innerHTML = `<strong>${k.nama}</strong><span>Kucing kantor</span>`;
+    tag.addEventListener("click", () => elusLangsung(kucingSemua[i]));
+    const bubble = document.createElement("div");
+    bubble.className = "bubble";
+    overlay.append(tag, bubble);
+    // mulai: Ciko tidur di sofa, yang lain berkeliaran
+    const pos = i === 0 ? { ...k.tidurDi } : { ...TITIK_KUCING[(i * 2) % TITIK_KUCING.length] };
+    return {
+      nama: k.nama,
+      warna: k,
+      tidurDi: k.tidurDi,
+      pos,
+      tujuan: [],
+      facing: (i % 2 ? -1 : 1) as 1 | -1,
+      walkT: 0,
+      tidur: i === 0,
+      diamSampai: performance.now() + (6000 + i * 5000) * JEDA,
+      zBerikut: 0,
+      tag,
+      bubble,
+      sayText: "",
+      sayUntil: 0,
+    };
+  });
+  let kucingHover: Kucing | null = null;
+
+  function kucingJalanKe(k: Kucing, t: Pt) {
     const diRuangOwner = (p: Pt) => p.x > ROOM_X;
     const pintu = { x: ROOM_X - 2, y: (DOOR.y1 + DOOR.y2) / 2 };
-    kucing.tujuan = diRuangOwner(t) !== diRuangOwner(kucing.pos) ? [pintu, t] : [t];
-    kucing.tidur = false;
+    k.tujuan = diRuangOwner(t) !== diRuangOwner(k.pos) ? [pintu, t] : [t];
+    k.tidur = false;
   }
-  function updateKucing(now: number, dt: number) {
-    const t = kucing.tujuan[0];
+  const diTempatTidur = (k: Kucing) => Math.abs(k.pos.x - k.tidurDi.x) < 2 && Math.abs(k.pos.y - k.tidurDi.y) < 2;
+  function updateKucing(k: Kucing, now: number, dt: number) {
+    const t = k.tujuan[0];
     if (t) {
-      const dx = t.x - kucing.pos.x;
-      const dy = t.y - kucing.pos.y;
+      const dx = t.x - k.pos.x;
+      const dy = t.y - k.pos.y;
       const d = Math.hypot(dx, dy);
       const langkah = 18 * dt;
       if (d <= langkah) {
-        kucing.pos = { ...t };
-        kucing.tujuan.shift();
-        if (!kucing.tujuan.length) {
-          const diSofa = Math.abs(kucing.pos.x - SOFA_KUCING.x) < 2 && Math.abs(kucing.pos.y - SOFA_KUCING.y) < 2;
-          kucing.tidur = diSofa;
-          kucing.diamSampai = now + (diSofa ? 25000 : 6000) + Math.random() * 8000;
+        k.pos = { ...t };
+        k.tujuan.shift();
+        if (!k.tujuan.length) {
+          k.tidur = diTempatTidur(k);
+          k.diamSampai = now + ((k.tidur ? 25000 : 6000) + Math.random() * 8000) * JEDA;
         }
       } else {
-        kucing.pos.x += (dx / d) * langkah;
-        kucing.pos.y += (dy / d) * langkah;
-        if (Math.abs(dx) > 0.3) kucing.facing = dx > 0 ? 1 : -1;
-        kucing.walkT += dt;
+        k.pos.x += (dx / d) * langkah;
+        k.pos.y += (dy / d) * langkah;
+        if (Math.abs(dx) > 0.3) k.facing = dx > 0 ? 1 : -1;
+        k.walkT += dt;
       }
       return;
     }
-    if (kucing.tidur && now > kucing.zBerikut) {
-      semburkan("z", kucing.pos.x + 3, kucing.pos.y - 8, 1);
-      kucing.zBerikut = now + 1400;
+    if (k.tidur && now > k.zBerikut) {
+      semburkan("z", k.pos.x + 3, k.pos.y - 8, 1);
+      k.zBerikut = now + 1400 + Math.random() * 600;
     }
-    if (now > kucing.diamSampai) {
+    if (now > k.diamSampai) {
       const r = Math.random();
-      kucingJalanKe(r < 0.3 ? SOFA_KUCING : r < 0.4 ? { x: 430, y: 196 } : pick(TITIK_KUCING));
+      kucingJalanKe(k, r < 0.3 ? k.tidurDi : r < 0.42 ? { x: 410 + Math.random() * 50, y: 190 + Math.random() * 14 } : pick(TITIK_KUCING));
     }
+  }
+  function meong(k: Kucing, teks: string) {
+    k.sayText = teks;
+    k.sayUntil = performance.now() + 2200;
+  }
+  /** Klik kucing: dia mengeong dan keluar hati. */
+  function elusLangsung(k: Kucing) {
+    meong(k, pick(["Meong~", "Purrr...", "Mrrp?", "Meow! 😺"]));
+    semburkan("heart", k.pos.x, k.pos.y - 10, 3);
+    k.diamSampai = Math.max(k.diamSampai, performance.now() + 8000);
   }
 
   // --- percakapan dua karyawan ---
@@ -365,13 +426,18 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   }
 
   function planElusKucing(a: Actor) {
-    if (kucing.tujuan.length) return false;
+    const calon = kucingSemua.filter((k) => !k.tujuan.length && k.pos.x < ROOM_X);
+    if (!calon.length) return false;
+    const kucing = pick(calon);
     a.steps = [];
     const p = { x: Math.round(kucing.pos.x) + (kucing.pos.x > 200 ? -10 : 10), y: Math.round(kucing.pos.y) };
     kucing.diamSampai = Math.max(kucing.diamSampai, performance.now() + 30000);
     goTo(a, p, p.y);
-    a.steps.push({ kind: "face", dir: kucing.pos.x > p.x ? 1 : -1 }, { kind: "say", text: pick(["Pus pus~", "Gemes banget", "Meong!"]), ms: 2400 });
+    a.steps.push({ kind: "face", dir: kucing.pos.x > p.x ? 1 : -1 }, { kind: "say", text: pick([`Pus pus, ${kucing.nama}~`, `${kucing.nama} gemes banget`, `Halo ${kucing.nama}!`]), ms: 2400 });
     for (let i = 0; i < 3; i++) a.steps.push({ kind: "fx", jenis: "heart", dx: kucing.pos.x > p.x ? 10 : -10, dy: -8 }, { kind: "wait", ms: 700 });
+    // kucingnya membalas
+    const jarak = Math.abs(a.pos.x - p.x) + Math.abs(a.pos.y - p.y) + 120;
+    setTimeout(() => meong(kucing, pick(["Meong~", "Purrr...", "Mrrp"])), (jarak / SPEED) * 1000 + 1400);
     returnToDesk(a, p.y);
     return true;
   }
@@ -497,14 +563,23 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
   function hit(p: Pt): Actor | undefined {
     return actors.find((a) => Math.abs(p.x - a.pos.x) < 9 && p.y > a.pos.y - 20 && p.y < a.pos.y + 4);
   }
+  const hitKucing = (p: Pt) => kucingSemua.find((k) => Math.abs(p.x - k.pos.x) < 7 && p.y > k.pos.y - 10 && p.y < k.pos.y + 3);
   canvas.addEventListener("mousemove", (ev) => {
-    const a = hit(toLogical(ev));
+    const p = toLogical(ev);
+    const a = hit(p);
+    kucingHover = a ? null : (hitKucing(p) ?? null);
     hovered = a?.m.id ?? null;
-    canvas.style.cursor = a ? "pointer" : "default";
+    canvas.style.cursor = a || kucingHover ? "pointer" : "default";
   });
-  canvas.addEventListener("mouseleave", () => (hovered = null));
+  canvas.addEventListener("mouseleave", () => {
+    hovered = null;
+    kucingHover = null;
+  });
   canvas.addEventListener("click", (ev) => {
-    const a = hit(toLogical(ev));
+    const p = toLogical(ev);
+    const a = hit(p);
+    const k = a ? undefined : hitKucing(p);
+    if (k) return elusLangsung(k);
     api.select(a ? a.m.id : null);
   });
 
@@ -766,7 +841,7 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
     const t = now / 1000;
     for (const a of actors) update(a, now, dt);
     updateObrolan(now);
-    updateKucing(now, dt);
+    for (const k of kucingSemua) updateKucing(k, now, dt);
 
     ctx.clearRect(0, 0, W, H);
     drawRoom(t);
@@ -818,7 +893,12 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
       });
     }
     // kucing yang tidur di sofa digambar di atas bantalnya
-    items.push({ y: kucing.tidur && Math.abs(kucing.pos.x - SOFA_KUCING.x) < 3 ? SOFA.y + 1 : kucing.pos.y, draw: () => drawCat(ctx, kucing.pos.x, kucing.pos.y, kucing.facing, Math.floor(kucing.walkT * 6), kucing.tidur, t) });
+    for (const k of kucingSemua) {
+      items.push({
+        y: k.tidur && diTempatTidur(k) ? SOFA.y + 1 : k.pos.y,
+        draw: () => drawCat(ctx, k.pos.x, k.pos.y, k.facing, Math.floor(k.walkT * 6), k.tidur, t, k.warna),
+      });
+    }
     items.sort((p, q) => p.y - q.y).forEach((it) => it.draw());
 
     // partikel di atas semua benda
@@ -866,6 +946,15 @@ export function createOffice(canvas: HTMLCanvasElement): Office {
       a.bubble.classList.toggle("is-visible", !!text);
       a.bubble.classList.toggle("is-working", a.working && now >= a.sayUntil);
       a.bubble.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%)`;
+    }
+    for (const k of kucingSemua) {
+      const x = k.pos.x * scale;
+      k.tag.style.transform = `translate(${x}px, ${(k.pos.y + 3) * scale}px) translateX(-50%)`;
+      k.tag.classList.toggle("is-visible", k === kucingHover);
+      const text = now < k.sayUntil ? k.sayText : "";
+      if (k.bubble.textContent !== text) k.bubble.textContent = text;
+      k.bubble.classList.toggle("is-visible", !!text);
+      k.bubble.style.transform = `translate(${x}px, ${(k.pos.y - 10) * scale}px) translate(-50%, -100%)`;
     }
     requestAnimationFrame(frame);
   }
