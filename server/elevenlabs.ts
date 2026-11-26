@@ -22,6 +22,17 @@ const GAYA_SUARA: Record<Format, { stability: number; similarity_boost: number; 
   "vlog-hewan": { stability: 0.4, similarity_boost: 0.75, style: 0.5, speed: 1.05 },
 };
 
+/**
+ * multilingual_v2 menebak bahasanya sendiri; v2.5 (flash/turbo) & v3 bisa dipaksa membaca sebagai bahasa Indonesia.
+ * v3 hanya menerima stability 0 / 0.5 / 1 dan mengatur emosi dari teks, jadi pengaturan lain tidak dikirim.
+ */
+function badan(teks: string, format: Format) {
+  const g = GAYA_SUARA[format];
+  if (MODEL === "eleven_multilingual_v2") return { text: teks, model_id: MODEL, voice_settings: g };
+  if (MODEL.startsWith("eleven_v3")) return { text: teks, model_id: MODEL, language_code: "id", voice_settings: { stability: 0.5, similarity_boost: g.similarity_boost } };
+  return { text: teks, model_id: MODEL, language_code: "id", voice_settings: g };
+}
+
 const kunci = (s: string) => createHash("sha1").update(s).digest("hex").slice(0, 12);
 
 /** Huruf + waktunya → kata + waktunya. */
@@ -49,7 +60,7 @@ async function satu(teks: string, voiceId: string, format: Format, out: string):
     const r = await fetch(`${API}/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
       method: "POST",
       headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY!.trim(), "content-type": "application/json" },
-      body: JSON.stringify({ text: teks, model_id: MODEL, voice_settings: GAYA_SUARA[format] }),
+      body: JSON.stringify(badan(teks, format)),
       signal: AbortSignal.timeout(90_000),
     });
     if (r.ok) {
