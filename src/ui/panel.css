@@ -226,12 +226,5 @@ a.btn { text-decoration: none; display: inline-block; }
 .part-judul { list-style: none; font: 600 16px var(--font-pixel); color: var(--accent); border-bottom: 2px solid var(--line); padding: 6px 0 2px; margin-top: 4px; }
 .klip-mini img { width: 110px; aspect-ratio: 9 / 16; object-fit: cover; background: #000; border: 2px solid var(--line); }
 
-/* kartu kuota layanan */
-.kuota { display: grid; gap: 12px; }
-.kuota-item p { margin: 4px 0 0; }
-.kuota-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; }
-.kuota-bar { height: 10px; border: 2px solid var(--line); margin-top: 6px; background: var(--bg); }
-.kuota-bar span { display: block; height: 100%; background: var(--ok); }
-.kuota-warn span { background: var(--warn); }
-.kuota-bad span { background: var(--bad); }
-.kuota-peringatan { color: var(--bad); font-weight: 600; }
+/* kuota habis di navbar */
+.kuota-habis { color: var(--bad); font-weight: 600; }

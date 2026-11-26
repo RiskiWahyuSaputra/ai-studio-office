@@ -135,7 +135,6 @@ function renderList(s: UiState): string {
     }
   </section>
 
-  <section class="card" data-kuota><h3>Kuota layanan</h3><p class="hint">Memuat...</p></section>
   ${renderSettings(s)}
   ${renderTeam()}`;
 }
@@ -240,7 +239,6 @@ function renderOwner(s: UiState): string {
       <div><dt>Sudah tayang</dt><dd>${tayang}</dd></div>
     </dl>
   </section>
-  <section class="card" data-kuota><h3>Kuota layanan</h3><p class="hint">Memuat...</p></section>
   <section class="card">
     <h3>Menunggu keputusanmu</h3>
     ${tunggu.length ? `<ul class="project-list">${tunggu.map(baris).join("")}</ul>` : `<p class="empty">Tidak ada yang perlu dicek. Tim sedang aman.</p>`}
@@ -773,41 +771,28 @@ function renderProject(p: Project, s: UiState): string {
 
 const ribuan = (n: number) => n.toLocaleString("id-ID");
 
-/** Isi kartu "Kuota layanan": sisa karakter ElevenLabs dan pemakaian Antigravity. */
+/** Meter kuota di navbar: sisa karakter ElevenLabs dan pemakaian Antigravity hari ini. */
 export function renderKuota(k: InfoKuota): string {
   const e = k.eleven;
-  const sisa = Math.max(0, e.batas - e.terpakai);
-  const persen = e.batas ? Math.min(100, Math.round((e.terpakai / e.batas) * 100)) : 0;
-  const nada = persen >= 90 ? "bad" : persen >= 70 ? "warn" : "ok";
-  // video ±1 menit memakai sekitar 900 karakter narasi
-  const kiraVideo = Math.floor(sisa / 900);
-  const reset = e.reset ? new Date(e.reset).toLocaleDateString("id-ID", { day: "numeric", month: "long" }) : "awal bulan depan";
   const a = k.agy;
-  const jamGalat = a.galatKuota ? (Date.now() - new Date(a.galatKuota.waktu).getTime()) / 3_600_000 : Infinity;
-  return `<h3>Kuota layanan</h3>
-    <div class="kuota">
-      <div class="kuota-item">
-        <div class="kuota-head"><strong>ElevenLabs</strong><span class="muted">suara narasi${e.paket ? ` · paket ${esc(e.paket)}` : ""}</span></div>
-        ${
-          e.aktif
-            ? `<div class="kuota-bar kuota-${nada}" role="meter" aria-valuemin="0" aria-valuemax="${e.batas}" aria-valuenow="${e.terpakai}" aria-label="Karakter ElevenLabs terpakai"><span style="width:${persen}%"></span></div>
-               <p><strong>${ribuan(sisa)}</strong> karakter tersisa dari ${ribuan(e.batas)} (${persen}% terpakai) · cukup untuk sekitar <strong>${kiraVideo}</strong> video 1 menit. Reset ${esc(reset)}.</p>
-               ${e.catatan ? `<p class="hint">${esc(e.catatan)}</p>` : ""}`
-            : `<p class="hint">Belum aktif. Isi ELEVENLABS_API_KEY di .env untuk memakai suara ElevenLabs.</p>`
-        }
-      </div>
-      <div class="kuota-item">
-        <div class="kuota-head"><strong>Antigravity</strong><span class="muted">perancang video</span></div>
-        ${
-          a.aktif
-            ? `<p>Hari ini: <strong>${a.rancanganHari}</strong> rancangan · ${ribuan(a.tokenHari)} token<br />Bulan ini: <strong>${a.rancanganBulan}</strong> rancangan · ${ribuan(a.tokenBulan)} token</p>
-               ${
-                 jamGalat < 24
-                   ? `<p class="kuota-peringatan">⚠ Kuota Antigravity sempat habis ${jamGalat < 1 ? "kurang dari sejam" : `${Math.round(jamGalat)} jam`} lalu. Tunggu kuotanya pulih sebelum membuat video baru.</p>`
-                   : `<p class="hint">Antigravity tidak menampilkan sisa kuota. Kalau kuotanya habis, peringatannya muncul di sini.</p>`
-               }`
-            : `<p class="hint">agy belum terpasang.</p>`
-        }
-      </div>
-    </div>`;
+  let html = "";
+  if (e.aktif) {
+    const sisa = Math.max(0, e.batas - e.terpakai);
+    const pct = e.batas ? Math.max(0, Math.min(100, (sisa / e.batas) * 100)) : 0;
+    const reset = e.reset ? new Date(e.reset).toLocaleDateString("id-ID", { day: "numeric", month: "long" }) : "awal bulan depan";
+    const judul = `Sisa karakter ElevenLabs${e.paket ? ` (paket ${e.paket})` : ""}: ${ribuan(sisa)} dari ${ribuan(e.batas)}, cukup untuk sekitar ${Math.floor(sisa / 900)} video 1 menit. Reset ${reset}.${e.catatan ? ` ${e.catatan}` : ""}`;
+    html += `<span class="meter" title="${esc(judul)}">
+      <span class="meter-label">ElevenLabs</span>
+      <span class="meter-bar"><span style="width:${pct}%" class="${pct < 20 ? "low" : ""}"></span></span>
+      <strong>${ribuan(sisa)}</strong>/${ribuan(e.batas)}${e.sumber === "lokal" ? "*" : ""}
+    </span>`;
+  }
+  if (a.aktif) {
+    const jamGalat = a.galatKuota ? (Date.now() - new Date(a.galatKuota.waktu).getTime()) / 3_600_000 : Infinity;
+    const judul = `Antigravity hari ini: ${a.rancanganHari} rancangan, ${ribuan(a.tokenHari)} token. Bulan ini: ${a.rancanganBulan} rancangan, ${ribuan(a.tokenBulan)} token. Antigravity tidak menampilkan sisa kuota; kalau habis, tanda ⚠ muncul di sini.`;
+    html += jamGalat < 24
+      ? `<span class="kuota-habis" title="${esc(`Kuota Antigravity sempat habis ${Math.max(1, Math.round(jamGalat))} jam lalu. ${judul}`)}">⚠ Antigravity: kuota habis</span>`
+      : `<span title="${esc(judul)}">Antigravity: <strong>${a.rancanganHari}</strong> rancangan hari ini</span>`;
+  }
+  return html;
 }

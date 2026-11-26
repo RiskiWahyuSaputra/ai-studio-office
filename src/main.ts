@@ -86,21 +86,18 @@ function render(force = false) {
 let kuota: { waktu: number; data: InfoKuota | null } | null = null;
 let ambilKuota: Promise<void> | null = null;
 
-/** Isi kartu Kuota layanan; angka diambil ulang paling sering tiap 30 detik. */
+/** Ambil angka kuota untuk navbar; paling sering tiap 30 detik. */
 async function isiKuota() {
-  if (!panel.querySelector("[data-kuota]")) return;
   if (!kuota || Date.now() - kuota.waktu > 30_000) {
     ambilKuota ??= api
       .kuota()
-      // server lama (belum direstart) belum punya /api/kuota: biarkan kartunya menunggu
+      // server lama (belum direstart) belum punya /api/kuota: meter tidak ditampilkan
       .then((data) => void (kuota = { waktu: Date.now(), data: data?.eleven && data?.agy ? data : null }))
       .catch(() => {})
       .finally(() => (ambilKuota = null));
     await ambilKuota;
+    renderTopbar();
   }
-  const box = panel.querySelector<HTMLElement>("[data-kuota]");
-  if (box && kuota?.data) box.innerHTML = renderKuota(kuota.data);
-  else if (box) box.innerHTML = `<h3>Kuota layanan</h3><p class="hint">Restart server Kantor PovQ untuk menampilkan kuota.</p>`;
 }
 
 function tampilkanPencocokan() {
@@ -137,12 +134,15 @@ function renderTopbar() {
   const s = state.settings;
   const sisa = s.kreditBulanan - s.kreditTerpakai;
   const pct = s.kreditBulanan ? Math.max(0, Math.min(100, (sisa / s.kreditBulanan) * 100)) : 0;
+  // proyek Flow masih ada: tampilkan kredit Flow hanya kalau ada proyek yang memakai Flow
+  const pakaiFlow = [...state.projects.values()].some((p) => p.sumberVisual === "flow" && p.status !== "selesai");
   info.innerHTML = `
-    <span class="meter" title="Sisa kredit Google Flow bulan ini">
+    ${kuota?.data ? renderKuota(kuota.data) : ""}
+    ${pakaiFlow ? `<span class="meter" title="Sisa kredit Google Flow bulan ini">
       <span class="meter-label">Kredit Flow</span>
       <span class="meter-bar"><span style="width:${pct}%" class="${pct < 20 ? "low" : ""}"></span></span>
       <strong>${sisa}</strong>/${s.kreditBulanan}
-    </span>
+    </span>` : ""}
     <span title="Otak karyawan">Otak: <strong>${esc(state.ai)}</strong></span>
     <span class="dot ${online ? "on" : ""}" title="${online ? "Tersambung" : "Terputus"}">${online ? "Live" : "Offline"}</span>`;
 }
@@ -185,7 +185,7 @@ function onEvent(e: ServerEvent) {
       if (a.type === "kerja") office.setWorking(a.memberId, true, a.status);
       else if (a.type === "selesai-kerja") {
         office.setWorking(a.memberId, false);
-        kuota = null;
+        if (kuota) kuota.waktu = 0; // ambil ulang, tapi angka lama tetap tampil sementara
       }
       else if (a.type === "serah") office.handoff(a.dari, a.ke, a.label);
       else if (a.type === "bicara") office.say(a.memberId, a.teks);
