@@ -454,6 +454,23 @@ function sectionPaket(p: Project) {
         <button class="btn btn-sm btn-ghost" data-action="salin-caption" data-p="tiktok">Salin caption TikTok</button>
         <button class="btn btn-sm btn-ghost" data-action="salin-caption" data-p="instagram">Salin caption IG</button>
       </div>
+      <p class="eyebrow">Komentar tersemat (dari akun PovQ)</p>
+      <p class="hint">Setelah video tayang, kirim salah satu komentar ini dari akun PovQ lalu sematkan (tekan lama komentar → Sematkan). Pertanyaan yang gampang dijawab memancing penonton ikut berkomentar.</p>
+      ${
+        k.komentar?.length
+          ? k.komentar
+              .map(
+                (c, i) => `<div class="komentar-opsi">
+                  <label class="field"><span>Pilihan ${i + 1} <em class="counter" data-max="150"></em></span><textarea data-f="komentar.${i}" maxlength="150" rows="2">${esc(c)}</textarea></label>
+                  <button class="btn btn-sm btn-ghost" data-action="salin-komentar" data-i="${i}">Salin</button>
+                </div>`,
+              )
+              .join("")
+          : ""
+      }
+      <div class="row">
+        <button class="btn btn-sm${k.komentar?.length ? " btn-ghost" : ""}" data-action="buat-komentar">${k.komentar?.length ? "Buat ulang komentar" : "Buatkan komentar"}</button>
+      </div>
     </div>
   </details>`;
 }

@@ -297,8 +297,8 @@ Balas JSON: {"karakter": [{"nama": string, "deskripsi": string}]}`);
 export async function paket(p: Project): Promise<PaketUnggah> {
   const n = p.naskah!;
   const r = p.riset!;
-  if (!aiAktif()) return paketTemplat(n, r);
-  return generateJson<PaketUnggah>(`${KONTEKS(p)}
+  if (!aiAktif()) return { ...paketTemplat(n, r), komentar: komentarTemplat(n) };
+  const hasil = await generateJson<PaketUnggah>(`${KONTEKS(p)}
 
 Peranmu: Social Media Manager.
 ${p.seri ? `Video ini Part ${p.seri.part} dari ${p.seri.totalPart} sebuah cerita bersambung: cantumkan "Part ${p.seri.part}" di judul dan caption${p.seri.part >= p.seri.totalPart ? ", dan sebut bahwa ini part terakhir (tamat)" : `, dan sebut Part ${p.seri.part + 1} menyusul`}.` : ""}
@@ -307,10 +307,40 @@ Riset: ${JSON.stringify(r)}
 
 Siapkan materi unggah per platform dalam bahasa Indonesia:
 - youtube.judul: maks 90 karakter, memancing klik tapi jujur, sertakan "#shorts".
-- youtube.deskripsi: 3–6 kalimat + fakta singkat + baris "Video ini dibuat dengan AI (Google Veo)." + 3-5 hashtag.
+- youtube.deskripsi: 3–6 kalimat + fakta singkat + baris "${p.sumberVisual === "flow" ? "Video ini dibuat dengan AI (Google Veo)." : "Visual dan suara video ini dibuat dengan AI."}" + 3-5 hashtag.
 - youtube.tags: 8–15 tag tanpa tanda #.
 - tiktok.caption: maks 150 karakter + 4-6 hashtag (termasuk #fyp).
 - instagram.caption: 2–4 kalimat, ajakan komentar, lalu 8-15 hashtag.
+- komentar: ${ATURAN_KOMENTAR}
 
-Balas JSON: {"youtube": {"judul": string, "deskripsi": string, "tags": string[]}, "tiktok": {"caption": string}, "instagram": {"caption": string}}`);
+Balas JSON: {"youtube": {"judul": string, "deskripsi": string, "tags": string[]}, "tiktok": {"caption": string}, "instagram": {"caption": string}, "komentar": string[]}`);
+  return { ...hasil, komentar: rapikanKomentar(hasil.komentar) ?? komentarTemplat(n) };
+}
+
+const ATURAN_KOMENTAR = `3 pilihan komentar yang ditulis AKUN KANAL SENDIRI (PovQ) di videonya lalu disematkan (pin). Tiap komentar maks 150 karakter, gaya santai anak muda, 1 emoji cukup. Isinya pertanyaan yang gampang dijawab dan memancing penonton bercerita atau menebak (mis. "kalau kamu jadi ..., bakal ...?", "pernah ngalamin ...? cerita dong", tebakan untuk part berikutnya). Jangan berpura-pura jadi penonton, jangan memuji video sendiri, jangan minta like/follow, jangan spoiler akhir cerita.`;
+
+/** Komentar tersemat saja (untuk video yang paketnya sudah ada). */
+export async function komentarTersemat(p: Project): Promise<string[]> {
+  const n = p.naskah!;
+  if (!aiAktif()) return komentarTemplat(n);
+  const h = await generateJson<{ komentar: string[] }>(`${KONTEKS(p)}
+
+Peranmu: Social Media Manager.
+${p.seri ? `Video ini Part ${p.seri.part} dari ${p.seri.totalPart} sebuah cerita bersambung.` : ""}
+Naskah: ${JSON.stringify(n)}
+
+Tulis komentar: ${ATURAN_KOMENTAR}
+
+Balas JSON: {"komentar": string[]}`);
+  return rapikanKomentar(h.komentar) ?? komentarTemplat(n);
+}
+
+export function rapikanKomentar(k: unknown): string[] | undefined {
+  if (!Array.isArray(k)) return undefined;
+  const bersih = k.map((x) => String(x ?? "").trim()).filter(Boolean).map((x) => x.slice(0, 150)).slice(0, 3);
+  return bersih.length ? bersih : undefined;
+}
+
+export function komentarTemplat(n: Naskah): string[] {
+  return [`Kalau kamu ada di posisi ini, bakal ngapain? 👀`, `Pernah ngalamin kejadian mirip? Cerita di sini dong 👇`, n.cta.slice(0, 150)];
 }

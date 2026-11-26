@@ -11,7 +11,7 @@ import { agyTersedia, resetRancangan } from "../antigravity.ts";
 import { mulaiGambar } from "../gambar.ts";
 import { FORMATS, GAYA, type Format, type Gaya, type Karakter } from "../../src/shared/types.ts";
 import { terapkanKarakter } from "../../src/shared/karakter.ts";
-import { ekstrakKarakter, rangkumPart } from "../agents.ts";
+import { ekstrakKarakter, komentarTersemat, rangkumPart, rapikanKomentar } from "../agents.ts";
 import {
   createLanjutan,
   createProject,
@@ -103,6 +103,24 @@ projects.post("/projects/:id/antigravity/reset", async (req, res) => {
   const target = p.video?.agy ? [path.join(ROOT, p.video.agy)] : undefined;
   await resetRancangan(projectDir(p.id), target);
   res.json({ ok: true });
+});
+
+/** Putri membuatkan (ulang) komentar tersemat untuk video ini. */
+projects.post("/projects/:id/komentar", async (req, res) => {
+  const p = getProject(req.params.id);
+  if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
+  if (!p.naskah || !p.paket) return void res.status(400).json({ error: "Caption video ini belum dibuat" });
+  try {
+    const komentar = await komentarTersemat(p);
+    res.json(
+      await updateProject(p.id, (x) => {
+        if (x.paket) x.paket.komentar = komentar;
+        addLog(x, "Putri", "Komentar tersemat untuk akun PovQ siap");
+      }),
+    );
+  } catch (e) {
+    res.status(502).json({ error: (e as Error).message });
+  }
 });
 
 projects.post("/projects/:id/suara/contoh", async (req, res) => {
@@ -210,6 +228,7 @@ projects.patch("/projects/:id", async (req, res) => {
       }
       if (b.paket.tiktok) Object.assign(x.paket.tiktok, pickStr(b.paket.tiktok, ["caption"]));
       if (b.paket.instagram) Object.assign(x.paket.instagram, pickStr(b.paket.instagram, ["caption"]));
+      if (b.paket.komentar !== undefined) x.paket.komentar = rapikanKomentar(b.paket.komentar);
     }
     addLog(x, "Kamu", "Menyunting hasil kerja");
   });

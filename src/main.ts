@@ -324,8 +324,24 @@ panel.addEventListener("click", async (ev) => {
         youtube: { judul: f["youtube.judul"], deskripsi: f["youtube.deskripsi"], tags: f["youtube.tags"].split(",").map((t) => t.trim()).filter(Boolean) },
         tiktok: { caption: f["tiktok.caption"] },
         instagram: { caption: f["instagram.caption"] },
+        komentar: Object.keys(f).filter((x) => x.startsWith("komentar.")).sort().map((x) => f[x]),
       };
       if (p) await run(() => api.patch(p.id, { paket }), "Caption disimpan");
+      return;
+    }
+    case "salin-komentar": {
+      const ta = panel.querySelector<HTMLTextAreaElement>(`[data-f="komentar.${el.dataset.i}"]`);
+      if (ta) await run(() => navigator.clipboard.writeText(ta.value), "Komentar disalin");
+      return;
+    }
+    case "buat-komentar": {
+      if (!p) return;
+      el.setAttribute("disabled", "");
+      const baru = await run(() => api.komentar(p.id), "Komentar tersemat siap");
+      if (baru) {
+        state.projects.set(baru.id, baru);
+        render(true);
+      } else el.removeAttribute("disabled");
       return;
     }
     case "salin-caption": {

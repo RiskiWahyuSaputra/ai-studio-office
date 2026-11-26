@@ -204,6 +204,8 @@ export interface PaketUnggah {
   youtube: { judul: string; deskripsi: string; tags: string[] };
   tiktok: { caption: string };
   instagram: { caption: string };
+  /** komentar dari akun PovQ sendiri untuk disematkan (pin) di video, pemancing diskusi */
+  komentar?: string[];
 }
 
 export interface Unggahan {

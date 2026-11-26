@@ -33,6 +33,7 @@ export const api = {
   remove: (id: string) => req<void>("DELETE", `/api/projects/${id}`),
   lanjut: (id: string) => req<Project>("POST", `/api/projects/${id}/lanjut`),
   ulang: (id: string, tahap: string) => req<Project>("POST", `/api/projects/${id}/ulang`, { tahap }),
+  komentar: (id: string) => req<Project>("POST", `/api/projects/${id}/komentar`),
   rancangUlang: (id: string) => req<{ ok: true }>("POST", `/api/projects/${id}/antigravity/reset`),
   patch: (id: string, body: unknown) => req<Project>("PATCH", `/api/projects/${id}`, body),
   settings: (body: Partial<Settings>) => req<Settings>("PATCH", "/api/settings", body),

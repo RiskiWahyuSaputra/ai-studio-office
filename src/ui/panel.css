@@ -228,3 +228,7 @@ a.btn { text-decoration: none; display: inline-block; }
 
 /* kuota habis di navbar */
 .kuota-habis { color: var(--bad); font-weight: 600; }
+
+/* komentar tersemat */
+.komentar-opsi { display: flex; gap: 8px; align-items: flex-end; }
+.komentar-opsi .field { flex: 1; min-width: 0; }
