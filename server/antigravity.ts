@@ -15,6 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import { probe } from "./editor.ts";
 import { renderFolder } from "./remotion.ts";
+import { catatAgy, catatGalatKuotaAgy, pesanKuota } from "./pemakaian.ts";
 import { FORMATS, type Project } from "../src/shared/types.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
 
@@ -76,7 +77,7 @@ export async function videoAntigravity(o: OpsiAgy): Promise<{ file: string; dura
   const belumDirancang = (await fs.readFile(videoTsx, "utf8")).includes(PENANDA_KOSONG);
   if (berubah || belumDirancang) {
     o.onStatus?.("Antigravity merancang video...");
-    await jalankanAgy(dir, promptRancang(o), o.onStatus);
+    await jalankanAgy(dir, promptRancang(o), o.onStatus, true);
     if ((await fs.readFile(videoTsx, "utf8")).includes(PENANDA_KOSONG)) throw new Error("Antigravity tidak menulis src/Video.tsx");
   }
 
@@ -254,12 +255,13 @@ function promptRancang(o: OpsiAgy): string {
   return `Kamu sutradara motion graphics untuk kanal PovQ. Baca BRIEF.md dan src/data.ts di folder ini, lalu tulis video Remotion yang sinematik dan memukau di src/Video.tsx (export const Video), mengikuti semua aturan teknis di BRIEF.md. Adegan tanpa media (jenis "kode") harus kamu gambar sendiri seluruhnya dengan kode (ilustrasi vektor berlapis, cahaya, partikel, tokoh SVG yang konsisten). Pakai skill Remotion. Jangan menjalankan npm, npx, atau render; aplikasi yang merender. Setelah selesai, balas ringkas apa saja yang kamu buat.`;
 }
 
-function jalankanAgy(dir: string, prompt: string, onStatus?: (pesan: string) => void): Promise<void> {
+function jalankanAgy(dir: string, prompt: string, onStatus?: (pesan: string) => void, rancanganBaru = false): Promise<void> {
   return new Promise((resolve, reject) => {
     const mulai = Date.now();
-    const ps = spawn(AGY, ["-p", prompt, "--print-timeout", `${BATAS_MENIT}m`], { cwd: dir, env: process.env });
+    // keluaran JSON memuat jumlah token yang terpakai (dicatat untuk panel kuota)
+    const ps = spawn(AGY, ["-p", prompt, "--print-timeout", `${BATAS_MENIT}m`, "--output-format", "json"], { cwd: dir, env: process.env });
     let out = "";
-    ps.stdout.on("data", (d) => (out = (out + d).slice(-4000)));
+    ps.stdout.on("data", (d) => (out = (out + d).slice(-20000)));
     ps.stderr.on("data", (d) => (out = (out + d).slice(-4000)));
     const detak = setInterval(() => onStatus?.(`Antigravity merancang video (${Math.round((Date.now() - mulai) / 60000)} mnt)...`), 30000);
     ps.on("error", (e) => {
@@ -268,9 +270,18 @@ function jalankanAgy(dir: string, prompt: string, onStatus?: (pesan: string) => 
     });
     ps.on("close", (code) => {
       clearInterval(detak);
-      fs.writeFile(path.join(dir, "agy-terakhir.log"), out).catch(() => {});
-      if (code === 0) resolve();
-      else reject(new Error(`agy berhenti (kode ${code}): ${out.slice(-300)}`));
+      let hasil: { status?: string; response?: string; usage?: { total_tokens?: number } } | null = null;
+      try {
+        hasil = JSON.parse(out.slice(out.indexOf("{")));
+      } catch {
+        /* bukan JSON (mis. error sebelum mulai) */
+      }
+      fs.writeFile(path.join(dir, "agy-terakhir.log"), hasil?.response ?? out).catch(() => {});
+      catatAgy(hasil?.usage?.total_tokens ?? 0, rancanganBaru && code === 0);
+      if (code === 0 && (!hasil || hasil.status === undefined || hasil.status === "SUCCESS")) return resolve();
+      const pesan = hasil?.response ?? out;
+      if (pesanKuota(pesan)) catatGalatKuotaAgy(pesan);
+      reject(new Error(`agy berhenti (kode ${code}${hasil?.status ? `, ${hasil.status}` : ""}): ${pesan.slice(-300)}`));
     });
   });
 }

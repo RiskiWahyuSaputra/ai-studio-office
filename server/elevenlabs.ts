@@ -8,6 +8,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import type { Format } from "../src/shared/types.ts";
+import { catatEleven, segarkanKuotaEleven } from "./pemakaian.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
 
 const API = "https://api.elevenlabs.io/v1";
@@ -69,6 +70,8 @@ async function satu(teks: string, voiceId: string, format: Format, out: string):
       fs.writeFileSync(`${out}.part`, Buffer.from(j.audio_base64, "base64"));
       fs.renameSync(`${out}.part`, out);
       fs.writeFileSync(`${out}.kata.json`, JSON.stringify(kata));
+      catatEleven(teks.length);
+      segarkanKuotaEleven();
       return kata;
     }
     const isi = (await r.text()).slice(0, 300);

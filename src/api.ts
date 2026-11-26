@@ -1,4 +1,4 @@
-import type { Project, ServerEvent, Settings } from "./shared/types.ts";
+import type { InfoKuota, Project, ServerEvent, Settings } from "./shared/types.ts";
 
 export interface InitState {
   projects: Project[];
@@ -27,6 +27,7 @@ async function req<T>(method: string, url: string, body?: unknown): Promise<T> {
 
 export const api = {
   state: () => req<InitState>("GET", "/api/state"),
+  kuota: () => req<InfoKuota>("GET", "/api/kuota"),
   create: (format: string, ide: string, gaya: string, rencanaPart = 1, sumberVisual = "antigravity", durasiTarget = 60) =>
     req<Project>("POST", "/api/projects", { format, ide, gaya, rencanaPart, sumberVisual, durasiTarget }),
   remove: (id: string) => req<void>("DELETE", `/api/projects/${id}`),

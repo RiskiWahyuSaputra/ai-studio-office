@@ -3,8 +3,8 @@ import "./ui/panel.css";
 import { api, listen } from "./api.ts";
 import { createOffice, type ModeTampilan } from "./office/office.ts";
 import { memberForStage } from "./shared/team.ts";
-import { STAGES, type Project, type ServerEvent } from "./shared/types.ts";
-import { esc, judulProyek, renderPanel, type UiState, type View } from "./ui/panel.ts";
+import { STAGES, type InfoKuota, type Project, type ServerEvent } from "./shared/types.ts";
+import { esc, judulProyek, renderKuota, renderPanel, type UiState, type View } from "./ui/panel.ts";
 
 const office = createOffice(document.querySelector<HTMLCanvasElement>("#office")!);
 
@@ -75,11 +75,32 @@ function render(force = false) {
   const scroll = panel.scrollTop;
   panel.innerHTML = renderPanel(state);
   tampilkanPencocokan();
+  void isiKuota();
   // pertahankan details yang dibuka/ditutup
   const ds = panel.querySelectorAll("details");
   if (!force && ds.length === open.length) ds.forEach((d, i) => (d.open = open[i]));
   panel.scrollTop = scroll;
   panel.querySelectorAll<HTMLElement>(".counter").forEach(updateCounter);
+}
+
+let kuota: { waktu: number; data: InfoKuota | null } | null = null;
+let ambilKuota: Promise<void> | null = null;
+
+/** Isi kartu Kuota layanan; angka diambil ulang paling sering tiap 30 detik. */
+async function isiKuota() {
+  if (!panel.querySelector("[data-kuota]")) return;
+  if (!kuota || Date.now() - kuota.waktu > 30_000) {
+    ambilKuota ??= api
+      .kuota()
+      // server lama (belum direstart) belum punya /api/kuota: biarkan kartunya menunggu
+      .then((data) => void (kuota = { waktu: Date.now(), data: data?.eleven && data?.agy ? data : null }))
+      .catch(() => {})
+      .finally(() => (ambilKuota = null));
+    await ambilKuota;
+  }
+  const box = panel.querySelector<HTMLElement>("[data-kuota]");
+  if (box && kuota?.data) box.innerHTML = renderKuota(kuota.data);
+  else if (box) box.innerHTML = `<h3>Kuota layanan</h3><p class="hint">Restart server Kantor PovQ untuk menampilkan kuota.</p>`;
 }
 
 function tampilkanPencocokan() {
@@ -162,7 +183,10 @@ function onEvent(e: ServerEvent) {
     case "aktivitas": {
       const a = e.activity;
       if (a.type === "kerja") office.setWorking(a.memberId, true, a.status);
-      else if (a.type === "selesai-kerja") office.setWorking(a.memberId, false);
+      else if (a.type === "selesai-kerja") {
+        office.setWorking(a.memberId, false);
+        kuota = null;
+      }
       else if (a.type === "serah") office.handoff(a.dari, a.ke, a.label);
       else if (a.type === "bicara") office.say(a.memberId, a.teks);
       break;

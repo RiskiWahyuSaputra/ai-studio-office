@@ -315,3 +315,28 @@ export type ServerEvent =
   | { type: "hapus"; id: string }
   | { type: "settings"; settings: Settings }
   | { type: "aktivitas"; activity: Activity };
+
+/** Pemakaian layanan berkuota (panel Kuota layanan). */
+export interface InfoKuota {
+  eleven: {
+    aktif: boolean;
+    /** "api" = angka resmi ElevenLabs, "lokal" = hitungan Kantor PovQ */
+    sumber: "api" | "lokal";
+    terpakai: number;
+    batas: number;
+    paket?: string;
+    reset?: string;
+    catatan?: string;
+  };
+  agy: {
+    aktif: boolean;
+    hari: string;
+    rancanganHari: number;
+    tokenHari: number;
+    bulan: string;
+    rancanganBulan: number;
+    tokenBulan: number;
+    galatKuota?: { waktu: string; pesan: string };
+  };
+}
+
