@@ -3,7 +3,7 @@ import multer from "multer";
 import fs from "node:fs";
 import path from "node:path";
 import { projectDir, probe } from "../editor.ts";
-import { bongkarZip, pasangkan, type Kandidat } from "../pasangkan.ts";
+import { bongkarZip, cocokkanDenganAi, pasangkan, type Kandidat } from "../pasangkan.ts";
 import { kick } from "../pipeline.ts";
 import { addLog, getProject, getSettings, updateProject, updateSettings } from "../store.ts";
 
@@ -139,7 +139,10 @@ media.post(
         bersihkan();
         return void res.status(400).json({ error: "Tidak ada file video di dalam unggahan/ZIP" });
       }
-      const { pasangan, sisa } = pasangkan(kandidat, p.adegan);
+      // nama yang tidak mengandung nomor adegan (mis. judul Flow bahasa Inggris) dicocokkan dengan AI
+      const tanpaNomor = kandidat.filter((k) => !/(?:^|[^a-z0-9])\d{1,2}(?=[^a-z0-9]|$)/i.test(k.nama.replace(/\.[a-z0-9]+$/i, "")));
+      const petaAi = await cocokkanDenganAi(tanpaNomor, p.adegan);
+      const { pasangan, sisa } = pasangkan(kandidat, p.adegan, petaAi);
       const dir = projectDir(p.id);
       const lama: string[] = [];
       const pindah: { no: number; file: string }[] = [];

@@ -5,6 +5,7 @@
 import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import path from "node:path";
+import { aiAktif, generateJson } from "./ai.ts";
 import type { Adegan } from "../src/shared/types.ts";
 
 export interface Kandidat {
@@ -16,7 +17,7 @@ export interface Kandidat {
 export interface Pasangan {
   no: number;
   kandidat: Kandidat;
-  alasan: "nomor" | "nama mirip prompt" | "urutan";
+  alasan: "nomor" | "nama mirip prompt" | "dicocokkan AI" | "urutan";
 }
 
 const EKSTENSI_VIDEO = /\.(mp4|mov|webm|mkv|m4v|png|jpe?g|webp)$/i;
@@ -55,7 +56,45 @@ function kata(teks: string): string[] {
     .filter((k) => k.length >= 4 && !KATA_UMUM.has(k) && !/^\d+$/.test(k));
 }
 
-export function pasangkan(kandidat: Kandidat[], adegan: Adegan[]): { pasangan: Pasangan[]; sisa: Kandidat[] } {
+/**
+ * Flow menamai file dari judul bahasa Inggris (mis. "Old_truck_driving_up_hill_8ffc38b0.mp4"), sedangkan
+ * adegan berbahasa Indonesia, jadi pencocokan kata biasa gagal. Minta Gemini memasangkan judul ke adegan.
+ */
+export async function cocokkanDenganAi(kandidat: Kandidat[], adegan: Adegan[]): Promise<Map<string, number>> {
+  const peta = new Map<string, number>();
+  if (!aiAktif() || kandidat.length < 2) return peta;
+  const judul = (n: string) => n.replace(EKSTENSI_VIDEO, "").replace(/_[0-9a-f]{6,}$/i, "").replace(/[_-]+/g, " ").trim();
+  try {
+    const hasil = await generateJson<{ pasangan: { file: number; adegan: number }[] }>(`Pasangkan file video hasil Google Flow dengan adegan storyboard.
+Judul file dibuat otomatis oleh Flow dalam bahasa Inggris dari isi videonya. Satu file untuk satu adegan, satu adegan paling banyak satu file.
+Kalau sebuah file tidak cocok dengan adegan mana pun, jangan dipasangkan.
+
+File:
+${kandidat.map((k, i) => `${i + 1}. ${judul(k.nama)}`).join("\n")}
+
+Adegan:
+${adegan.map((a) => `${a.no}. ${a.visual} | ${(a.narasi ?? "").slice(0, 120)}`).join("\n")}
+
+Balas JSON: {"pasangan": [{"file": nomor file, "adegan": nomor adegan}]}`);
+    const dipakai = new Set<number>();
+    for (const x of hasil.pasangan ?? []) {
+      const k = kandidat[Number(x.file) - 1];
+      const no = Number(x.adegan);
+      if (!k || peta.has(k.nama) || dipakai.has(no) || !adegan.some((a) => a.no === no)) continue;
+      peta.set(k.nama, no);
+      dipakai.add(no);
+    }
+  } catch (e) {
+    console.warn(`[pasangkan] AI gagal mencocokkan: ${(e as Error).message}`);
+  }
+  return peta;
+}
+
+export function pasangkan(
+  kandidat: Kandidat[],
+  adegan: Adegan[],
+  petaAi: Map<string, number> = new Map(),
+): { pasangan: Pasangan[]; sisa: Kandidat[] } {
   const nos = adegan.map((a) => a.no);
   const pasangan: Pasangan[] = [];
   const terpakaiNo = new Set<number>();
@@ -77,7 +116,16 @@ export function pasangkan(kandidat: Kandidat[], adegan: Adegan[]): { pasangan: P
     return true;
   });
 
-  // 2) kemiripan nama file dengan prompt (Flow kadang menamai file dari awal prompt)
+  // 2) hasil pencocokan AI dari judul file Flow
+  belum = belum.filter((k) => {
+    const no = petaAi.get(k.nama);
+    if (no === undefined || terpakaiNo.has(no)) return true;
+    pasangan.push({ no, kandidat: k, alasan: "dicocokkan AI" });
+    terpakaiNo.add(no);
+    return false;
+  });
+
+  // 3) kemiripan nama file dengan prompt (Flow kadang menamai file dari awal prompt)
   if (belum.length) {
     // kata yang muncul di lebih dari separuh adegan dianggap boilerplate gaya, bukan pembeda
     const frek = new Map<string, number>();
@@ -115,7 +163,7 @@ export function pasangkan(kandidat: Kandidat[], adegan: Adegan[]): { pasangan: P
     belum = belum.filter((k) => !dipakai.has(k));
   }
 
-  // 3) sisanya: urutan waktu dibuat (Flow merender berurutan sesuai prompt) ke adegan yang belum terisi
+  // 4) sisanya: urutan waktu dibuat (Flow merender berurutan sesuai prompt) ke adegan yang belum terisi
   belum.sort((a, b) => a.waktu - b.waktu || a.nama.localeCompare(b.nama, undefined, { numeric: true }));
   const kosongDulu = [
     ...adegan.filter((a) => !a.klip && !terpakaiNo.has(a.no)),
