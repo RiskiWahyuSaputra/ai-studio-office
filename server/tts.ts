@@ -21,6 +21,9 @@ export const ARAHAN = (f: Format) => FORMATS[f].arahanTts;
 
 export const suaraBawaan = (f: Format) => FORMATS[f].suara;
 
+/** Model Gemini TTS untuk suara kanal: selalu sama supaya suara Fenrir konsisten di semua video. */
+export const MODEL_TTS_KANAL = process.env.GEMINI_TTS_KANAL?.trim() || ttsModels()[0];
+
 const kunci = (teks: string, suara: string, arahan: string, model: string) =>
   createHash("sha1").update(`${model}\n${suara}\n${arahan}\n${teks}`).digest("hex").slice(0, 12);
 
@@ -305,9 +308,13 @@ export async function narasiSemua(
   suara: string,
   format: Format,
   modelPilihan?: string,
+  /** true = hanya model pilihan (suara kanal harus konsisten; model lain membuat suara yang sama terdengar beda) */
+  hanyaModelPilihan = false,
 ): Promise<{ files: string[]; model: string }> {
   const semua = ttsModels();
-  const urut = modelPilihan && semua.includes(modelPilihan) ? [modelPilihan, ...semua.filter((m) => m !== modelPilihan)] : semua;
+  const urut = hanyaModelPilihan && modelPilihan
+    ? [modelPilihan]
+    : modelPilihan && semua.includes(modelPilihan) ? [modelPilihan, ...semua.filter((m) => m !== modelPilihan)] : semua;
   const alasan: string[] = [];
   let semuaKuota = true;
   for (const model of urut) {

@@ -12,7 +12,7 @@ import { antreBerat } from "./berat.ts";
 import { ROOT } from "./paths.ts";
 import { projectDir } from "./editor.ts";
 import { elevenTersedia, narasiEleven } from "./elevenlabs.ts";
-import { KuotaTtsHabis, narasiSemua as narasiGemini } from "./tts.ts";
+import { MODEL_TTS_KANAL, narasiSemua as narasiGemini } from "./tts.ts";
 import { ukurKata } from "./ukur.ts";
 import type { Format, Project } from "../src/shared/types.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
@@ -125,14 +125,9 @@ export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: s
     const id = `${p.id}:${suara.id}:${kunci(kalimat.join("\n"))}`;
     const lama = berjalan.get(id);
     if (lama) return lama;
-    const kerja = jalankanGemini(p, kalimat, suara.gemini.suara, onProgres).catch((e: Error) => {
-      // hanya kalau kuota SEMUA model Gemini TTS habis, seluruh narasi pakai Edge (suara tetap satu).
-      // Kalau cuma sibuk sesaat, galat diteruskan supaya tahapnya dicoba lagi nanti dengan suara yang sama.
-      if (!(e instanceof KuotaTtsHabis)) throw e;
-      console.warn(`[narasi] ${e.message}, pakai Edge`);
-      onProgres?.("Kuota Gemini TTS hari ini habis, pakai suara Ardi...");
-      return jalankanEdge(p, kalimat, EDGE_CADANGAN(), onProgres);
-    });
+    // suara kanal harus konsisten: TIDAK jatuh ke suara/model lain. Kalau Gemini sibuk atau kuotanya habis,
+    // galatnya diteruskan (GeminiSibuk) sehingga tahapnya ditunda dan dicoba lagi dengan suara yang sama.
+    const kerja = jalankanGemini(p, kalimat, suara.gemini.suara, onProgres);
     berjalan.set(id, kerja);
     kerja.finally(() => berjalan.delete(id)).catch(() => {});
     return kerja;
@@ -195,7 +190,7 @@ async function jalankanGemini(p: Project, kalimat: string[], suara: string, onPr
   const dir = projectDir(p.id);
   fs.mkdirSync(dir, { recursive: true });
   onProgres?.("Narasi Gemini TTS...");
-  const { files } = await narasiGemini(dir, kalimat, suara, p.format, p.modelSuara);
+  const { files } = await narasiGemini(dir, kalimat, suara, p.format, MODEL_TTS_KANAL, true);
   onProgres?.("Mengukur waktu kata...");
   const kata = await ukurKata(files.map((f) => path.join(dir, f))).catch((e: Error) => {
     // tanpa waktu kata, subtitle tetap jalan dengan perkiraan sebanding panjang kata
