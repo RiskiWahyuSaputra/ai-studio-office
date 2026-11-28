@@ -8,3 +8,7 @@ uploads/*
 *.log
 tools/voxcpm/.venv
 tools/voxcpm/out
+tools/omnivoice/.venv
+tools/omnivoice/out
+tools/omnivoice/cache
+tools/omnivoice/pasang.log
