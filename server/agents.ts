@@ -3,7 +3,7 @@ import { EFEK, KAMERA, type Efek, type Gerak, type Kamera } from "../src/shared/
  * Tugas tiap karyawan. Masing-masing memakai Gemini bila tersedia, kalau tidak memakai templat.
  */
 import { aiAktif, generateJson } from "./ai.ts";
-import { getProject } from "./store.ts";
+import { getProject, listProjects } from "./store.ts";
 import { adeganTemplat, naskahTemplat, paketTemplat, risetTemplat } from "./templates.ts";
 import { ATURAN_AMAN } from "../src/shared/kebijakan.ts";
 import { kembangkan } from "../src/shared/karakter.ts";
@@ -24,12 +24,40 @@ const KONTEKS = (p: Project) =>
 Format kanal: ${FORMATS[p.format].nama} — ${FORMATS[p.format].ringkas}
 ${p.sumberVisual === "flow" ? "Video dibuat dari klip Google Veo (lewat Google Flow), tiap klip sekitar 8 detik" : "Video dianimasikan per adegan"}, vertikal 9:16, panjang tiap video ${ukuranDurasi(p).teks}.`;
 
+/** Kategori acak untuk format Ide Bermanfaat, supaya topik tidak berputar di tema yang sama. */
+const KATEGORI_IDE = [
+  "dapur & masak hemat (menyimpan bahan agar awet, trik memasak, mengolah sisa makanan)",
+  "bersih-bersih rumah dengan bahan dapur yang aman (cuka, baking soda, jeruk nipis)",
+  "daur ulang barang bekas jadi barang berguna (kardus, kaleng, kain perca, ban bekas, toples)",
+  "hemat listrik & air di rumah",
+  "merawat barang supaya awet (sepatu, baju, peralatan masak, payung, tas)",
+  "merapikan & menyimpan barang di rumah sempit / kos-kosan",
+  "perbaikan kecil di rumah yang aman tanpa listrik (keran bocor, engsel berbunyi, ritsleting macet)",
+  "tanaman hias & tanaman obat keluarga dalam pot",
+  "budidaya kecil-kecilan di pekarangan (ikan, ayam, maggot, jamur, sayur)",
+  "kompos & pupuk alami dari sampah rumah",
+  "perawatan ringan motor atau sepeda sendiri",
+  "trik praktis untuk anak kos & mahasiswa",
+  "merawat hewan peliharaan dengan cara murah",
+  "mengusir hama & serangga rumah secara alami",
+  "ide usaha kecil modal kecil dari rumah (tanpa janji untung berlebihan)",
+  "persiapan musim hujan / banjir / mati listrik di rumah",
+];
+
 export async function riset(p: Project): Promise<Riset> {
   if (!aiAktif()) return risetTemplat(p.format, p.ide);
+  // topik yang sudah pernah dibuat di format ini: jangan diulang
+  const sudah = listProjects()
+    .filter((x) => x.format === p.format && x.id !== p.id && x.riset?.topik && !x.seri?.part)
+    .map((x) => x.riset!.topik)
+    .slice(0, 40);
+  const kategori = p.format === "ide-bermanfaat" && !p.ide ? KATEGORI_IDE[Math.floor(Math.random() * KATEGORI_IDE.length)] : "";
   return generateJson<Riset>(`${KONTEKS(p)}
 
 Peranmu: Peneliti Tren.
 ${p.ide ? `Ide dari pemilik kanal: "${p.ide}".` : "Pemilik kanal belum memberi ide; pilih sendiri topik yang berpotensi viral bulan ini."}
+${kategori ? `KATEGORI untuk video ini: ${kategori}. Pilih ide yang jelas masuk kategori ini.` : ""}
+${sudah.length && !p.ide ? `Topik ini SUDAH pernah dibuat, jangan pilih topik yang sama atau mirip (termasuk variasi dengan bahan/wadah lain):\n${sudah.map((t) => `- ${t}`).join("\n")}` : ""}
 Pilih satu topik dan satu sudut cerita yang kuat untuk video pendek. Untuk format sejarah, fakta harus akurat dan bisa dicek; jangan mengarang tanggal atau nama.
 ${FORMATS[p.format].riset}
 Sudut cerita harus dari sudut pandang orang DEWASA biasa (bukan anak/remaja, bukan tokoh terkenal), karena videonya dibuat dengan Google Veo yang menolak keduanya.

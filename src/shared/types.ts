@@ -70,13 +70,13 @@ export interface PanduanFormat {
 export const FORMATS: Record<Format, PanduanFormat> = {
   "ide-bermanfaat": {
     nama: "Ide Bermanfaat & DIY",
-    ringkas: "Ide praktis yang bisa langsung dicoba dengan barang sekitar, mis. pelihara lele sekalian menanam kangkung dalam satu ember.",
+    ringkas: "Ide praktis yang bisa langsung dicoba dengan barang di sekitar rumah: hemat, gampang, dan bermanfaat.",
     riset:
-      "Pilih SATU ide praktis yang benar-benar terbukti berhasil, aman, dan murah, dengan barang yang gampang didapat di Indonesia (mis. budikdamber: lele + kangkung dalam ember, hidroponik dari botol bekas, kompos dari sisa dapur, menanam bawang dari sisa dapur, trik rumah tangga hemat). Di fakta tulis: alat & bahan beserta perkiraan harga, langkah singkat berurutan, kenapa cara ini berhasil (prinsipnya), dan hasil/waktu yang realistis (mis. kangkung siap panen sekitar 2–3 minggu). Jangan ide berbahaya (listrik, gas, mencampur bahan kimia), jangan klaim kesehatan/medis, jangan menjanjikan untung yang berlebihan. Field sudut berisi kalimat pembuka yang menunjukkan manfaatnya, BUKAN POV.",
+      "Pilih SATU ide praktis yang benar-benar terbukti berhasil, aman, dan murah, dengan barang yang gampang didapat di Indonesia, sesuai KATEGORI yang diberikan. Di fakta tulis: alat & bahan beserta perkiraan harga, langkah singkat berurutan, kenapa cara ini berhasil (prinsipnya), dan hasil/waktu yang realistis (mis. kangkung siap panen sekitar 2–3 minggu). Jangan ide berbahaya (listrik, gas, mencampur bahan kimia), jangan klaim kesehatan/medis, jangan menjanjikan untung yang berlebihan. Field sudut berisi kalimat pembuka yang menunjukkan manfaatnya, BUKAN POV.",
     naskah:
-      'Gaya teman yang berbagi ide berguna: orang kedua ("kamu"), santai, jelas, dan bersemangat. Buka dengan hook yang menunjukkan manfaatnya ("Cuma pakai satu ember, kamu bisa panen lele DAN kangkung sekaligus"). Lalu sebut bahan, langkah singkat berurutan, alasan kenapa berhasil, dan hasil yang bisa diharapkan. Angka harga & waktu harus realistis. Tutup dengan ajakan menyimpan video atau mencoba.',
+      'Gaya teman yang berbagi ide berguna: orang kedua ("kamu"), santai, jelas, dan bersemangat. Buka dengan hook yang menunjukkan manfaatnya (mis. "Barang yang biasa kamu buang ini ternyata bisa jadi ..."). Lalu sebut bahan, langkah singkat berurutan, alasan kenapa berhasil, dan hasil yang bisa diharapkan. Angka harga & waktu harus realistis. Tutup dengan ajakan menyimpan video atau mencoba.',
     sutradara:
-      "Visual cerah, hangat, dan rapi seperti video tutorial premium: daftar alat & bahan dengan label harga, langkah bernomor (LANGKAH 1, 2, 3), diagram cara kerja (mis. kotoran lele jadi pupuk, akar kangkung menyaring air), perbandingan sebelum–sesudah, dan linimasa sampai panen. Ilustrasi objek yang jelas dan mudah dikenali.",
+      "Visual cerah, hangat, dan rapi seperti video tutorial premium: daftar alat & bahan dengan label harga, langkah bernomor (LANGKAH 1, 2, 3), diagram cara kerja (alur sebab-akibat dari bahan sampai hasil), perbandingan sebelum–sesudah, dan linimasa sampai panen. Ilustrasi objek yang jelas dan mudah dikenali.",
     bicaraKeKamera: false,
     arahanTts: "Say in a friendly, clear, enthusiastic how-to voice:",
     suara: "Puck",
