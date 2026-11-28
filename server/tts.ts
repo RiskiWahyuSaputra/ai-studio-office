@@ -201,7 +201,8 @@ async function gabungan(dir: string, teks: string[], suara: string, format: Form
     }
   }
   if (!ada) return null;
-  const potong = (await titikPotong(utuh, teks)) ?? (await potongWhisper(utuh, teks));
+  // utamakan batas dari waktu kata Whisper (tepat di jeda napas); deteksi hening sebagai cadangan
+  const potong = (await potongWhisper(utuh, teks)) ?? (await titikPotong(utuh, teks));
   if (!potong) {
     console.warn(`[tts] rekaman gabungan tidak bisa dipotong jadi ${teks.length} kalimat, pakai per kalimat`);
     return null;
@@ -220,30 +221,46 @@ async function gabungan(dir: string, teks: string[], suara: string, format: Form
 
 /** Cari titik potong per kalimat di rekaman gabungan; null kalau hasilnya meragukan. */
 /**
- * Cadangan kalau jeda antarkalimat tidak terbaca: cari batas kalimat dari waktu kata Whisper
- * (jumlah kata tiap kalimat dibandingkan dengan kata yang terdengar), potong di tengah jeda antar kata.
+ * Batas kalimat dari waktu kata Whisper: potong HANYA di celah antar kata (jeda napas), dipilih yang paling dekat
+ * dengan posisi perkiraan (sebanding jumlah huruf tiap kalimat) dan diutamakan setelah tanda baca.
+ * Jumlah huruf dipakai, bukan jumlah kata, karena naskah menulis "tiga sampai lima" sedangkan yang terdengar "3-5".
  */
 async function potongWhisper(utuh: string, teks: string[]): Promise<[number, number][] | null> {
-  const kata = (await ukurKata([utuh]).catch(() => ({}) as Record<string, { mulai: number; akhir: number }[]>))[utuh];
-  if (!kata?.length || kata.length < teks.length) return null;
-  const jumlah = teks.map(hitungKata);
-  const total = jumlah.reduce((a, b) => a + b, 0);
+  const kata = (await ukurKata([utuh]).catch(() => ({}) as Record<string, { teks: string; mulai: number; akhir: number }[]>))[utuh];
+  if (!kata || kata.length < teks.length * 2) return null;
   const durasi = await durasiAudio(utuh);
+  const huruf = teks.map((t) => t.replace(/\s+/g, "").length);
+  const totalHuruf = huruf.reduce((a, b) => a + b, 0);
+  const awalBicara = kata[0].mulai;
+  const panjangBicara = kata[kata.length - 1].akhir - awalBicara;
+  const celah = kata.slice(0, -1).map((w, i) => ({
+    mulai: w.akhir,
+    akhir: kata[i + 1].mulai,
+    tanda: /[.!?]["')]*$/.test(w.teks) ? 2 : /[,;:]$/.test(w.teks) ? 1 : 0,
+  }));
   const hasil: [number, number][] = [];
   let kum = 0;
   let mulai = 0;
-  for (let i = 0; i < teks.length; i++) {
-    kum += jumlah[i];
-    if (i === teks.length - 1) {
-      hasil.push([mulai, durasi]);
-      break;
+  for (let i = 0; i < teks.length - 1; i++) {
+    kum += huruf[i];
+    const harap = awalBicara + (kum / totalHuruf) * panjangBicara;
+    let terbaik: (typeof celah)[number] | null = null;
+    let skorTerbaik = -Infinity;
+    for (const c of celah) {
+      const tengah = (c.mulai + c.akhir) / 2;
+      if (tengah <= mulai + 0.5 || Math.abs(tengah - harap) > 3) continue;
+      const skor = c.tanda * 1.2 + Math.min(c.akhir - c.mulai, 0.8) * 3 - Math.abs(tengah - harap) * 0.7;
+      if (skor > skorTerbaik) {
+        skorTerbaik = skor;
+        terbaik = c;
+      }
     }
-    const k = Math.min(kata.length - 1, Math.max(1, Math.round((kum / total) * kata.length)));
-    const batas = (kata[k - 1].akhir + kata[k].mulai) / 2;
-    if (batas <= mulai) return null;
+    if (!terbaik) return null;
+    const batas = (terbaik.mulai + terbaik.akhir) / 2;
     hasil.push([mulai, batas]);
     mulai = batas;
   }
+  hasil.push([mulai, durasi]);
   return hasil;
 }
 
