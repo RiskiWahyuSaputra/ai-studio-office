@@ -69,7 +69,7 @@ export function bawaanLokal(_format: Format): string {
 
 /** Tempo bicara Edge per format: horor lebih pelan, vlog sedikit lebih cepat. */
 // horor: lebih lambat & nada lebih rendah (pilihan kanal, contoh: povq-uji-suara/seram/1-ardi-pelan-dalam.wav)
-const TEMPO_EDGE: Record<Format, string> = { "fakta-unik": "+8%", "cerita-horor": "-18%", "pov-sejarah": "+0%", "vlog-hewan": "+6%" };
+const TEMPO_EDGE: Record<Format, string> = { "ide-bermanfaat": "+8%", "cerita-horor": "-18%", "pov-sejarah": "+0%", "vlog-hewan": "+6%" };
 
 export const suaraLokalProyek = (p: Project) =>
   SUARA_LOKAL.find((s) => s.id === p.suaraLokal && (!s.eleven || elevenTersedia())) ?? SUARA_LOKAL.find((s) => s.id === bawaanLokal(p.format))!;

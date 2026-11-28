@@ -123,35 +123,37 @@ const HOROR: Bank[] = [
   },
 ];
 
-const FAKTA: Bank[] = [
+const IDE: Bank[] = [
   {
-    topik: "Gurita punya tiga jantung",
-    sudut: "Tahu nggak, gurita punya tiga jantung dan darahnya berwarna biru",
+    topik: "Budikdamber: pelihara lele sekalian menanam kangkung dalam satu ember",
+    sudut: "Cuma pakai satu ember, kamu bisa panen lele dan kangkung sekaligus",
     fakta: [
-      "Gurita punya tiga jantung: dua memompa darah ke insang, satu ke seluruh tubuh.",
-      "Darah gurita biru karena memakai hemosianin yang mengandung tembaga.",
-      "Sekitar dua pertiga neuron gurita ada di lengannya.",
+      "Bahannya: ember sekitar 80 liter, gelas plastik bekas berlubang, arang, kawat, bibit lele, dan bibit kangkung.",
+      "Isi ember dengan air, masukkan 50–60 bibit lele, lalu gantung gelas-gelas berisi arang dan bibit kangkung di tepi ember.",
+      "Kotoran lele jadi pupuk untuk kangkung, dan akar kangkung membantu menyaring air untuk lele.",
+      "Kangkung biasanya bisa dipanen sekitar 2–3 minggu, lele sekitar 2–3 bulan.",
     ],
-    kataKunci: ["fakta unik", "gurita", "fakta hewan"],
-    latar: "laut dalam biru gelap dengan cahaya lembut dari atas",
-    tokoh: "gurita kartun berwarna oranye yang ekspresif",
+    kataKunci: ["budikdamber", "ide bermanfaat", "lele dan kangkung"],
+    latar: "teras rumah yang cerah dengan ember biru besar berisi air dan gelas-gelas plastik berisi kangkung di tepinya",
+    tokoh: "pemuda ramah berkaus hijau",
   },
   {
-    topik: "Sehari di Venus lebih lama dari setahunnya",
-    sudut: "Di Venus, satu hari lebih lama dari satu tahun",
+    topik: "Hidroponik sederhana dari botol bekas",
+    sudut: "Botol bekas di rumahmu bisa jadi kebun sayur mini",
     fakta: [
-      "Venus butuh sekitar 243 hari Bumi untuk berputar sekali pada porosnya.",
-      "Venus mengelilingi Matahari dalam sekitar 225 hari Bumi.",
-      "Venus berputar berlawanan arah dengan kebanyakan planet.",
+      "Bahannya: botol plastik 1,5 liter, kain flanel, rockwool atau sabut kelapa, nutrisi AB mix, dan benih sawi.",
+      "Potong botol jadi dua, balik bagian atasnya, lalu pasang kain flanel sebagai sumbu ke larutan nutrisi di bawah.",
+      "Kain flanel menyerap air dan nutrisi ke akar, jadi tanaman tidak perlu disiram setiap hari.",
+      "Sawi biasanya bisa dipanen sekitar 4–5 minggu setelah semai.",
     ],
-    kataKunci: ["fakta unik", "venus", "luar angkasa"],
-    latar: "luar angkasa dengan planet Venus kuning keemasan dan Matahari di kejauhan",
-    tokoh: "astronaut kartun kecil",
+    kataKunci: ["hidroponik botol", "ide bermanfaat", "kebun mini"],
+    latar: "jendela dapur yang terang dengan deretan botol plastik berisi sawi hijau",
+    tokoh: "wanita ramah berkemeja kuning",
   },
 ];
 
 function pilih(format: Format, ide: string): Bank {
-  const bank = format === "fakta-unik" ? FAKTA : format === "pov-sejarah" ? SEJARAH : format === "vlog-hewan" ? HEWAN : HOROR;
+  const bank = format === "ide-bermanfaat" ? IDE : format === "pov-sejarah" ? SEJARAH : format === "vlog-hewan" ? HEWAN : HOROR;
   const q = ide.toLowerCase();
   const cocok = bank.find((b) => q && (b.topik.toLowerCase().includes(q) || b.kataKunci.some((k) => q.includes(k))));
   if (cocok) return cocok;
@@ -160,8 +162,8 @@ function pilih(format: Format, ide: string): Bank {
       ...bank[0],
       topik: ide.trim(),
       sudut:
-        format === "fakta-unik"
-          ? `Fakta unik tentang ${ide.trim()}`
+        format === "ide-bermanfaat"
+          ? `Ide praktis: ${ide.trim()}`
           : format === "pov-sejarah"
           ? `POV: kamu hidup di masa ${ide.trim()}`
           : format === "vlog-hewan"
@@ -192,8 +194,8 @@ export function risetTemplat(format: Format, ide: string): Riset {
     topik: b.topik,
     sudut: b.sudut,
     alasan:
-      format === "fakta-unik"
-        ? "Fakta mengejutkan yang gampang dibayangkan bikin orang menonton sampai habis dan membagikannya."
+      format === "ide-bermanfaat"
+        ? "Ide praktis yang bisa langsung dicoba sering disimpan dan dibagikan, dua sinyal kuat untuk algoritma."
         : format === "pov-sejarah"
         ? "Format POV membuat penonton merasa ikut hadir, cocok untuk retensi Shorts dan TikTok."
         : format === "vlog-hewan"
@@ -233,12 +235,12 @@ export function naskahTemplat(format: Format, r: Riset, seri?: Seri): Naskah {
       cta: "Kalian pernah ngalamin yang kayak gini? Ceritain di komentar. Part 2 menyusul.",
     };
   }
-  if (format === "fakta-unik") {
+  if (format === "ide-bermanfaat") {
     return {
       judulKerja: r.sudut,
-      hook: `${r.sudut}. Serius, ini beneran.`,
-      narasi: [r.fakta[0], "Kedengarannya aneh, kan?", r.fakta[1], r.fakta[2] ?? "Dan ternyata masih ada yang lebih gila lagi."].filter(Boolean).join("\n"),
-      cta: "Kamu baru tahu yang mana? Tulis di komentar, dan follow buat fakta unik berikutnya!",
+      hook: `${r.sudut}. Gampang banget, dan murah!`,
+      narasi: [r.fakta[0], r.fakta[1], r.fakta[2], r.fakta[3] ?? "Hasilnya bisa kamu nikmati sendiri di rumah."].filter(Boolean).join("\n"),
+      cta: "Simpan video ini biar nggak lupa, dan follow buat ide bermanfaat berikutnya!",
     };
   }
   if (format === "pov-sejarah") {

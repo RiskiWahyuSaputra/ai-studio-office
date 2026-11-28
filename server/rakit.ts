@@ -20,7 +20,7 @@ const DURASI_MIN_GAMBAR = 3.5;
 const GAMBAR = /\.(png|jpe?g|webp)$/i;
 
 const SUASANA: Record<Project["format"], PropsCerita["suasana"]> = {
-  "fakta-unik": "ceria",
+  "ide-bermanfaat": "ceria",
   "cerita-horor": "horor",
   "vlog-hewan": "ceria",
   "pov-sejarah": "hangat",
