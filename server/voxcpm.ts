@@ -30,8 +30,11 @@ interface SuaraLokal {
   acuan?: { file: string; teks: string };
   /** suara Edge TTS (cepat, beberapa detik per kalimat) dan bukan VoxCPM */
   edge?: { suara: string; pitch: string; pitchHoror: string };
-  /** suara ElevenLabs (butuh ELEVENLABS_API_KEY, memakai kredit akun) */
-  eleven?: { voiceId: string };
+  /**
+   * suara ElevenLabs (butuh ELEVENLABS_API_KEY, memakai kredit akun).
+   * cadangan: suara ElevenLabs lain kalau suara ini ditolak karena butuh paket berbayar (suara Voice Library).
+   */
+  eleven?: { voiceId: string; cadangan?: string };
 }
 
 /** Suara pilihanmu sendiri dari ElevenLabs (Voice Library / klon), lewat ELEVENLABS_VOICE_ID di .env. */
@@ -39,6 +42,12 @@ const SUARA_KANAL = process.env.ELEVENLABS_VOICE_ID?.trim();
 
 export const SUARA_LOKAL: SuaraLokal[] = [
   ...(SUARA_KANAL ? [{ id: "eleven-kanal", ket: "Suara kanal (ElevenLabs, ELEVENLABS_VOICE_ID)", deskripsi: "", eleven: { voiceId: SUARA_KANAL } }] : []),
+  {
+    id: "eleven-senandika",
+    ket: "Pria muda Indonesia, Senandika (ElevenLabs, butuh paket berbayar; selama gratis pakai Liam)",
+    deskripsi: "",
+    eleven: { voiceId: "eESTQeTcGUli0jYysKtx", cadangan: "eleven-liam" },
+  },
   { id: "eleven-liam", ket: "Pria muda, Liam (ElevenLabs)", deskripsi: "", eleven: { voiceId: "TX3LPaxmHKxFdv7VOQHJ" } },
   { id: "eleven-brian", ket: "Pria, narator dalam (ElevenLabs)", deskripsi: "", eleven: { voiceId: "nPczCjzI2devNBz1zQrb" } },
   { id: "eleven-bill", ket: "Pria, tua & tenang (ElevenLabs)", deskripsi: "", eleven: { voiceId: "pqHfZKP75CvOlQylNhV4" } },
@@ -64,7 +73,7 @@ export const SUARA_LOKAL: SuaraLokal[] = [
 /** Suara bawaan per format: ElevenLabs kalau kuncinya ada, kalau tidak Edge (Ardi). */
 export function bawaanLokal(_format: Format): string {
   if (!elevenTersedia()) return "edge-ardi";
-  return SUARA_KANAL ? "eleven-kanal" : "eleven-liam";
+  return SUARA_KANAL ? "eleven-kanal" : "eleven-senandika";
 }
 
 /** Tempo bicara Edge per format: horor lebih pelan, vlog sedikit lebih cepat. */
@@ -103,7 +112,15 @@ export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: s
     const id = `${p.id}:${suara.id}:${kunci(kalimat.join("\n"))}`;
     const lama = berjalan.get(id);
     if (lama) return lama;
+    const cadangan = SUARA_LOKAL.find((s) => s.id === suara.eleven!.cadangan)?.eleven;
     const kerja = narasiEleven(projectDir(p.id), kalimat, suara.eleven.voiceId, p.format, onProgres).catch((e: Error) => {
+      // suara Voice Library di akun gratis: pakai suara ElevenLabs bawaan (masih satu suara untuk seluruh video)
+      if (cadangan && /paid_plan_required|402/.test(e.message)) {
+        onProgres?.("Suara ini butuh paket ElevenLabs berbayar, pakai Liam...");
+        return narasiEleven(projectDir(p.id), kalimat, cadangan.voiceId, p.format, onProgres);
+      }
+      throw e;
+    }).catch((e: Error) => {
       // kuota habis / kunci salah: seluruh narasi pakai Edge supaya suaranya tetap satu
       console.warn(`[narasi] ElevenLabs gagal (${e.message}), pakai Edge`);
       onProgres?.(`ElevenLabs gagal (${e.message.slice(0, 80)}), pakai suara Edge...`);
