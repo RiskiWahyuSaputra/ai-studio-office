@@ -331,7 +331,7 @@ export async function narasiSemua(
       console.warn(`[tts] ${e.message}, ulang semua adegan dengan model lain`);
     }
   }
-  if (semuaKuota) throw new KuotaTtsHabis(`Kuota Gemini TTS habis di semua model (${alasan.join("; ")})`);
+  if (semuaKuota) throw new KuotaTtsHabis(`Kuota harian Gemini TTS habis (${alasan.join("; ")}). Kuota pulih sekitar pukul 15.00 WIB, lalu klik Ulangi supaya tetap memakai suara yang sama.`);
   throw new GeminiSibuk(`Gemini TTS sedang sibuk (${alasan.join("; ")})`);
 }
 

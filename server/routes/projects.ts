@@ -123,12 +123,23 @@ projects.post("/projects/:id/komentar", async (req, res) => {
   }
 });
 
+/** Contoh suara tetap (tools/voxcpm/contoh), tanpa memakai kuota layanan suara. */
+projects.get("/contoh-suara/:nama", (req, res) => {
+  const nama = String(req.params.nama);
+  if (!/^[a-z0-9-]+\.mp3$/.test(nama)) return void res.status(404).end();
+  res.sendFile(path.join(ROOT, "tools", "voxcpm", "contoh", nama), (e) => e && !res.headersSent && res.status(404).end());
+});
+
 projects.post("/projects/:id/suara/contoh", async (req, res) => {
   const p = getProject(req.params.id);
   if (!p) return void res.status(404).json({ error: "Proyek tidak ditemukan" });
   const teks = p.adegan?.[0]?.narasi || p.naskah?.hook;
   if (!teks) return void res.status(400).json({ error: "Belum ada naskah untuk dibacakan" });
   if (getSettings().mesinSuara === "voxcpm" && voxcpmTersedia()) {
+    // suara Gemini TTS: putar contoh tetap (suaranya selalu sama), supaya tidak menghabiskan kuota harian
+    const pilihId = SUARA_LOKAL.find((v) => v.id === req.body?.suara)?.id ?? p.suaraLokal ?? bawaanLokal(p.format);
+    const gemini = SUARA_LOKAL.find((v) => v.id === pilihId)?.gemini;
+    if (gemini) return void res.json({ url: `/api/contoh-suara/gemini-${gemini.suara.toLowerCase()}.mp3` });
     try {
       const pilih = SUARA_LOKAL.find((v) => v.id === req.body?.suara)?.id ?? p.suaraLokal;
       const h = await narasiLokal({ ...p, suaraLokal: pilih }, [teks]);
