@@ -21,6 +21,9 @@ export const ARAHAN = (f: Format) => FORMATS[f].arahanTts;
 
 export const suaraBawaan = (f: Format) => FORMATS[f].suara;
 
+/** Kunci khusus suara (boleh dari akun Google lain, kuotanya terpisah); kalau kosong, pakai kunci utama. */
+export const kunciTts = () => process.env.GEMINI_TTS_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim();
+
 /** Model Gemini TTS untuk suara kanal: selalu sama supaya suara Fenrir konsisten di semua video. */
 export const MODEL_TTS_KANAL = process.env.GEMINI_TTS_KANAL?.trim() || ttsModels()[0];
 
@@ -96,7 +99,7 @@ async function satuKalimat(dir: string, teks: string, suara: string, format: For
   } catch {
     // belum ada, buat baru
   }
-  const key = process.env.GEMINI_API_KEY;
+  const key = kunciTts();
   if (!key) throw new Error("GEMINI_API_KEY belum diisi, narasi suara butuh Gemini TTS");
   let terakhir: unknown;
   for (const jeda of [0, 4000, 10000]) {
@@ -185,7 +188,7 @@ async function gabungan(dir: string, teks: string[], suara: string, format: Form
   } catch {
     // belum ada
   }
-  const key = process.env.GEMINI_API_KEY;
+  const key = kunciTts();
   if (!key) throw new Error("GEMINI_API_KEY belum diisi, narasi suara butuh Gemini TTS");
   if (teks.length === 1) return null;
 

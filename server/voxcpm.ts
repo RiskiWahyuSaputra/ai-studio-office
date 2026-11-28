@@ -41,7 +41,7 @@ interface SuaraLokal {
   gemini?: { suara: string };
 }
 
-const geminiTersedia = () => Boolean(process.env.GEMINI_API_KEY?.trim());
+const geminiTersedia = () => Boolean(process.env.GEMINI_TTS_API_KEY?.trim() || process.env.GEMINI_API_KEY?.trim());
 
 /** Suara pilihanmu sendiri dari ElevenLabs (Voice Library / klon), lewat ELEVENLABS_VOICE_ID di .env. */
 const SUARA_KANAL = process.env.ELEVENLABS_VOICE_ID?.trim();
