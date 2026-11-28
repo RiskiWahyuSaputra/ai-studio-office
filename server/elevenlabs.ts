@@ -16,12 +16,16 @@ const MODEL = process.env.ELEVENLABS_MODEL?.trim() || "eleven_v3";
 
 export const elevenTersedia = () => Boolean(process.env.ELEVENLABS_API_KEY?.trim());
 
-/** Pengaturan suara per format: horor lebih stabil & datar (dingin), vlog lebih ekspresif. */
-const GAYA_SUARA: Record<Format, { stability: number; similarity_boost: number; style: number; speed: number }> = {
-  "ide-bermanfaat": { stability: 0.45, similarity_boost: 0.8, style: 0.45, speed: 1.05 },
-  "cerita-horor": { stability: 0.6, similarity_boost: 0.8, style: 0.3, speed: 0.92 },
-  "pov-sejarah": { stability: 0.55, similarity_boost: 0.8, style: 0.25, speed: 1 },
-  "vlog-hewan": { stability: 0.4, similarity_boost: 0.75, style: 0.5, speed: 1.05 },
+/**
+ * Pengaturan suara per format: horor lebih stabil & datar (dingin), format ceria lebih ekspresif.
+ * v3: stabilitas 0 = "Creative" (paling ekspresif), 0.5 = "Natural"; tag emosi (mis. [excited]) ditaruh di depan
+ * kalimat dan tidak ikut dibacakan.
+ */
+const GAYA_SUARA: Record<Format, { stability: number; similarity_boost: number; style: number; speed: number; v3: { stability: number; tag?: string } }> = {
+  "ide-bermanfaat": { stability: 0.45, similarity_boost: 0.8, style: 0.45, speed: 1.05, v3: { stability: 0, tag: "[excited]" } },
+  "cerita-horor": { stability: 0.6, similarity_boost: 0.8, style: 0.3, speed: 0.92, v3: { stability: 0.5 } },
+  "pov-sejarah": { stability: 0.55, similarity_boost: 0.8, style: 0.25, speed: 1, v3: { stability: 0.5 } },
+  "vlog-hewan": { stability: 0.4, similarity_boost: 0.75, style: 0.5, speed: 1.05, v3: { stability: 0, tag: "[excited]" } },
 };
 
 /**
@@ -29,9 +33,11 @@ const GAYA_SUARA: Record<Format, { stability: number; similarity_boost: number; 
  * v3 hanya menerima stability 0 / 0.5 / 1 dan mengatur emosi dari teks, jadi pengaturan lain tidak dikirim.
  */
 function badan(teks: string, format: Format) {
-  const g = GAYA_SUARA[format];
+  const { v3, ...g } = GAYA_SUARA[format];
   if (MODEL === "eleven_multilingual_v2") return { text: teks, model_id: MODEL, voice_settings: g };
-  if (MODEL.startsWith("eleven_v3")) return { text: teks, model_id: MODEL, language_code: "id", voice_settings: { stability: 0.5, similarity_boost: g.similarity_boost } };
+  if (MODEL.startsWith("eleven_v3")) {
+    return { text: v3.tag ? `${v3.tag} ${teks}` : teks, model_id: MODEL, language_code: "id", voice_settings: { stability: v3.stability, similarity_boost: g.similarity_boost } };
+  }
   return { text: teks, model_id: MODEL, language_code: "id", voice_settings: g };
 }
 
@@ -54,17 +60,28 @@ function keKata(al: { characters: string[]; character_start_times_seconds: numbe
     akhir = al.character_end_times_seconds[i];
   });
   if (teks) kata.push({ teks, mulai, akhir });
-  return kata.map((k) => ({ teks: k.teks, mulai: Math.round(k.mulai * 1000) / 1000, akhir: Math.round(k.akhir * 1000) / 1000 }));
+  // tag emosi v3 (mis. "[excited]") tidak dibacakan, jadi bukan kata subtitle
+  return kata.filter((k) => !/^\[[^\]]*\]$/.test(k.teks)).map((k) => ({ teks: k.teks, mulai: Math.round(k.mulai * 1000) / 1000, akhir: Math.round(k.akhir * 1000) / 1000 }));
 }
 
 async function satu(teks: string, voiceId: string, format: Format, out: string): Promise<KataWaktu[]> {
   for (let coba = 0; ; coba++) {
-    const r = await fetch(`${API}/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
-      method: "POST",
-      headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY!.trim(), "content-type": "application/json" },
-      body: JSON.stringify(badan(teks, format)),
-      signal: AbortSignal.timeout(90_000),
-    });
+    let r: Response;
+    try {
+      r = await fetch(`${API}/text-to-speech/${voiceId}/with-timestamps?output_format=mp3_44100_128`, {
+        method: "POST",
+        headers: { "xi-api-key": process.env.ELEVENLABS_API_KEY!.trim(), "content-type": "application/json" },
+        body: JSON.stringify(badan(teks, format)),
+        signal: AbortSignal.timeout(90_000),
+      });
+    } catch (e) {
+      // koneksi/DNS putus sesaat: coba lagi dulu sebelum menyerah (dan jatuh ke Edge)
+      if (coba < 3) {
+        await new Promise((ok) => setTimeout(ok, 2000 + coba * 3000));
+        continue;
+      }
+      throw e;
+    }
     if (r.ok) {
       const j = (await r.json()) as { audio_base64: string; alignment?: Parameters<typeof keKata>[0] };
       const kata = j.alignment ? keKata(j.alignment) : [];
@@ -97,7 +114,11 @@ export async function narasiEleven(
   if (!elevenTersedia()) throw new Error("ELEVENLABS_API_KEY belum diisi di .env");
   fs.mkdirSync(dir, { recursive: true });
   const g = GAYA_SUARA[format];
-  const files = kalimat.map((t) => `suara-el-${kunci(`${voiceId}|${MODEL}|${JSON.stringify(g)}|${t}`)}.mp3`);
+  // kunci cache sama seperti sebelum ada pengaturan v3 untuk format yang gayanya tidak berubah (horor, sejarah),
+  // supaya render ulang proyek lama tidak memakai kredit lagi
+  const { v3, ...lama } = g;
+  const sidik = JSON.stringify(lama) + (v3.stability !== 0.5 || v3.tag ? JSON.stringify(v3) : "");
+  const files = kalimat.map((t) => `suara-el-${kunci(`${voiceId}|${MODEL}|${sidik}|${t}`)}.mp3`);
   const kata: KataWaktu[][] = [];
   for (const [i, t] of kalimat.entries()) {
     const out = path.join(dir, files[i]);
