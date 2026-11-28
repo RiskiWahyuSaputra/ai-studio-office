@@ -12,7 +12,8 @@ import { antreBerat } from "./berat.ts";
 import { ROOT } from "./paths.ts";
 import { projectDir } from "./editor.ts";
 import { elevenTersedia, narasiEleven } from "./elevenlabs.ts";
-import { narasiSemua as narasiGemini } from "./tts.ts";
+import { KuotaTtsHabis, narasiSemua as narasiGemini } from "./tts.ts";
+import { ukurKata } from "./ukur.ts";
 import type { Format, Project } from "../src/shared/types.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
 
@@ -20,7 +21,6 @@ const DIR = path.join(ROOT, "tools", "voxcpm");
 const PYTHON = path.join(DIR, ".venv", "bin", "python");
 const SKRIP = path.join(DIR, "narasi.py");
 const SKRIP_EDGE = path.join(DIR, "edge.py");
-const SKRIP_UKUR = path.join(DIR, "ukur.py");
 
 export const voxcpmTersedia = () => fs.existsSync(PYTHON) && fs.existsSync(SKRIP);
 
@@ -126,9 +126,11 @@ export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: s
     const lama = berjalan.get(id);
     if (lama) return lama;
     const kerja = jalankanGemini(p, kalimat, suara.gemini.suara, onProgres).catch((e: Error) => {
-      // kuota harian habis / model sibuk: seluruh narasi pakai Edge supaya suaranya tetap satu
-      console.warn(`[narasi] Gemini TTS gagal (${e.message}), pakai Edge`);
-      onProgres?.("Kuota Gemini TTS habis atau sibuk, pakai suara Ardi...");
+      // hanya kalau kuota SEMUA model Gemini TTS habis, seluruh narasi pakai Edge (suara tetap satu).
+      // Kalau cuma sibuk sesaat, galat diteruskan supaya tahapnya dicoba lagi nanti dengan suara yang sama.
+      if (!(e instanceof KuotaTtsHabis)) throw e;
+      console.warn(`[narasi] ${e.message}, pakai Edge`);
+      onProgres?.("Kuota Gemini TTS hari ini habis, pakai suara Ardi...");
       return jalankanEdge(p, kalimat, EDGE_CADANGAN(), onProgres);
     });
     berjalan.set(id, kerja);
@@ -201,29 +203,6 @@ async function jalankanGemini(p: Project, kalimat: string[], suara: string, onPr
     return {} as Record<string, KataWaktu[]>;
   });
   return { files, kata: files.map((f) => kata[path.join(dir, f)]) };
-}
-
-function ukurKata(files: string[]): Promise<Record<string, KataWaktu[]>> {
-  if (!voxcpmTersedia() || !fs.existsSync(SKRIP_UKUR)) return Promise.reject(new Error("tools/voxcpm belum terpasang"));
-  return new Promise((resolve, reject) => {
-    const ps = spawn(PYTHON, [SKRIP_UKUR, ...files], { cwd: DIR, env: { ...process.env, PYTHONUNBUFFERED: "1" } });
-    let out = "";
-    ps.stdout.on("data", (d) => (out += d));
-    ps.on("error", reject);
-    ps.on("close", () => {
-      const baris = out.trim().split("\n").reverse();
-      for (const b of baris) {
-        try {
-          const j = JSON.parse(b);
-          if (j.selesai) return resolve(j.kata);
-          if (j.galat) return reject(new Error(j.galat));
-        } catch {
-          /* bukan JSON */
-        }
-      }
-      reject(new Error("ukur kata tidak mengembalikan hasil"));
-    });
-  });
 }
 
 /** Edge TTS: ringan (tanpa model lokal), jadi tidak perlu antre dengan pekerjaan berat. */

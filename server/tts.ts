@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { GeminiSibuk } from "./ai.ts";
+import { ukurKata } from "./ukur.ts";
 import { FORMATS, type Format } from "../src/shared/types.ts";
 
 const DEFAULT_TTS = "gemini-2.5-flash-preview-tts,gemini-3.1-flash-tts-preview,gemini-3.8-flash-tts";
@@ -34,6 +35,9 @@ function ffmpeg(args: string[], input?: Buffer): Promise<void> {
     else ps.stdin.end();
   });
 }
+
+/** Semua model Gemini TTS menolak karena kuota harian habis (bukan sekadar sibuk). */
+export class KuotaTtsHabis extends GeminiSibuk {}
 
 class TtsSibuk extends Error {
   readonly kuotaHabis: boolean;
@@ -77,11 +81,9 @@ async function panggilTts(model: string, key: string, teks: string, suara: strin
 /** Batas wajar panjang rekaman. Lebih dari ini = model ikut membacakan arahan atau bicara terlalu lambat. */
 const batasDurasi = (jumlahKata: number, jeda = 0) => jumlahKata * 0.75 + 2.5 + jeda;
 const hitungKata = (t: string) => t.trim().split(/\s+/).filter(Boolean).length;
-/** Model yang ketahuan ikut membacakan arahan gaya; kalimat berikutnya langsung tanpa arahan (hemat kuota). */
-const modelTanpaGaya = new Set<string>();
+
 
 async function satuKalimat(dir: string, teks: string, suara: string, format: Format, model: string, tanpaGaya = false): Promise<string> {
-  if (modelTanpaGaya.has(model)) tanpaGaya = true;
   const arahan = tanpaGaya ? "" : ARAHAN(format);
   const nama = `suara-${kunci(teks, suara, arahan, model)}.wav`;
   const file = path.join(dir, nama);
@@ -110,7 +112,7 @@ async function satuKalimat(dir: string, teks: string, suara: string, format: For
         // kemungkinan arahan gaya ikut dibacakan: buang, ulangi tanpa arahan
         console.warn(`[tts] ${model}: ${durasi.toFixed(1)} dtk untuk ${hitungKata(teks)} kata, terlalu panjang. Ulangi tanpa arahan gaya.`);
         await fs.rm(file, { force: true });
-        modelTanpaGaya.add(model);
+        // hanya kalimat ini yang diulang tanpa gaya; kalimat lain tetap memakai arahan supaya suaranya hidup
         return satuKalimat(dir, teks, suara, format, model, true);
       }
       return nama;
@@ -171,8 +173,6 @@ async function durasiAudio(file: string): Promise<number> {
  * lalu dipotong di jeda terpanjang. Mengembalikan null kalau potongannya meragukan.
  */
 async function gabungan(dir: string, teks: string[], suara: string, format: Format, model: string): Promise<string[] | null> {
-  // model yang tidak cocok dengan arahan gaya juga tidak dipakai untuk rekaman gabungan
-  if (modelTanpaGaya.has(model)) return null;
   const arahan = ARAHAN(format);
   const id = kunci(teks.join("\n\n"), suara, arahan, model);
   const keluaran = teks.map((_, i) => `suara-${id}-${i + 1}.wav`);
@@ -187,23 +187,23 @@ async function gabungan(dir: string, teks: string[], suara: string, format: Form
   if (teks.length === 1) return null;
 
   const utuh = path.join(dir, `suara-${id}-utuh.wav`);
-  try {
-    await fs.access(utuh);
-  } catch {
+  const kataTotal = teks.reduce((n, t) => n + hitungKata(t), 0);
+  let ada = await fs.access(utuh).then(() => true, () => false);
+  // rekaman terlalu panjang = arahan gaya ikut dibacakan / bicara terlalu lambat: coba sekali lagi dengan gaya yang sama
+  for (let coba = 0; !ada && coba < 2; coba++) {
     const r = await panggilTts(model, key, teks.join("\n\n"), suara, arahan);
     await simpanAudio(utuh, r.mime, r.bytes);
     const total = await durasiAudio(utuh);
-    const kataTotal = teks.reduce((n, t) => n + hitungKata(t), 0);
-    if (total > batasDurasi(kataTotal, 1.5 * teks.length)) {
-      console.warn(`[tts] rekaman gabungan ${total.toFixed(1)} dtk terlalu panjang untuk ${kataTotal} kata, pakai per kalimat`);
+    if (total <= batasDurasi(kataTotal, 1.5 * teks.length)) ada = true;
+    else {
+      console.warn(`[tts] rekaman gabungan ${total.toFixed(1)} dtk terlalu panjang untuk ${kataTotal} kata (percobaan ${coba + 1})`);
       await fs.rm(utuh, { force: true });
-      modelTanpaGaya.add(model);
-      return null;
     }
   }
-  const potong = await titikPotong(utuh, teks);
+  if (!ada) return null;
+  const potong = (await titikPotong(utuh, teks)) ?? (await potongWhisper(utuh, teks));
   if (!potong) {
-    console.warn(`[tts] jeda di rekaman gabungan tidak cocok dengan ${teks.length} kalimat, pakai per kalimat`);
+    console.warn(`[tts] rekaman gabungan tidak bisa dipotong jadi ${teks.length} kalimat, pakai per kalimat`);
     return null;
   }
   await Promise.all(
@@ -215,6 +215,34 @@ async function gabungan(dir: string, teks: string[], suara: string, format: Form
 }
 
 /** Cari titik potong per kalimat di rekaman gabungan; null kalau hasilnya meragukan. */
+/**
+ * Cadangan kalau jeda antarkalimat tidak terbaca: cari batas kalimat dari waktu kata Whisper
+ * (jumlah kata tiap kalimat dibandingkan dengan kata yang terdengar), potong di tengah jeda antar kata.
+ */
+async function potongWhisper(utuh: string, teks: string[]): Promise<[number, number][] | null> {
+  const kata = (await ukurKata([utuh]).catch(() => ({}) as Record<string, { mulai: number; akhir: number }[]>))[utuh];
+  if (!kata?.length || kata.length < teks.length) return null;
+  const jumlah = teks.map(hitungKata);
+  const total = jumlah.reduce((a, b) => a + b, 0);
+  const durasi = await durasiAudio(utuh);
+  const hasil: [number, number][] = [];
+  let kum = 0;
+  let mulai = 0;
+  for (let i = 0; i < teks.length; i++) {
+    kum += jumlah[i];
+    if (i === teks.length - 1) {
+      hasil.push([mulai, durasi]);
+      break;
+    }
+    const k = Math.min(kata.length - 1, Math.max(1, Math.round((kum / total) * kata.length)));
+    const batas = (kata[k - 1].akhir + kata[k].mulai) / 2;
+    if (batas <= mulai) return null;
+    hasil.push([mulai, batas]);
+    mulai = batas;
+  }
+  return hasil;
+}
+
 export async function titikPotong(utuh: string, teks: string[]): Promise<[number, number][] | null> {
   const total = await durasiAudio(utuh);
   const butuh = teks.length - 1;
@@ -260,6 +288,7 @@ export async function narasiSemua(
   const semua = ttsModels();
   const urut = modelPilihan && semua.includes(modelPilihan) ? [modelPilihan, ...semua.filter((m) => m !== modelPilihan)] : semua;
   const alasan: string[] = [];
+  let semuaKuota = true;
   for (const model of urut) {
     try {
       const sekaligus = await gabungan(dir, teks, suara, format, model);
@@ -270,9 +299,11 @@ export async function narasiSemua(
     } catch (e) {
       if (!(e instanceof TtsSibuk)) throw e;
       alasan.push(e.message);
+      if (!e.kuotaHabis) semuaKuota = false;
       console.warn(`[tts] ${e.message}, ulang semua adegan dengan model lain`);
     }
   }
+  if (semuaKuota) throw new KuotaTtsHabis(`Kuota Gemini TTS habis di semua model (${alasan.join("; ")})`);
   throw new GeminiSibuk(`Gemini TTS sedang sibuk (${alasan.join("; ")})`);
 }
 
