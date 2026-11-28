@@ -4,7 +4,7 @@ import { api, listen } from "./api.ts";
 import { createOffice, type ModeTampilan } from "./office/office.ts";
 import { memberForStage } from "./shared/team.ts";
 import { STAGES, type InfoKuota, type Project, type ServerEvent } from "./shared/types.ts";
-import { esc, judulProyek, renderKuota, renderPanel, type UiState, type View } from "./ui/panel.ts";
+import { esc, judulProyek, pilihTabProyek, renderKuota, renderPanel, type UiState, type View } from "./ui/panel.ts";
 
 const office = createOffice(document.querySelector<HTMLCanvasElement>("#office")!);
 
@@ -329,6 +329,10 @@ panel.addEventListener("click", async (ev) => {
       if (p) await run(() => api.patch(p.id, { paket }), "Caption disimpan");
       return;
     }
+    case "tab-proyek":
+      pilihTabProyek(el.dataset.tab ?? "semua");
+      render(true);
+      return;
     case "salin-komentar": {
       const ta = panel.querySelector<HTMLTextAreaElement>(`[data-f="komentar.${el.dataset.i}"]`);
       if (ta) await run(() => navigator.clipboard.writeText(ta.value), "Komentar disalin");

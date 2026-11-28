@@ -232,3 +232,20 @@ a.btn { text-decoration: none; display: inline-block; }
 /* komentar tersemat */
 .komentar-opsi { display: flex; gap: 8px; align-items: flex-end; }
 .komentar-opsi .field { flex: 1; min-width: 0; }
+
+/* tab tema di daftar proyek */
+.tab-proyek { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.tab-proyek button {
+  flex: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
+  background: transparent;
+  border: 2px solid var(--line);
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.tab-proyek button:hover { color: var(--ink); }
+.tab-proyek button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.tab-proyek button[aria-selected="true"] { color: var(--ink); border-color: var(--accent); background: #2a2213; }
+.tab-proyek .count { font-size: 12px; }

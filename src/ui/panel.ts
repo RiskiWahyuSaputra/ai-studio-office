@@ -53,8 +53,34 @@ function badge(p: Project) {
   return `<span class="badge badge-${p.status}">${STATUS_LABEL[p.status]}</span>`;
 }
 
+/** Tab daftar proyek: "semua" atau satu format. Diingat per browser. */
+let tabProyek: string = (() => {
+  try {
+    return localStorage.getItem("povq-tab-proyek") ?? "semua";
+  } catch {
+    return "semua";
+  }
+})();
+export function pilihTabProyek(tab: string) {
+  tabProyek = tab;
+  try {
+    localStorage.setItem("povq-tab-proyek", tab);
+  } catch {
+    /* penyimpanan browser tidak tersedia */
+  }
+}
+
 function renderList(s: UiState): string {
-  const list = [...s.projects.values()].sort((a, b) => b.dibuat.localeCompare(a.dibuat));
+  const semua = [...s.projects.values()].sort((a, b) => b.dibuat.localeCompare(a.dibuat));
+  // tab per tema; tema tanpa proyek tidak ditampilkan supaya ringkas
+  const tabs = [
+    { id: "semua", nama: "Semua", n: semua.length },
+    ...(Object.keys(FORMATS) as Project["format"][])
+      .map((f) => ({ id: f, nama: FORMATS[f].nama, n: semua.filter((p) => p.format === f).length }))
+      .filter((t) => t.n > 0),
+  ];
+  const aktif = tabs.some((t) => t.id === tabProyek) ? tabProyek : "semua";
+  const list = aktif === "semua" ? semua : semua.filter((p) => p.format === aktif);
   const formats = Object.entries(FORMATS)
     .map(
       ([id, f], i) => `
@@ -116,7 +142,17 @@ function renderList(s: UiState): string {
   </section>
 
   <section class="card">
-    <h2>Proyek <span class="count">${list.length}</span></h2>
+    <h2>Proyek <span class="count">${semua.length}</span></h2>
+    ${
+      tabs.length > 2
+        ? `<div class="tab-proyek" role="tablist" aria-label="Tema proyek">${tabs
+            .map(
+              (t) =>
+                `<button type="button" role="tab" aria-selected="${t.id === aktif}" data-action="tab-proyek" data-tab="${t.id}">${esc(t.nama)} <span class="count">${t.n}</span></button>`,
+            )
+            .join("")}</div>`
+        : ""
+    }
     ${
       list.length
         ? `<ul class="project-list">${list
@@ -125,7 +161,7 @@ function renderList(s: UiState): string {
           <li>
             <button class="project-row" data-action="buka" data-id="${p.id}">
               <span class="project-title">${esc(judulProyek(p))}</span>
-              <span class="project-meta">${esc(FORMATS[p.format].nama)} · ${esc(STAGES.find((x) => x.id === p.tahap)?.nama)}</span>
+              <span class="project-meta">${aktif === "semua" ? `${esc(FORMATS[p.format].nama)} · ` : ""}${esc(STAGES.find((x) => x.id === p.tahap)?.nama)}</span>
               ${badge(p)}
             </button>
           </li>`,
