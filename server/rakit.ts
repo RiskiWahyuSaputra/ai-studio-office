@@ -14,8 +14,13 @@ import type { Adegan, Project } from "../src/shared/types.ts";
 import type { KataWaktu, PropsCerita } from "../src/shared/video.ts";
 
 const FPS = 30;
-const JEDA_AWAL = 0.35;
-const JEDA_AKHIR = 0.6;
+/** Jeda hening sebelum & sesudah narasi tiap adegan: horor sengaja pelan, format lain mengalir cepat. */
+const JEDA: Record<Project["format"], { awal: number; akhir: number }> = {
+  "cerita-horor": { awal: 0.35, akhir: 0.6 },
+  "pov-sejarah": { awal: 0.2, akhir: 0.35 },
+  "ide-bermanfaat": { awal: 0.12, akhir: 0.22 },
+  "vlog-hewan": { awal: 0.12, akhir: 0.22 },
+};
 const DURASI_MIN_GAMBAR = 3.5;
 const GAMBAR = /\.(png|jpe?g|webp)$/i;
 
@@ -99,7 +104,7 @@ export async function rakit(
       const gambar = !a.klip || GAMBAR.test(a.klip);
       const media = gambar ? 0 : (await probe(path.join(dir, a.klip!))).durasi;
       const nar = o.narasi?.[i] ? (await probe(path.join(dir, o.narasi[i]))).durasi : 0;
-      const detik = Math.max(gambar ? DURASI_MIN_GAMBAR : media, nar ? JEDA_AWAL + nar + JEDA_AKHIR : 0);
+      const detik = Math.max(gambar ? DURASI_MIN_GAMBAR : media, nar ? JEDA[p.format].awal + nar + JEDA[p.format].akhir : 0);
       return { gambar, nar, detik };
     }),
   );
@@ -109,7 +114,7 @@ export async function rakit(
     path.join(dir, srt),
     buatSrt(
       adegan,
-      info.map((x) => ({ durasi: x.detik, mulaiNarasi: x.nar ? JEDA_AWAL : 0, panjangNarasi: x.nar })),
+      info.map((x) => ({ durasi: x.detik, mulaiNarasi: x.nar ? JEDA[p.format].awal : 0, panjangNarasi: x.nar })),
     ),
   );
 
@@ -129,10 +134,10 @@ export async function rakit(
       jenis: info[i].gambar ? "gambar" : "video",
       volumeMedia: o.narasi?.[i] ? o.volumeKlip : 1,
       narasi: o.narasi?.[i] ? url(o.narasi[i]) : undefined,
-      mulaiNarasi: JEDA_AWAL,
+      mulaiNarasi: JEDA[p.format].awal,
       durasi: Math.ceil(info[i].detik * FPS),
       gerak: a.gerak ?? rapikanGerak(undefined, p.format, i),
-      kata: info[i].nar ? selaraskan(a.narasi, o.kataUkur?.[i], JEDA_AWAL, info[i].nar) : [],
+      kata: info[i].nar ? selaraskan(a.narasi, o.kataUkur?.[i], JEDA[p.format].awal, info[i].nar) : [],
     })),
   };
 

@@ -206,9 +206,13 @@ async function gabungan(dir: string, teks: string[], suara: string, format: Form
     console.warn(`[tts] rekaman gabungan tidak bisa dipotong jadi ${teks.length} kalimat, pakai per kalimat`);
     return null;
   }
+  // buang hening di awal & akhir tiap potongan (sisa jeda antarkalimat) + fade sangat singkat supaya tidak ada bunyi klik;
+  // jeda antaradegan diatur saat merakit video
+  const rapikan =
+    "silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.04,afade=t=in:d=0.015,areverse,silenceremove=start_periods=1:start_threshold=-45dB:start_silence=0.06,afade=t=in:d=0.02,areverse";
   await Promise.all(
     potong.map(([a, b], i) =>
-      ffmpeg(["-i", utuh, "-ss", a.toFixed(3), "-to", b.toFixed(3), "-ar", "48000", "-ac", "2", path.join(dir, keluaran[i])]),
+      ffmpeg(["-i", utuh, "-ss", a.toFixed(3), "-to", b.toFixed(3), "-af", rapikan, "-ar", "48000", "-ac", "2", path.join(dir, keluaran[i])]),
     ),
   );
   return keluaran;
