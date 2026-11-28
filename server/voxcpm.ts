@@ -12,6 +12,7 @@ import { antreBerat } from "./berat.ts";
 import { ROOT } from "./paths.ts";
 import { projectDir } from "./editor.ts";
 import { elevenTersedia, narasiEleven } from "./elevenlabs.ts";
+import { narasiSemua as narasiGemini } from "./tts.ts";
 import type { Format, Project } from "../src/shared/types.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
 
@@ -19,6 +20,7 @@ const DIR = path.join(ROOT, "tools", "voxcpm");
 const PYTHON = path.join(DIR, ".venv", "bin", "python");
 const SKRIP = path.join(DIR, "narasi.py");
 const SKRIP_EDGE = path.join(DIR, "edge.py");
+const SKRIP_UKUR = path.join(DIR, "ukur.py");
 
 export const voxcpmTersedia = () => fs.existsSync(PYTHON) && fs.existsSync(SKRIP);
 
@@ -35,12 +37,18 @@ interface SuaraLokal {
    * cadangan: suara ElevenLabs lain kalau suara ini ditolak karena butuh paket berbayar (suara Voice Library).
    */
   eleven?: { voiceId: string; cadangan?: string };
+  /** suara Gemini TTS (gratis dengan kunci Gemini, kuota harian); waktu kata diukur dengan Whisper */
+  gemini?: { suara: string };
 }
+
+const geminiTersedia = () => Boolean(process.env.GEMINI_API_KEY?.trim());
 
 /** Suara pilihanmu sendiri dari ElevenLabs (Voice Library / klon), lewat ELEVENLABS_VOICE_ID di .env. */
 const SUARA_KANAL = process.env.ELEVENLABS_VOICE_ID?.trim();
 
 export const SUARA_LOKAL: SuaraLokal[] = [
+  { id: "gemini-fenrir", ket: "Pria, bersemangat: Fenrir (Gemini TTS, gratis, kuota harian)", deskripsi: "", gemini: { suara: "Fenrir" } },
+  { id: "gemini-puck", ket: "Pria, ceria: Puck (Gemini TTS, gratis, kuota harian)", deskripsi: "", gemini: { suara: "Puck" } },
   ...(SUARA_KANAL ? [{ id: "eleven-kanal", ket: "Suara kanal (ElevenLabs, ELEVENLABS_VOICE_ID)", deskripsi: "", eleven: { voiceId: SUARA_KANAL } }] : []),
   {
     id: "eleven-senandika",
@@ -74,6 +82,9 @@ export const SUARA_LOKAL: SuaraLokal[] = [
 
 /** Suara bawaan per format: ElevenLabs kalau kuncinya ada, kalau tidak Edge (Ardi). */
 export function bawaanLokal(_format: Format): string {
+  if (SUARA_KANAL && elevenTersedia()) return "eleven-kanal";
+  // suara kanal pilihan: Gemini TTS Fenrir (logat Indonesia natural, gratis)
+  if (geminiTersedia()) return "gemini-fenrir";
   if (!elevenTersedia()) return "edge-ardi";
   return SUARA_KANAL ? "eleven-kanal" : "eleven-senandika";
 }
@@ -83,7 +94,7 @@ export function bawaanLokal(_format: Format): string {
 const TEMPO_EDGE: Record<Format, string> = { "ide-bermanfaat": "+8%", "cerita-horor": "-18%", "pov-sejarah": "+0%", "vlog-hewan": "+6%" };
 
 export const suaraLokalProyek = (p: Project) =>
-  SUARA_LOKAL.find((s) => s.id === p.suaraLokal && (!s.eleven || elevenTersedia())) ?? SUARA_LOKAL.find((s) => s.id === bawaanLokal(p.format))!;
+  SUARA_LOKAL.find((s) => s.id === p.suaraLokal && (!s.eleven || elevenTersedia()) && (!s.gemini || geminiTersedia())) ?? SUARA_LOKAL.find((s) => s.id === bawaanLokal(p.format))!;
 
 const EDGE_CADANGAN = () => SUARA_LOKAL.find((s) => s.id === "edge-ardi")!;
 
@@ -110,6 +121,20 @@ const kunci = (s: string) => createHash("sha1").update(s).digest("hex").slice(0,
  */
 export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: string) => void): Promise<HasilNarasi> {
   const suara = suaraLokalProyek(p);
+  if (suara.gemini) {
+    const id = `${p.id}:${suara.id}:${kunci(kalimat.join("\n"))}`;
+    const lama = berjalan.get(id);
+    if (lama) return lama;
+    const kerja = jalankanGemini(p, kalimat, suara.gemini.suara, onProgres).catch((e: Error) => {
+      // kuota harian habis / model sibuk: seluruh narasi pakai Edge supaya suaranya tetap satu
+      console.warn(`[narasi] Gemini TTS gagal (${e.message}), pakai Edge`);
+      onProgres?.("Kuota Gemini TTS habis atau sibuk, pakai suara Ardi...");
+      return jalankanEdge(p, kalimat, EDGE_CADANGAN(), onProgres);
+    });
+    berjalan.set(id, kerja);
+    kerja.finally(() => berjalan.delete(id)).catch(() => {});
+    return kerja;
+  }
   if (suara.eleven) {
     const id = `${p.id}:${suara.id}:${kunci(kalimat.join("\n"))}`;
     const lama = berjalan.get(id);
@@ -161,6 +186,44 @@ export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: s
   berjalan.set(id, kerja);
   kerja.catch(() => berjalan.delete(id));
   return kerja;
+}
+
+/** Gemini TTS: rekaman dari Google, lalu waktu tiap kata diukur dengan Whisper untuk subtitle karaoke. */
+async function jalankanGemini(p: Project, kalimat: string[], suara: string, onProgres?: (pesan: string) => void): Promise<HasilNarasi> {
+  const dir = projectDir(p.id);
+  fs.mkdirSync(dir, { recursive: true });
+  onProgres?.("Narasi Gemini TTS...");
+  const { files } = await narasiGemini(dir, kalimat, suara, p.format, p.modelSuara);
+  onProgres?.("Mengukur waktu kata...");
+  const kata = await ukurKata(files.map((f) => path.join(dir, f))).catch((e: Error) => {
+    // tanpa waktu kata, subtitle tetap jalan dengan perkiraan sebanding panjang kata
+    console.warn(`[narasi] ukur kata gagal: ${e.message}`);
+    return {} as Record<string, KataWaktu[]>;
+  });
+  return { files, kata: files.map((f) => kata[path.join(dir, f)]) };
+}
+
+function ukurKata(files: string[]): Promise<Record<string, KataWaktu[]>> {
+  if (!voxcpmTersedia() || !fs.existsSync(SKRIP_UKUR)) return Promise.reject(new Error("tools/voxcpm belum terpasang"));
+  return new Promise((resolve, reject) => {
+    const ps = spawn(PYTHON, [SKRIP_UKUR, ...files], { cwd: DIR, env: { ...process.env, PYTHONUNBUFFERED: "1" } });
+    let out = "";
+    ps.stdout.on("data", (d) => (out += d));
+    ps.on("error", reject);
+    ps.on("close", () => {
+      const baris = out.trim().split("\n").reverse();
+      for (const b of baris) {
+        try {
+          const j = JSON.parse(b);
+          if (j.selesai) return resolve(j.kata);
+          if (j.galat) return reject(new Error(j.galat));
+        } catch {
+          /* bukan JSON */
+        }
+      }
+      reject(new Error("ukur kata tidak mengembalikan hasil"));
+    });
+  });
 }
 
 /** Edge TTS: ringan (tanpa model lokal), jadi tidak perlu antre dengan pekerjaan berat. */

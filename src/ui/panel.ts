@@ -605,7 +605,7 @@ function sectionSuara(p: Project, s: UiState) {
   return `<section class="card"><h3>Suara narasi · Nanda</h3>
     ${
       lokal
-        ? `${s.eleven ? `<p class="hint">Suara "ElevenLabs" memakai kredit akun ElevenLabs-mu (kunci di .env). Tiap kalimat disimpan, jadi render ulang tidak memakai kredit lagi. Kalau kuota habis, Nanda otomatis memakai suara Edge (Ardi).</p>` : ""}<p class="hint">Suara "cepat" (Ardi/Gadis, Edge TTS) jadi dalam beberapa detik per kalimat dan butuh internet. Suara "VoxCPM" dibuat di laptopmu, sekitar 1–2 menit per kalimat.</p>
+        ? `${s.eleven ? `<p class="hint">Suara "ElevenLabs" memakai kredit akun ElevenLabs-mu (kunci di .env). Tiap kalimat disimpan, jadi render ulang tidak memakai kredit lagi. Kalau kuota habis, Nanda otomatis memakai suara Edge (Ardi).</p>` : ""}<p class="hint">Suara "Gemini TTS" (Fenrir, Puck) gratis memakai kunci Gemini, sekitar 10 video per hari. Kalau kuotanya habis, Nanda otomatis memakai Ardi untuk video itu.</p><p class="hint">Suara "cepat" (Ardi/Gadis, Edge TTS) jadi dalam beberapa detik per kalimat dan butuh internet. Suara "VoxCPM" dibuat di laptopmu, sekitar 1–2 menit per kalimat.</p>
            <p class="hint">Satu suara dipakai untuk semua adegan dan part supaya konsisten.</p>`
         : `<p class="hint">Satu suara dipakai untuk semua adegan. Nanda membacakan seluruh narasi sekaligus dengan Gemini TTS saat mengedit, lalu memotongnya per adegan.</p>
            <p class="hint">Kuota gratis Gemini TTS sekitar 10 permintaan/hari per model. Satu video memakai 1 permintaan, "Dengar contoh" juga 1.</p>`
