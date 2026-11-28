@@ -15,7 +15,7 @@ import os from "node:os";
 import path from "node:path";
 import { probe } from "./editor.ts";
 import { renderFolder } from "./remotion.ts";
-import { catatAgy, catatGalatKuotaAgy, pesanKuota } from "./pemakaian.ts";
+import { catatAgy, catatGalatKuotaAgy, pesanKuota, segarkanKuotaAgy } from "./pemakaian.ts";
 import { FORMATS, type Project } from "../src/shared/types.ts";
 import type { KataWaktu } from "../src/shared/video.ts";
 
@@ -302,6 +302,7 @@ function jalankanAgy(dir: string, prompt: string, onStatus?: (pesan: string) => 
       }
       fs.writeFile(path.join(dir, "agy-terakhir.log"), hasil?.response ?? out).catch(() => {});
       catatAgy(hasil?.usage?.total_tokens ?? 0, rancanganBaru && code === 0);
+      segarkanKuotaAgy();
       if (code === 0 && (!hasil || hasil.status === undefined || hasil.status === "SUCCESS")) return resolve();
       const pesan = hasil?.response ?? out;
       if (pesanKuota(out)) {

@@ -841,11 +841,28 @@ export function renderKuota(k: InfoKuota): string {
     </span>`;
   }
   if (a.aktif) {
-    const jamGalat = a.galatKuota ? (Date.now() - new Date(a.galatKuota.waktu).getTime()) / 3_600_000 : Infinity;
-    const judul = `Antigravity hari ini: ${a.rancanganHari} rancangan, ${ribuan(a.tokenHari)} token. Bulan ini: ${a.rancanganBulan} rancangan, ${ribuan(a.tokenBulan)} token. Antigravity tidak menampilkan sisa kuota; kalau habis, tanda ⚠ muncul di sini.`;
-    html += jamGalat < 24
-      ? `<span class="kuota-habis" title="${esc(`Kuota Antigravity sempat habis ${Math.max(1, Math.round(jamGalat))} jam lalu. ${judul}`)}">⚠ Antigravity: kuota model utama habis, pakai Gemini</span>`
-      : `<span title="${esc(judul)}">Antigravity: <strong>${a.rancanganHari}</strong> rancangan hari ini</span>`;
+    const ringkas = `Hari ini ${a.rancanganHari} rancangan, ${ribuan(a.tokenHari)} token. Bulan ini ${a.rancanganBulan} rancangan, ${ribuan(a.tokenBulan)} token.`;
+    if (a.resmi?.length) {
+      // per kelompok model, yang menentukan adalah jendela dengan sisa paling kecil (5 jam atau mingguan)
+      const grup = [...new Set(a.resmi.map((r) => r.grup))].map((g) => {
+        const baris = a.resmi!.filter((r) => r.grup === g);
+        const batas = baris.reduce((m, r) => (r.sisa < m.sisa ? r : m));
+        const nama = /gemini/i.test(g) ? "Gemini" : /claude/i.test(g) ? "Claude" : g;
+        return { nama, batas, baris };
+      });
+      const jam = (iso: string) => new Date(iso).toLocaleString("id-ID", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+      const judul = grup
+        .map((g) => `${g.nama}: ${g.baris.map((r) => `${r.jendela === "5jam" ? "5 jam" : "mingguan"} ${r.sisa}% (reset ${jam(r.reset)})`).join(", ")}`)
+        .join(". ");
+      html += `<span title="${esc(`Sisa kuota Antigravity. ${judul}. ${ringkas}`)}">Antigravity: ${grup
+        .map((g) => `${esc(g.nama)} <strong class="${g.batas.sisa <= 10 ? "kuota-habis" : ""}">${g.batas.sisa}%</strong>`)
+        .join(" · ")}</span>`;
+    } else {
+      const jamGalat = a.galatKuota ? (Date.now() - new Date(a.galatKuota.waktu).getTime()) / 3_600_000 : Infinity;
+      html += jamGalat < 24
+        ? `<span class="kuota-habis" title="${esc(`Kuota Antigravity sempat habis ${Math.max(1, Math.round(jamGalat))} jam lalu. ${ringkas}`)}">⚠ Antigravity: kuota model utama habis, pakai Gemini</span>`
+        : `<span title="${esc(ringkas)}">Antigravity: <strong>${a.rancanganHari}</strong> rancangan hari ini</span>`;
+    }
   }
   return html;
 }

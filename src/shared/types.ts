@@ -354,6 +354,8 @@ export interface InfoKuota {
     rancanganBulan: number;
     tokenBulan: number;
     galatKuota?: { waktu: string; pesan: string };
+    /** sisa kuota resmi dari `agy -p /quota`: per kelompok model, jendela 5 jam & mingguan */
+    resmi?: { grup: string; jendela: "5jam" | "mingguan"; sisa: number; reset: string }[];
   };
 }
 

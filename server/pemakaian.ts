@@ -4,7 +4,9 @@
  * Antigravity: agy tidak punya perintah cek kuota, jadi dihitung sendiri dari keluaran JSON tiap rancangan,
  * plus pesan "kuota habis" terakhir kalau pernah muncul.
  */
+import { execFile } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { ROOT } from "./paths.ts";
 import type { InfoKuota } from "../src/shared/types.ts";
@@ -175,8 +177,35 @@ async function kuotaEleven(): Promise<InfoKuota["eleven"]> {
   return data;
 }
 
+let cacheAgy: { waktu: number; data: NonNullable<InfoKuota["agy"]["resmi"]> | undefined } | null = null;
+
+/** Sisa kuota resmi Antigravity lewat `agy -p /quota` (perintah baca saja, tidak memakai kuota). */
+async function kuotaAgy(): Promise<InfoKuota["agy"]["resmi"]> {
+  if (cacheAgy && Date.now() - cacheAgy.waktu < 120_000) return cacheAgy.data;
+  const bin = process.env.AGY_BIN || path.join(os.homedir(), ".local", "bin", "agy");
+  const keluaran = await new Promise<string>((ok) =>
+    execFile(bin, ["-p", "/quota"], { cwd: os.tmpdir(), timeout: 30_000 }, (_e, stdout) => ok(String(stdout ?? ""))),
+  );
+  const data = keluaran
+    .split("\n")
+    .map((b) => b.split("\t"))
+    .filter((k) => k.length >= 4 && /%$/.test(k[2]))
+    .map((k) => ({
+      grup: k[0].trim(),
+      jendela: (/five hour/i.test(k[1]) ? "5jam" : "mingguan") as "5jam" | "mingguan",
+      sisa: Number(k[2].replace("%", "")),
+      reset: k[3].trim(),
+    }));
+  cacheAgy = { waktu: Date.now(), data: data.length ? data : undefined };
+  return cacheAgy.data;
+}
+
+/** Setelah agy dipakai, angka kuotanya perlu diambil ulang. */
+export const segarkanKuotaAgy = () => void (cacheAgy = null);
+
 export async function infoKuota(agyAktif: boolean): Promise<InfoKuota> {
-  return { eleven: await kuotaEleven(), agy: { ...baca().agy, aktif: agyAktif } };
+  const [eleven, resmi] = await Promise.all([kuotaEleven(), agyAktif ? kuotaAgy() : Promise.resolve(undefined)]);
+  return { eleven, agy: { ...baca().agy, aktif: agyAktif, resmi } };
 }
 
 /** Setelah narasi baru dibuat, angka ElevenLabs perlu diambil ulang. */
