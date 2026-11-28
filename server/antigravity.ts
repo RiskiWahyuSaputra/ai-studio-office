@@ -5,7 +5,8 @@
  * ke agy untuk diperbaiki sekali; kalau tetap gagal, pemanggil jatuh ke template bawaan.
  *
  * Folder kerja tetap ada setelah selesai: kamu bisa membukanya di Antigravity untuk menyempurnakan kodenya,
- * lalu klik "Render ulang". Kode yang sudah ada dipakai lagi selama datanya (narasi, gambar) tidak berubah.
+ * lalu klik "Render ulang". Kode yang sudah ada dipakai lagi selama struktur videonya (adegan, aset, teks) tidak berubah;
+ * ganti suara narasi cukup render ulang.
  */
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -201,8 +202,14 @@ async function siapkanFolder(dir: string, o: OpsiAgy): Promise<{ berubah: boolea
   const isiData = `// Dibuat otomatis oleh Kantor PovQ. Jangan diubah: dibuat ulang setiap render.\nexport const DATA = ${JSON.stringify(data, null, 2)} as const;\n`;
   const fileData = path.join(src, "data.ts");
   const lama = await fs.readFile(fileData, "utf8").catch(() => "");
-  const berubah = lama !== "" && lama !== isiData;
+  // rancangan hanya perlu dibuat ulang kalau STRUKTUR video berubah (jumlah adegan, aset, teks, judul).
+  // Ganti suara narasi atau waktu kata cukup render ulang: kodenya membaca semua angka dari DATA.
+  const struktur = sha(JSON.stringify({ judul: o.judul, label: o.label, adegan: adegan.map((a) => [a.no, a.media, a.jenis, a.teks, a.visual]) }));
+  const fileStruktur = path.join(dir, ".struktur");
+  const strukturLama = await fs.readFile(fileStruktur, "utf8").catch(() => "");
+  const berubah = strukturLama ? strukturLama !== struktur : lama !== "" && lama !== isiData;
   await fs.writeFile(fileData, isiData);
+  await fs.writeFile(fileStruktur, struktur);
 
   await fs.writeFile(path.join(src, "index.ts"), `import { registerRoot } from "remotion";\nimport { RemotionRoot } from "./Root";\n\nregisterRoot(RemotionRoot);\n`);
   await fs.writeFile(

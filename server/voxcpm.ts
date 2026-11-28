@@ -44,9 +44,11 @@ export const SUARA_LOKAL: SuaraLokal[] = [
   ...(SUARA_KANAL ? [{ id: "eleven-kanal", ket: "Suara kanal (ElevenLabs, ELEVENLABS_VOICE_ID)", deskripsi: "", eleven: { voiceId: SUARA_KANAL } }] : []),
   {
     id: "eleven-senandika",
-    ket: "Pria muda Indonesia, Senandika (ElevenLabs, butuh paket berbayar; selama gratis pakai Liam)",
+    ket: "Pria muda Indonesia, Senandika (ElevenLabs, butuh paket berbayar; selama gratis pakai Ardi)",
     deskripsi: "",
-    eleven: { voiceId: "eESTQeTcGUli0jYysKtx", cadangan: "eleven-liam" },
+    // tanpa cadangan ElevenLabs: suara bawaan ElevenLabs beraksen Inggris, jadi kalau Senandika ditolak
+    // (akun gratis) langsung pakai Edge Ardi yang logatnya asli Indonesia
+    eleven: { voiceId: "eESTQeTcGUli0jYysKtx" },
   },
   { id: "eleven-liam", ket: "Pria muda, Liam (ElevenLabs)", deskripsi: "", eleven: { voiceId: "TX3LPaxmHKxFdv7VOQHJ" } },
   { id: "eleven-brian", ket: "Pria, narator dalam (ElevenLabs)", deskripsi: "", eleven: { voiceId: "nPczCjzI2devNBz1zQrb" } },
@@ -123,7 +125,11 @@ export function narasiLokal(p: Project, kalimat: string[], onProgres?: (pesan: s
     }).catch((e: Error) => {
       // kuota habis / kunci salah: seluruh narasi pakai Edge supaya suaranya tetap satu
       console.warn(`[narasi] ElevenLabs gagal (${e.message}), pakai Edge`);
-      onProgres?.(`ElevenLabs gagal (${e.message.slice(0, 80)}), pakai suara Edge...`);
+      onProgres?.(
+        /paid_plan_required|402/.test(e.message)
+          ? "Suara ini butuh paket ElevenLabs berbayar, pakai suara Ardi..."
+          : `ElevenLabs gagal (${e.message.slice(0, 80)}), pakai suara Ardi...`,
+      );
       return jalankanEdge(p, kalimat, EDGE_CADANGAN(), onProgres);
     });
     berjalan.set(id, kerja);
