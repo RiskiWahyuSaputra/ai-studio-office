@@ -23,6 +23,11 @@ const AGY = process.env.AGY_BIN || path.join(os.homedir(), ".local", "bin", "agy
 const ID_KOMPOSISI = "PovQAgy";
 const PENANDA_KOSONG = "// POVQ-BELUM-DIRANCANG";
 const BATAS_MENIT = Number(process.env.AGY_TIMEOUT_MENIT) || 45;
+/** model utama (kosong = model bawaan di pengaturan Antigravity) dan model cadangan saat kuota model utama habis */
+const MODEL_UTAMA = process.env.AGY_MODEL?.trim() || undefined;
+const MODEL_CADANGAN = process.env.AGY_MODEL_CADANGAN?.trim() || "gemini-4-neon-high";
+
+class KuotaAgyHabis extends Error {}
 
 let cekAgy: boolean | null = null;
 export function agyTersedia(): boolean {
@@ -77,7 +82,12 @@ export async function videoAntigravity(o: OpsiAgy): Promise<{ file: string; dura
   const belumDirancang = (await fs.readFile(videoTsx, "utf8")).includes(PENANDA_KOSONG);
   if (berubah || belumDirancang) {
     o.onStatus?.("Antigravity merancang video...");
-    await jalankanAgy(dir, promptRancang(o), o.onStatus, true);
+    // file dari percobaan sebelumnya yang terhenti (mis. kuota habis) dilanjutkan, bukan dibuang
+    const sisa = (await fs.readdir(path.join(dir, "src"))).filter((f) => !["index.ts", "Root.tsx", "data.ts", "Video.tsx"].includes(f));
+    const lanjutan = sisa.length
+      ? `\n\nCatatan: di src/ sudah ada file dari percobaan sebelumnya yang terhenti (${sisa.join(", ")}). Periksa dan pakai ulang yang sudah benar, lengkapi yang kurang, lalu tulis src/Video.tsx.`
+      : "";
+    await agy(dir, promptRancang(o) + lanjutan, o.onStatus, true);
     if ((await fs.readFile(videoTsx, "utf8")).includes(PENANDA_KOSONG)) throw new Error("Antigravity tidak menulis src/Video.tsx");
   }
 
@@ -95,7 +105,7 @@ export async function videoAntigravity(o: OpsiAgy): Promise<{ file: string; dura
   } catch (e) {
     const pesan = (e as Error).message.slice(0, 2500);
     o.onStatus?.("Antigravity memperbaiki error render...");
-    await jalankanAgy(
+    await agy(
       dir,
       `Kode Remotion di folder ini gagal di-bundle/dirender oleh aplikasi dengan error berikut:\n\n${pesan}\n\nPerbaiki file di src/ (jangan ubah src/index.ts, src/Root.tsx, src/data.ts). Ingat: hanya boleh memakai paket remotion, @remotion/media, @remotion/transitions, @remotion/google-fonts. Jangan menjalankan npm atau render. Balas singkat apa yang kamu perbaiki.`,
       o.onStatus,
@@ -255,11 +265,25 @@ function promptRancang(o: OpsiAgy): string {
   return `Kamu sutradara motion graphics untuk kanal PovQ. Baca BRIEF.md dan src/data.ts di folder ini, lalu tulis video Remotion yang sinematik dan memukau di src/Video.tsx (export const Video), mengikuti semua aturan teknis di BRIEF.md. Adegan tanpa media (jenis "kode") harus kamu gambar sendiri seluruhnya dengan kode (ilustrasi vektor berlapis, cahaya, partikel, tokoh SVG yang konsisten). Pakai skill Remotion. Jangan menjalankan npm, npx, atau render; aplikasi yang merender. Setelah selesai, balas ringkas apa saja yang kamu buat.`;
 }
 
-function jalankanAgy(dir: string, prompt: string, onStatus?: (pesan: string) => void, rancanganBaru = false): Promise<void> {
+/** Jalankan agy dengan model utama; kalau kuotanya habis, ulangi dengan model cadangan (Gemini). */
+async function agy(dir: string, prompt: string, onStatus?: (pesan: string) => void, rancanganBaru = false): Promise<void> {
+  try {
+    await jalankanAgy(dir, prompt, onStatus, rancanganBaru, MODEL_UTAMA);
+  } catch (e) {
+    if (!(e instanceof KuotaAgyHabis) || MODEL_UTAMA === MODEL_CADANGAN) throw e;
+    onStatus?.("Kuota model utama Antigravity habis, pindah ke Gemini...");
+    const sisa = (await fs.readdir(path.join(dir, "src")).catch(() => [] as string[])).filter((f) => !["index.ts", "Root.tsx", "data.ts", "Video.tsx"].includes(f));
+    const lanjut = sisa.length ? `\n\nCatatan: percobaan sebelumnya terhenti karena kuota. File yang sudah ada di src/ (${sisa.join(", ")}) boleh dipakai ulang dan dilengkapi.` : "";
+    await jalankanAgy(dir, prompt + lanjut, onStatus, rancanganBaru, MODEL_CADANGAN);
+  }
+}
+
+function jalankanAgy(dir: string, prompt: string, onStatus?: (pesan: string) => void, rancanganBaru = false, model?: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const mulai = Date.now();
     // keluaran JSON memuat jumlah token yang terpakai (dicatat untuk panel kuota)
-    const ps = spawn(AGY, ["-p", prompt, "--print-timeout", `${BATAS_MENIT}m`, "--output-format", "json"], { cwd: dir, env: process.env });
+    const args = ["-p", prompt, "--print-timeout", `${BATAS_MENIT}m`, "--output-format", "json", ...(model ? ["--model", model] : [])];
+    const ps = spawn(AGY, args, { cwd: dir, env: process.env });
     let out = "";
     ps.stdout.on("data", (d) => (out = (out + d).slice(-20000)));
     ps.stderr.on("data", (d) => (out = (out + d).slice(-4000)));
@@ -280,7 +304,10 @@ function jalankanAgy(dir: string, prompt: string, onStatus?: (pesan: string) => 
       catatAgy(hasil?.usage?.total_tokens ?? 0, rancanganBaru && code === 0);
       if (code === 0 && (!hasil || hasil.status === undefined || hasil.status === "SUCCESS")) return resolve();
       const pesan = hasil?.response ?? out;
-      if (pesanKuota(pesan)) catatGalatKuotaAgy(pesan);
+      if (pesanKuota(out)) {
+        catatGalatKuotaAgy(out.slice(-300));
+        return reject(new KuotaAgyHabis(`Kuota Antigravity${model ? ` (${model})` : ""} habis: ${out.slice(-200)}`));
+      }
       reject(new Error(`agy berhenti (kode ${code}${hasil?.status ? `, ${hasil.status}` : ""}): ${pesan.slice(-300)}`));
     });
   });

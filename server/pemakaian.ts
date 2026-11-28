@@ -133,7 +133,7 @@ export function catatGalatKuotaAgy(pesan: string) {
   simpan(c);
 }
 
-export const pesanKuota = (s: string) => /quota|rate.?limit|resource.?exhausted|429|too many requests|usage limit|limit reached/i.test(s);
+export const pesanKuota = (s: string) => /quota|rate.?limit|resource.?exhausted|429|too many requests|usage limit|limit reached|increase your limits|resets in|switch to gemini/i.test(s);
 
 let cacheEleven: { waktu: number; data: InfoKuota["eleven"] } | null = null;
 

@@ -844,7 +844,7 @@ export function renderKuota(k: InfoKuota): string {
     const jamGalat = a.galatKuota ? (Date.now() - new Date(a.galatKuota.waktu).getTime()) / 3_600_000 : Infinity;
     const judul = `Antigravity hari ini: ${a.rancanganHari} rancangan, ${ribuan(a.tokenHari)} token. Bulan ini: ${a.rancanganBulan} rancangan, ${ribuan(a.tokenBulan)} token. Antigravity tidak menampilkan sisa kuota; kalau habis, tanda ⚠ muncul di sini.`;
     html += jamGalat < 24
-      ? `<span class="kuota-habis" title="${esc(`Kuota Antigravity sempat habis ${Math.max(1, Math.round(jamGalat))} jam lalu. ${judul}`)}">⚠ Antigravity: kuota habis</span>`
+      ? `<span class="kuota-habis" title="${esc(`Kuota Antigravity sempat habis ${Math.max(1, Math.round(jamGalat))} jam lalu. ${judul}`)}">⚠ Antigravity: kuota model utama habis, pakai Gemini</span>`
       : `<span title="${esc(judul)}">Antigravity: <strong>${a.rancanganHari}</strong> rancangan hari ini</span>`;
   }
   return html;
