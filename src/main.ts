@@ -275,7 +275,11 @@ panel.addEventListener("click", async (ev) => {
       if (p) await run(() => api.ulang(p.id, el.dataset.tahap!), "Diminta ulang");
       return;
     case "rancang-ulang":
-      if (p) await run(() => api.rancangUlang(p.id), "Rancangan dikosongkan. Klik Render ulang untuk meminta Antigravity merancang lagi");
+      // kosongkan rancangan lalu langsung jalankan tahap edit lagi, supaya cukup sekali klik
+      if (p) await run(async () => {
+        await api.rancangUlang(p.id);
+        return api.ulang(p.id, "edit");
+      }, "Antigravity diminta merancang ulang, video dirender lagi");
       return;
     case "salin": {
       const a = p?.adegan?.find((x) => x.no === Number(el.dataset.no));

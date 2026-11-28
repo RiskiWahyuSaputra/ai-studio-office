@@ -458,13 +458,13 @@ function sectionVideo(p: Project) {
     <p class="muted">${Math.round(v.durasi)} detik · 1080×1920${v.mesin === "antigravity" ? " · dirancang Antigravity" : ""}</p>
     ${
       v.agy
-        ? `<p class="hint">Mau disempurnakan? Buka folder <code>${esc(v.agy)}</code> di Antigravity, minta perubahan pada <code>src/Video.tsx</code>, lalu klik "Render ulang"${p.seri ? " di proyek induknya" : ""}. "Rancang ulang" meminta Antigravity membuat rancangan baru dari awal.</p>`
+        ? `<p class="hint">Mau disempurnakan? Buka folder <code>${esc(v.agy)}</code> di Antigravity, minta perubahan pada <code>src/Video.tsx</code>, lalu klik "Render ulang"${p.seri ? " di proyek induknya" : ""}. "Rancang ulang" langsung meminta Antigravity membuat rancangan baru dari awal lalu merender.</p>`
         : ""
     }
     <div class="row">
       <a class="btn btn-sm" href="${src}" download>Unduh video</a>
       ${v.subtitle ? `<a class="btn btn-sm" href="/media/${p.id}/${v.subtitle}" download>Unduh subtitle (.srt)</a>` : ""}
-      ${p.adegan?.every((a) => a.klip) ? ulangBtn("edit").replace("Ulangi", "Render ulang") : ""}
+      ${p.sumberVisual === "antigravity" || p.adegan?.every((a) => a.klip) ? ulangBtn("edit").replace("Ulangi", "Render ulang") : ""}
       ${v.agy ? `<button class="btn btn-sm" data-action="rancang-ulang">Rancang ulang</button>` : ""}
     </div>
   </section>`;
