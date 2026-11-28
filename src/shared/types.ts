@@ -357,5 +357,7 @@ export interface InfoKuota {
     /** sisa kuota resmi dari `agy -p /quota`: per kelompok model, jendela 5 jam & mingguan */
     resmi?: { grup: string; jendela: "5jam" | "mingguan"; sisa: number; reset: string }[];
   };
+  /** Gemini TTS (suara narasi): hitungan permintaan sendiri hari ini, batas dari GEMINI_TTS_BATAS */
+  tts: { aktif: boolean; terpakai: number; batas: number; habis: boolean; reset: string; akunKhusus?: boolean };
 }
 

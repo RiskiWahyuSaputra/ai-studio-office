@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { GeminiSibuk } from "./ai.ts";
+import { catatTts } from "./pemakaian.ts";
 import { ukurKata } from "./ukur.ts";
 import { FORMATS, type Format } from "../src/shared/types.ts";
 
@@ -75,10 +76,14 @@ async function panggilTts(model: string, key: string, teks: string, suara: strin
     candidates?: { content?: { parts?: { inlineData?: { mimeType: string; data: string } }[] } }[];
     error?: { message?: string };
   };
-  if (res.status === 429) throw new TtsSibuk(`${model} kuota habis (429)`, true);
+  if (res.status === 429) {
+    catatTts(key, true);
+    throw new TtsSibuk(`${model} kuota habis (429)`, true);
+  }
   if (res.status >= 500 || res.status === 404) throw new TtsSibuk(`${model} sibuk (${res.status})`);
   if (!res.ok) throw new Error(`TTS gagal: ${j.error?.message ?? res.status}`);
   const data = j.candidates?.[0]?.content?.parts?.find((p) => p.inlineData)?.inlineData;
+  catatTts(key);
   if (!data) throw new TtsSibuk(`${model} tidak mengembalikan audio`);
   return { mime: data.mimeType, bytes: Buffer.from(data.data, "base64") };
 }

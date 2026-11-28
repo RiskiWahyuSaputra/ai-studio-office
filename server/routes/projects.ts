@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { projectDir } from "../editor.ts";
 import { ROOT } from "../paths.ts";
-import { SUARA, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
+import { SUARA, kunciTts, narasi as buatNarasi, suaraBawaan } from "../tts.ts";
 import { SUARA_LOKAL, bawaanLokal, narasiLokal, voxcpmTersedia } from "../voxcpm.ts";
 import { elevenTersedia } from "../elevenlabs.ts";
 import { infoKuota } from "../pemakaian.ts";
@@ -38,7 +38,7 @@ projects.get("/state", async (_req, res) => {
 });
 
 projects.get("/kuota", async (_req, res) => {
-  res.json(await infoKuota(agyTersedia()));
+  res.json(await infoKuota(agyTersedia(), kunciTts()));
 });
 
 projects.post("/projects", async (req, res) => {

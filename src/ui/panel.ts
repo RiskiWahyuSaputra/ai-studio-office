@@ -824,7 +824,7 @@ function renderProject(p: Project, s: UiState): string {
 
 const ribuan = (n: number) => n.toLocaleString("id-ID");
 
-/** Meter kuota di navbar: sisa karakter ElevenLabs dan pemakaian Antigravity hari ini. */
+/** Meter kuota di navbar: sisa karakter ElevenLabs, sisa permintaan Gemini TTS, dan pemakaian Antigravity hari ini. */
 export function renderKuota(k: InfoKuota): string {
   const e = k.eleven;
   const a = k.agy;
@@ -838,6 +838,19 @@ export function renderKuota(k: InfoKuota): string {
       <span class="meter-label">ElevenLabs</span>
       <span class="meter-bar"><span style="width:${pct}%" class="${pct < 20 ? "low" : ""}"></span></span>
       <strong>${ribuan(sisa)}</strong>/${ribuan(e.batas)}${e.sumber === "lokal" ? "*" : ""}
+    </span>`;
+  }
+  const t = k.tts;
+  if (t?.aktif) {
+    const sisa = Math.max(0, t.batas - t.terpakai);
+    const habis = t.habis || sisa === 0;
+    const judul = `Suara narasi Gemini TTS (Fenrir)${t.akunKhusus ? ", kunci GEMINI_TTS_API_KEY" : ""}: ${t.terpakai} dari sekitar ${t.batas} permintaan hari ini (hitungan Kantor PovQ, Google tidak menyediakan angka resminya). Satu video biasanya 1–2 permintaan. Pulih pukul ${t.reset}.`;
+    html += habis
+      ? `<span class="kuota-habis" title="${esc(judul)}">⚠ Gemini TTS: kuota habis, pulih ${esc(t.reset)}</span>`
+      : `<span class="meter" title="${esc(judul)}">
+      <span class="meter-label">Gemini TTS</span>
+      <span class="meter-bar"><span style="width:${(sisa / t.batas) * 100}%" class="${sisa / t.batas < 0.2 ? "low" : ""}"></span></span>
+      <strong>${sisa}</strong>/${t.batas}*
     </span>`;
   }
   if (a.aktif) {

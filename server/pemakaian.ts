@@ -5,6 +5,7 @@
  * plus pesan "kuota habis" terakhir kalau pernah muncul.
  */
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -26,6 +27,8 @@ interface Catatan {
     tokenBulan: number;
     galatKuota?: { waktu: string; pesan: string };
   };
+  /** Gemini TTS: Google tidak punya API cek kuota, jadi permintaan dihitung sendiri per kunci per hari (waktu Pasifik) */
+  tts?: { hari: string; kunci: string; permintaan: number; habis?: string };
 }
 
 const hariIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Jakarta" });
@@ -49,7 +52,7 @@ function baca(): Catatan {
     tokenBulan: a?.bulan === bulanIni() ? a.tokenBulan : 0,
     galatKuota: a?.galatKuota,
   };
-  const hasil: Catatan = { diisi: c.diisi, eleven, agy };
+  const hasil: Catatan = { diisi: c.diisi, eleven, agy, tts: c.tts };
   if (hasil.diisi !== bulanIni()) isiDariBerkas(hasil);
   return hasil;
 }
@@ -135,6 +138,35 @@ export function catatGalatKuotaAgy(pesan: string) {
   simpan(c);
 }
 
+/** Kuota harian Gemini direset tengah malam waktu Pasifik (sekitar 14.00/15.00 WIB). */
+const hariPasifik = () => new Date().toLocaleDateString("sv-SE", { timeZone: "America/Los_Angeles" });
+/** sidik kunci (bukan kuncinya), supaya ganti akun = hitungan mulai dari nol */
+const sidikKunci = (k: string) => createHash("sha1").update(k).digest("hex").slice(0, 10);
+
+function catatanTts(c: Catatan, kunci: string) {
+  const sidik = sidikKunci(kunci);
+  if (!c.tts || c.tts.hari !== hariPasifik() || c.tts.kunci !== sidik) c.tts = { hari: hariPasifik(), kunci: sidik, permintaan: 0 };
+  return c.tts;
+}
+
+export function catatTts(kunci: string, kuotaHabis = false) {
+  const c = baca();
+  const t = catatanTts(c, kunci);
+  if (kuotaHabis) t.habis = new Date().toISOString();
+  else t.permintaan += 1;
+  simpan(c);
+}
+
+function kuotaTts(kunci: string | undefined): InfoKuota["tts"] {
+  const batas = Number(process.env.GEMINI_TTS_BATAS) || 15;
+  if (!kunci) return { aktif: false, terpakai: 0, batas, habis: false, reset: "" };
+  const t = catatanTts(baca(), kunci);
+  // tengah malam Pasifik = 15.00 WIB (musim dingin, GMT-8) atau 14.00 WIB (musim panas, GMT-7)
+  const offset = new Date().toLocaleString("en-US", { timeZone: "America/Los_Angeles", timeZoneName: "shortOffset" }).includes("GMT-7") ? 7 : 8;
+  const reset = `${String(7 + offset).padStart(2, "0")}.00 WIB`;
+  return { aktif: true, terpakai: t.permintaan, batas, habis: Boolean(t.habis), reset, akunKhusus: Boolean(process.env.GEMINI_TTS_API_KEY?.trim()) };
+}
+
 export const pesanKuota = (s: string) => /quota|rate.?limit|resource.?exhausted|429|too many requests|usage limit|limit reached|increase your limits|resets in|switch to gemini/i.test(s);
 
 let cacheEleven: { waktu: number; data: InfoKuota["eleven"] } | null = null;
@@ -203,9 +235,9 @@ async function kuotaAgy(): Promise<InfoKuota["agy"]["resmi"]> {
 /** Setelah agy dipakai, angka kuotanya perlu diambil ulang. */
 export const segarkanKuotaAgy = () => void (cacheAgy = null);
 
-export async function infoKuota(agyAktif: boolean): Promise<InfoKuota> {
+export async function infoKuota(agyAktif: boolean, kunciTts?: string): Promise<InfoKuota> {
   const [eleven, resmi] = await Promise.all([kuotaEleven(), agyAktif ? kuotaAgy() : Promise.resolve(undefined)]);
-  return { eleven, agy: { ...baca().agy, aktif: agyAktif, resmi } };
+  return { eleven, agy: { ...baca().agy, aktif: agyAktif, resmi }, tts: kuotaTts(kunciTts) };
 }
 
 /** Setelah narasi baru dibuat, angka ElevenLabs perlu diambil ulang. */
