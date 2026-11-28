@@ -123,8 +123,35 @@ const HOROR: Bank[] = [
   },
 ];
 
+const FAKTA: Bank[] = [
+  {
+    topik: "Gurita punya tiga jantung",
+    sudut: "Tahu nggak, gurita punya tiga jantung dan darahnya berwarna biru",
+    fakta: [
+      "Gurita punya tiga jantung: dua memompa darah ke insang, satu ke seluruh tubuh.",
+      "Darah gurita biru karena memakai hemosianin yang mengandung tembaga.",
+      "Sekitar dua pertiga neuron gurita ada di lengannya.",
+    ],
+    kataKunci: ["fakta unik", "gurita", "fakta hewan"],
+    latar: "laut dalam biru gelap dengan cahaya lembut dari atas",
+    tokoh: "gurita kartun berwarna oranye yang ekspresif",
+  },
+  {
+    topik: "Sehari di Venus lebih lama dari setahunnya",
+    sudut: "Di Venus, satu hari lebih lama dari satu tahun",
+    fakta: [
+      "Venus butuh sekitar 243 hari Bumi untuk berputar sekali pada porosnya.",
+      "Venus mengelilingi Matahari dalam sekitar 225 hari Bumi.",
+      "Venus berputar berlawanan arah dengan kebanyakan planet.",
+    ],
+    kataKunci: ["fakta unik", "venus", "luar angkasa"],
+    latar: "luar angkasa dengan planet Venus kuning keemasan dan Matahari di kejauhan",
+    tokoh: "astronaut kartun kecil",
+  },
+];
+
 function pilih(format: Format, ide: string): Bank {
-  const bank = format === "pov-sejarah" ? SEJARAH : format === "vlog-hewan" ? HEWAN : HOROR;
+  const bank = format === "fakta-unik" ? FAKTA : format === "pov-sejarah" ? SEJARAH : format === "vlog-hewan" ? HEWAN : HOROR;
   const q = ide.toLowerCase();
   const cocok = bank.find((b) => q && (b.topik.toLowerCase().includes(q) || b.kataKunci.some((k) => q.includes(k))));
   if (cocok) return cocok;
@@ -133,7 +160,9 @@ function pilih(format: Format, ide: string): Bank {
       ...bank[0],
       topik: ide.trim(),
       sudut:
-        format === "pov-sejarah"
+        format === "fakta-unik"
+          ? `Fakta unik tentang ${ide.trim()}`
+          : format === "pov-sejarah"
           ? `POV: kamu hidup di masa ${ide.trim()}`
           : format === "vlog-hewan"
             ? `Vlog hewan: ${ide.trim()}`
@@ -163,7 +192,9 @@ export function risetTemplat(format: Format, ide: string): Riset {
     topik: b.topik,
     sudut: b.sudut,
     alasan:
-      format === "pov-sejarah"
+      format === "fakta-unik"
+        ? "Fakta mengejutkan yang gampang dibayangkan bikin orang menonton sampai habis dan membagikannya."
+        : format === "pov-sejarah"
         ? "Format POV membuat penonton merasa ikut hadir, cocok untuk retensi Shorts dan TikTok."
         : format === "vlog-hewan"
           ? "Hewan lokal dengan karakter kocak gampang dibagikan dan memancing komentar."
@@ -200,6 +231,14 @@ export function naskahTemplat(format: Format, r: Riset, seri?: Seri): Naskah {
         "Dan saat lampu berkedip, sosok itu sudah tidak ada di sana.",
       ].join("\n"),
       cta: "Kalian pernah ngalamin yang kayak gini? Ceritain di komentar. Part 2 menyusul.",
+    };
+  }
+  if (format === "fakta-unik") {
+    return {
+      judulKerja: r.sudut,
+      hook: `${r.sudut}. Serius, ini beneran.`,
+      narasi: [r.fakta[0], "Kedengarannya aneh, kan?", r.fakta[1], r.fakta[2] ?? "Dan ternyata masih ada yang lebih gila lagi."].filter(Boolean).join("\n"),
+      cta: "Kamu baru tahu yang mana? Tulis di komentar, dan follow buat fakta unik berikutnya!",
     };
   }
   if (format === "pov-sejarah") {

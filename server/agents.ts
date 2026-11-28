@@ -131,6 +131,7 @@ Balas JSON: {"judulKerja": string, "hook": string, "narasi": string, "cta": stri
 const ATURAN_KARAKTER = `Deskripsi karakter WAJIB sangat spesifik supaya wajahnya sama di setiap klip: jenis kelamin, usia angka, bentuk wajah, warna kulit, model & warna rambut, alis/mata, ciri khas (tahi lalat, bekas luka kecil, kacamata, dll), tinggi & bentuk badan, pakaian lengkap dengan warna (atasan, bawahan, alas kaki), dan aksesori. Untuk hewan: spesies, ukuran, warna & pola bulu, ciri khas, aksesori. Tulis dalam satu kalimat panjang bahasa Indonesia, tanpa menyebut nama.`;
 
 const GERAK_BAWAAN: Record<Project["format"], Gerak["efek"]> = {
+  "fakta-unik": [],
   "cerita-horor": ["kabut", "gelap"],
   "pov-sejarah": ["debu"],
   "vlog-hewan": [],

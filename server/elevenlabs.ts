@@ -18,6 +18,7 @@ export const elevenTersedia = () => Boolean(process.env.ELEVENLABS_API_KEY?.trim
 
 /** Pengaturan suara per format: horor lebih stabil & datar (dingin), vlog lebih ekspresif. */
 const GAYA_SUARA: Record<Format, { stability: number; similarity_boost: number; style: number; speed: number }> = {
+  "fakta-unik": { stability: 0.45, similarity_boost: 0.8, style: 0.45, speed: 1.05 },
   "cerita-horor": { stability: 0.6, similarity_boost: 0.8, style: 0.3, speed: 0.92 },
   "pov-sejarah": { stability: 0.55, similarity_boost: 0.8, style: 0.25, speed: 1 },
   "vlog-hewan": { stability: 0.4, similarity_boost: 0.75, style: 0.5, speed: 1.05 },

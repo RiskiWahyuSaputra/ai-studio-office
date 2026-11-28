@@ -1,7 +1,7 @@
 import type { Gerak } from "./video.ts";
 import type { StageId } from "./team.ts";
 
-export type Format = "pov-sejarah" | "vlog-hewan" | "cerita-horor";
+export type Format = "fakta-unik" | "pov-sejarah" | "vlog-hewan" | "cerita-horor";
 export type Gaya = "animasi-2d" | "animasi" | "pixel" | "sinematik";
 
 export const GAYA: Record<Gaya, { nama: string; ringkas: string; prompt: string; kepala: string; tokoh?: string; gambar: string; gambarEn?: string; gambarAwal?: string }> = {
@@ -68,6 +68,21 @@ export interface PanduanFormat {
 }
 
 export const FORMATS: Record<Format, PanduanFormat> = {
+  "fakta-unik": {
+    nama: "Fakta Unik Keren",
+    ringkas: "Fun fact mengejutkan tentang sains, alam, luar angkasa, tubuh manusia, teknologi, atau dunia, dibawakan cepat dan seru.",
+    riset:
+      "Pilih SATU tema dengan fakta yang benar-benar mengejutkan tapi BENAR dan bisa dicek (sains, alam, luar angkasa, tubuh manusia, hewan, teknologi, sejarah dunia, atau Indonesia). Tulis angka, ukuran, atau perbandingan yang konkret di fakta. Jangan pakai mitos populer yang sudah dibantah (mis. Tembok Besar terlihat dari luar angkasa, manusia hanya memakai 10% otak). Kalau ragu sebuah fakta benar, jangan dipakai. Angka yang berupa perkiraan ilmiah ditulis sebagai perkiraan (\"diperkirakan\", \"sekitar\"), jangan disebut pasti. Field sudut berisi kalimat pembuka fun fact yang bikin penasaran, BUKAN POV.",
+    naskah:
+      'Gaya pembawa fun fact yang seru dan cepat, orang kedua ("kamu"), bahasa santai anak muda. Buka dengan hook yang bikin penasaran ("Tahu nggak...", angka mengejutkan, atau pertanyaan). Bangun rasa penasaran baris demi baris, beri perbandingan yang gampang dibayangkan (mis. "setinggi 10 lantai gedung"), dan simpan fakta paling mengejutkan di akhir. Jangan mengarang angka.',
+    sutradara:
+      "Visual cerah, bersih, dan energik seperti video edukasi premium: tipografi besar yang muncul mengikuti narasi, angka yang menghitung naik, ikon dan diagram sederhana, perbandingan ukuran visual, panah dan sorotan, transisi cepat. Warna cerah kontras di latar gelap atau terang yang bersih.",
+    bicaraKeKamera: false,
+    arahanTts: "Say in an upbeat, curious, energetic explainer voice:",
+    suara: "Puck",
+    kategoriYt: "27",
+    saranSeri: "Jadikan seri bertema (mis. 'Fakta luar angkasa #1, #2...') supaya penonton menunggu fakta berikutnya.",
+  },
   "pov-sejarah": {
     nama: "POV Sejarah Nusantara",
     ringkas: "Penonton diajak 'hidup' di satu momen sejarah Indonesia lewat sudut pandang orang pertama.",
